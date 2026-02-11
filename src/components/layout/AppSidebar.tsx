@@ -7,6 +7,7 @@ import {
   Scale,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Sidebar,
   SidebarContent,
@@ -19,10 +20,10 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 
-const mainMenuItems = [
+const adminMenuItems = [
   { title: "Tổng quan", url: "/", icon: LayoutDashboard },
   { title: "Kho điều khoản", url: "/dieu-khoan", icon: BookOpen },
-  { title: "Kho hợp đồng", url: "/hop-dong", icon: FolderArchive },
+  { title: "Tổng hợp đồng", url: "/tong-hop-dong", icon: FolderArchive },
   { title: "Yêu cầu review", url: "/yeu-cau-review", icon: FileSearch },
 ];
 
@@ -30,7 +31,14 @@ const advancedMenuItems = [
   { title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Brain },
 ];
 
+const userMenuItems = [
+  { title: "Yêu cầu của tôi", url: "/", icon: FileSearch },
+];
+
 export function AppSidebar() {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
@@ -43,7 +51,7 @@ export function AppSidebar() {
               LegalHub
             </span>
             <span className="text-[11px] text-sidebar-foreground/60 leading-tight truncate">
-              Quản lý pháp chế
+              {isAdmin ? "Pháp chế" : "Quản lý hợp đồng"}
             </span>
           </div>
         </div>
@@ -51,10 +59,10 @@ export function AppSidebar() {
 
       <SidebarContent className="pt-2">
         <SidebarGroup>
-          <SidebarGroupLabel>Điều hướng</SidebarGroupLabel>
+          <SidebarGroupLabel>{isAdmin ? "Điều hướng" : "Menu"}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainMenuItems.map((item) => (
+              {(isAdmin ? adminMenuItems : userMenuItems).map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>
                     <NavLink
@@ -72,26 +80,28 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Nâng cao</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {advancedMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild tooltip={item.title}>
-                    <NavLink
-                      to={item.url}
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Nâng cao</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {advancedMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild tooltip={item.title}>
+                      <NavLink
+                        to={item.url}
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );
