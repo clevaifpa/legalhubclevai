@@ -1,11 +1,18 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Outlet } from "react-router-dom";
-import { Bell } from "lucide-react";
+import { Bell, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
 
 export function AppLayout() {
+  const { user, profile, role, signOut } = useAuth();
+
+  const initials = profile?.full_name
+    ? profile.full_name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+    : (user?.email?.[0] || "U").toUpperCase();
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
@@ -18,18 +25,22 @@ export function AppLayout() {
             <div className="flex items-center gap-3">
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-4 w-4" />
-                <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-destructive text-destructive-foreground border-0">
-                  3
-                </Badge>
               </Button>
               <div className="flex items-center gap-2 pl-3 border-l">
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold">
-                  VK
+                  {initials}
                 </div>
                 <div className="hidden sm:flex flex-col">
-                  <span className="text-sm font-medium leading-tight">Vũ Đình Khoa</span>
-                  <span className="text-xs text-muted-foreground leading-tight">Trưởng phòng Pháp chế</span>
+                  <span className="text-sm font-medium leading-tight">
+                    {profile?.full_name || user?.email}
+                  </span>
+                  <span className="text-xs text-muted-foreground leading-tight">
+                    {role === "admin" ? "Pháp chế" : profile?.department || "Nhân viên"}
+                  </span>
                 </div>
+                <Button variant="ghost" size="icon" onClick={signOut} className="ml-1">
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </header>
