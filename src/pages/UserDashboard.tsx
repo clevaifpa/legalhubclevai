@@ -51,6 +51,8 @@ import {
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
+import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTracker";
+import { extractDeptReviews, decodeDeptReview } from "@/types/reviewDepartments";
 
 // Sanitize file name: remove Vietnamese diacritics, spaces, and special characters
 // to avoid Supabase Storage "Invalid key" errors
@@ -358,6 +360,11 @@ const UserDashboard = () => {
                 </div>
               </div>
 
+              {/* Department Review Progress */}
+              {notes[req.id] && notes[req.id].length > 0 && (
+                <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[req.id])} />
+              )}
+
               {/* File link */}
               {req.file_url && (
                 <a href={req.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
@@ -373,14 +380,14 @@ const UserDashboard = () => {
                 </div>
               )}
 
-              {notes[req.id] && notes[req.id].length > 0 && (
+              {notes[req.id] && notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm font-medium">Lịch sử xử lý ({notes[req.id].length})</p>
+                    <p className="text-sm font-medium">Lịch sử xử lý ({notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length})</p>
                   </div>
                   <div className="space-y-2 pl-6 border-l-2 border-muted ml-2">
-                    {notes[req.id].map((note: any) => (
+                    {notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).map((note: any) => (
                       <div key={note.id} className="p-3 rounded-lg bg-card border text-sm relative">
                         <div className="absolute -left-[1.65rem] top-3 w-3 h-3 rounded-full bg-accent border-2 border-background" />
                         <div className="flex items-center justify-between mb-1">
