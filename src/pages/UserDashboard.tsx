@@ -17,6 +17,17 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -34,6 +45,9 @@ import {
   DollarSign,
   Loader2,
   MessageSquare,
+  Trash2,
+  Upload,
+  ExternalLink,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
@@ -67,8 +81,9 @@ const UserDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // Form state
   const [form, setForm] = useState({
     priority: "trung_binh",
     contract_title: "",
@@ -90,7 +105,6 @@ const UserDashboard = () => {
       .order("created_at", { ascending: false });
     if (data) {
       setRequests(data);
-      // Fetch notes for all requests
       const ids = data.map((r: any) => r.id);
       if (ids.length > 0) {
         const { data: notesData } = await supabase
@@ -113,11 +127,29 @@ const UserDashboard = () => {
 
   useEffect(() => {
     fetchRequests();
+    const channel = supabase
+      .channel("review-requests-user")
+      .on("postgres_changes", { event: "*", schema: "public", table: "review_requests" }, () => fetchRequests())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   const handleSubmit = async () => {
     if (!user || !profile) return;
     setSubmitting(true);
+
+    let fileUrl: string | null = null;
+    if (selectedFile) {
+      setUploadingFile(true);
+      const path = `reviews/${user.id}/${Date.now()}_${selectedFile.name}`;
+      const { error: uploadErr } = await supabase.storage.from("contracts").upload(path, selectedFile);
+      if (!uploadErr) {
+        const { data: urlData } = supabase.storage.from("contracts").getPublicUrl(path);
+        fileUrl = urlData.publicUrl;
+      }
+      setUploadingFile(false);
+    }
+
     const { error } = await supabase.from("review_requests").insert({
       requester_id: user.id,
       requester_name: profile.full_name || user.email || "",
@@ -131,6 +163,7 @@ const UserDashboard = () => {
       contract_end_date: form.contract_end_date || null,
       review_deadline: form.review_deadline || null,
       description: form.description,
+      file_url: fileUrl,
     });
     setSubmitting(false);
     if (error) {
@@ -138,27 +171,24 @@ const UserDashboard = () => {
     } else {
       toast.success("Yêu cầu review đã được tạo!");
       setDialogOpen(false);
-      setForm({
-        priority: "trung_binh",
-        contract_title: "",
-        partner_name: "",
-        contract_value: "",
-        request_deadline: "",
-        contract_start_date: "",
-        contract_end_date: "",
-        review_deadline: "",
-        description: "",
-      });
+      setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "" });
+      setSelectedFile(null);
+      fetchRequests();
+    }
+  };
+
+  const handleDelete = async (reqId: string) => {
+    const { error } = await supabase.from("review_requests").delete().eq("id", reqId);
+    if (error) {
+      toast.error("Lỗi xóa", { description: error.message });
+    } else {
+      toast.success("Đã xóa yêu cầu");
       fetchRequests();
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-accent" /></div>;
   }
 
   return (
@@ -166,9 +196,7 @@ const UserDashboard = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Yêu cầu review hợp đồng</h1>
-          <p className="text-muted-foreground">
-            Tạo và theo dõi yêu cầu review hợp đồng của bạn
-          </p>
+          <p className="text-muted-foreground">Tạo và theo dõi yêu cầu review hợp đồng của bạn</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -195,7 +223,7 @@ const UserDashboard = () => {
               </div>
               <div className="space-y-2">
                 <Label>Tên hợp đồng *</Label>
-                <Input value={form.contract_title} onChange={(e) => setForm({ ...form, contract_title: e.target.value })} placeholder="VD: Hợp đồng mua bán thiết bị" required />
+                <Input value={form.contract_title} onChange={(e) => setForm({ ...form, contract_title: e.target.value })} placeholder="VD: Hợp đồng mua bán thiết bị" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -210,7 +238,7 @@ const UserDashboard = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Thời hạn yêu cầu *</Label>
-                  <Input type="date" value={form.request_deadline} onChange={(e) => setForm({ ...form, request_deadline: e.target.value })} required />
+                  <Input type="date" value={form.request_deadline} onChange={(e) => setForm({ ...form, request_deadline: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Hạn review</Label>
@@ -226,6 +254,11 @@ const UserDashboard = () => {
                   <Label>Ngày kết thúc HĐ</Label>
                   <Input type="date" value={form.contract_end_date} onChange={(e) => setForm({ ...form, contract_end_date: e.target.value })} />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label>File hợp đồng</Label>
+                <Input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+                <p className="text-xs text-muted-foreground">Hỗ trợ file PDF, DOC, DOCX</p>
               </div>
               <div className="space-y-2">
                 <Label>Mô tả chi tiết</Label>
@@ -313,7 +346,14 @@ const UserDashboard = () => {
                 </div>
               </div>
 
-              {/* Admin notes */}
+              {/* File link */}
+              {req.file_url && (
+                <a href={req.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Xem tài liệu đính kèm
+                </a>
+              )}
+
               {req.admin_notes && (
                 <div className="p-3 rounded-lg bg-accent/5 border border-accent/20">
                   <p className="text-xs font-medium text-accent mb-1">📋 Nhận xét pháp chế</p>
@@ -321,16 +361,16 @@ const UserDashboard = () => {
                 </div>
               )}
 
-              {/* Review notes */}
               {notes[req.id] && notes[req.id].length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm font-medium">Ghi chú ({notes[req.id].length})</p>
+                    <p className="text-sm font-medium">Lịch sử xử lý ({notes[req.id].length})</p>
                   </div>
-                  <div className="space-y-2 pl-6">
+                  <div className="space-y-2 pl-6 border-l-2 border-muted ml-2">
                     {notes[req.id].map((note: any) => (
-                      <div key={note.id} className="p-3 rounded-lg bg-card border text-sm">
+                      <div key={note.id} className="p-3 rounded-lg bg-card border text-sm relative">
+                        <div className="absolute -left-[1.65rem] top-3 w-3 h-3 rounded-full bg-accent border-2 border-background" />
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-medium text-xs">{note.author_name}</span>
                           <span className="text-xs text-muted-foreground">{formatDate(note.created_at)}</span>
@@ -340,6 +380,33 @@ const UserDashboard = () => {
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* Delete button for pending requests */}
+              {req.status === "cho_xu_ly" && (
+                <>
+                  <Separator />
+                  <div className="flex justify-end">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-xs text-destructive hover:text-destructive">
+                          <Trash2 className="h-3.5 w-3.5 mr-1" />
+                          Xóa yêu cầu
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
+                          <AlertDialogDescription>Yêu cầu review "{req.contract_title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Hủy</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(req.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

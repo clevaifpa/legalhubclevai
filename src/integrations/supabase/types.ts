@@ -80,12 +80,15 @@ export type Database = {
           contract_type: Database["public"]["Enums"]["contract_type"]
           created_at: string
           created_by: string | null
+          department: string
           effective_date: string | null
           expiry_date: string | null
           file_url: string | null
           id: string
+          liquidation_file_url: string | null
           partner_name: string
           risk_level: Database["public"]["Enums"]["risk_level"]
+          signed_file_url: string | null
           status: Database["public"]["Enums"]["contract_status"]
           title: string
           updated_at: string
@@ -96,12 +99,15 @@ export type Database = {
           contract_type?: Database["public"]["Enums"]["contract_type"]
           created_at?: string
           created_by?: string | null
+          department?: string
           effective_date?: string | null
           expiry_date?: string | null
           file_url?: string | null
           id?: string
+          liquidation_file_url?: string | null
           partner_name?: string
           risk_level?: Database["public"]["Enums"]["risk_level"]
+          signed_file_url?: string | null
           status?: Database["public"]["Enums"]["contract_status"]
           title: string
           updated_at?: string
@@ -112,12 +118,15 @@ export type Database = {
           contract_type?: Database["public"]["Enums"]["contract_type"]
           created_at?: string
           created_by?: string | null
+          department?: string
           effective_date?: string | null
           expiry_date?: string | null
           file_url?: string | null
           id?: string
+          liquidation_file_url?: string | null
           partner_name?: string
           risk_level?: Database["public"]["Enums"]["risk_level"]
+          signed_file_url?: string | null
           status?: Database["public"]["Enums"]["contract_status"]
           title?: string
           updated_at?: string
@@ -281,6 +290,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_expire_contracts: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

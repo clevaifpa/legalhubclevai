@@ -22,6 +22,17 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Search,
   FileSearch,
   Calendar,
@@ -29,7 +40,12 @@ import {
   DollarSign,
   MessageSquare,
   Loader2,
-  Send,
+  Trash2,
+  ExternalLink,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Edit,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
@@ -48,6 +64,14 @@ const STATUS_COLORS: Record<string, string> = {
   da_hoan_thanh: "bg-success/10 text-success border-success/20",
   yeu_cau_chinh_sua: "bg-warning/10 text-warning border-warning/20",
   tu_choi: "bg-destructive/10 text-destructive border-destructive/20",
+};
+
+const STATUS_TIMELINE_ICONS: Record<string, any> = {
+  cho_xu_ly: Clock,
+  dang_review: FileSearch,
+  da_hoan_thanh: CheckCircle,
+  yeu_cau_chinh_sua: Edit,
+  tu_choi: XCircle,
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -96,7 +120,15 @@ const AdminReviewRequests = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchRequests(); }, []);
+  useEffect(() => {
+    fetchRequests();
+    // Realtime subscription
+    const channel = supabase
+      .channel("review-requests-admin")
+      .on("postgres_changes", { event: "*", schema: "public", table: "review_requests" }, () => fetchRequests())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const filtered = requests.filter((req) => {
     const matchSearch = search === "" ||
@@ -117,14 +149,13 @@ const AdminReviewRequests = () => {
   const handleSave = async () => {
     if (!selectedReq || !user) return;
     setSaving(true);
+    const oldStatus = selectedReq.status;
 
-    // Update status and admin_notes
     await supabase
       .from("review_requests")
       .update({ status: newStatus as any, admin_notes: adminNotes })
       .eq("id", selectedReq.id);
 
-    // Add note if provided
     if (newNote.trim()) {
       await supabase.from("review_notes").insert({
         review_request_id: selectedReq.id,
@@ -134,10 +165,39 @@ const AdminReviewRequests = () => {
       });
     }
 
+    // Send email notification if status changed
+    if (oldStatus !== newStatus) {
+      try {
+        await supabase.functions.invoke("send-notification-email", {
+          body: {
+            requestId: selectedReq.id,
+            contractTitle: selectedReq.contract_title,
+            newStatus: STATUS_LABELS[newStatus] || newStatus,
+            updatedBy: profile?.full_name || user.email,
+            requesterEmail: null, // Will be looked up by edge function
+            requesterId: selectedReq.requester_id,
+          },
+        });
+      } catch (e) {
+        // Email is best-effort, don't block the save
+        console.warn("Email notification failed:", e);
+      }
+    }
+
     setSaving(false);
     setSelectedReq(null);
     toast.success("Đã cập nhật yêu cầu review");
     fetchRequests();
+  };
+
+  const handleDelete = async (reqId: string) => {
+    const { error } = await supabase.from("review_requests").delete().eq("id", reqId);
+    if (error) {
+      toast.error("Lỗi xóa", { description: error.message });
+    } else {
+      toast.success("Đã xóa yêu cầu");
+      fetchRequests();
+    }
   };
 
   const statusCounts = requests.reduce((acc: Record<string, number>, r) => {
@@ -222,7 +282,7 @@ const AdminReviewRequests = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div><p className="text-xs text-muted-foreground">Hạn review</p><p className="text-sm font-medium">{req.review_deadline ? formatDate(req.review_deadline) : "—"}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Thời hạn HĐ</p><p className="text-sm font-medium">{req.contract_start_date && req.contract_end_date ? `${formatDate(req.contract_start_date)} - ${formatDate(req.contract_end_date)}` : "—"}</p></div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -230,15 +290,33 @@ const AdminReviewRequests = () => {
                 </div>
               </div>
 
+              {/* Description */}
+              {req.description && (
+                <div className="p-3 rounded-lg bg-muted/30 text-sm">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Mô tả:</p>
+                  <p>{req.description}</p>
+                </div>
+              )}
+
+              {/* File link */}
+              {req.file_url && (
+                <a href={req.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Xem tài liệu đính kèm
+                </a>
+              )}
+
+              {/* Notes / Timeline */}
               {notes[req.id] && notes[req.id].length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm font-medium">Ghi chú ({notes[req.id].length})</p>
+                    <p className="text-sm font-medium">Lịch sử xử lý ({notes[req.id].length})</p>
                   </div>
-                  <div className="space-y-2 pl-6">
+                  <div className="space-y-2 pl-6 border-l-2 border-muted ml-2">
                     {notes[req.id].map((note: any) => (
-                      <div key={note.id} className="p-3 rounded-lg bg-card border text-sm">
+                      <div key={note.id} className="p-3 rounded-lg bg-card border text-sm relative">
+                        <div className="absolute -left-[1.65rem] top-3 w-3 h-3 rounded-full bg-accent border-2 border-background" />
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-medium text-xs">{note.author_name}</span>
                           <span className="text-xs text-muted-foreground">{formatDate(note.created_at)}</span>
@@ -251,7 +329,25 @@ const AdminReviewRequests = () => {
               )}
 
               <Separator />
-              <div className="flex items-center justify-end">
+              <div className="flex items-center justify-between">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-xs text-destructive hover:text-destructive">
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                      Xóa
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
+                      <AlertDialogDescription>Yêu cầu review "{req.contract_title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Hủy</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDelete(req.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 <Button size="sm" className="text-xs bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => openDetail(req)}>
                   Xử lý yêu cầu
                 </Button>
