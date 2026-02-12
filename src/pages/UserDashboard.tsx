@@ -52,6 +52,18 @@ import {
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
 
+// Sanitize file name: remove Vietnamese diacritics, spaces, and special characters
+// to avoid Supabase Storage "Invalid key" errors
+const sanitizeFileName = (name: string): string => {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove diacritical marks
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .replace(/\s+/g, "_") // Replace spaces with underscores
+    .replace(/[^a-zA-Z0-9._-]/g, ""); // Remove remaining unsafe characters
+};
+
 const PRIORITY_LABELS: Record<string, string> = {
   cao: "Cao",
   trung_binh: "Trung bình",
@@ -141,7 +153,7 @@ const UserDashboard = () => {
     let fileUrl: string | null = null;
     if (selectedFile) {
       setUploadingFile(true);
-      const path = `reviews/${user.id}/${Date.now()}_${selectedFile.name}`;
+      const path = `reviews/${user.id}/${Date.now()}_${sanitizeFileName(selectedFile.name)}`;
       const { error: uploadErr } = await supabase.storage.from("contracts").upload(path, selectedFile);
       if (!uploadErr) {
         const { data: urlData } = supabase.storage.from("contracts").getPublicUrl(path);

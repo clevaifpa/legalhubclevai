@@ -56,6 +56,18 @@ import {
 import { formatDate, formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
 
+// Sanitize file name: remove Vietnamese diacritics, spaces, and special characters
+// to avoid Supabase Storage "Invalid key" errors
+const sanitizeFileName = (name: string): string => {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove diacritical marks
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .replace(/\s+/g, "_") // Replace spaces with underscores
+    .replace(/[^a-zA-Z0-9._-]/g, ""); // Remove remaining unsafe characters
+};
+
 const STATUS_LABELS: Record<string, string> = {
   nhap: "Nháp",
   dang_review: "Đang review",
@@ -181,11 +193,11 @@ const ContractCategories = () => {
       const timestamp = Date.now();
 
       if (docFile) {
-        const path = `${user?.id}/${timestamp}_doc_${docFile.name}`;
+        const path = `${user?.id}/${timestamp}_doc_${sanitizeFileName(docFile.name)}`;
         fileUrl = await uploadFile(docFile, path);
       }
       if (signedPdfFile) {
-        const path = `${user?.id}/${timestamp}_signed_${signedPdfFile.name}`;
+        const path = `${user?.id}/${timestamp}_signed_${sanitizeFileName(signedPdfFile.name)}`;
         signedFileUrl = await uploadFile(signedPdfFile, path);
       }
 
@@ -219,7 +231,7 @@ const ContractCategories = () => {
 
   const handleUploadLiquidation = async (contractId: string, file: File) => {
     try {
-      const path = `${user?.id}/${Date.now()}_liquidation_${file.name}`;
+      const path = `${user?.id}/${Date.now()}_liquidation_${sanitizeFileName(file.name)}`;
       const url = await uploadFile(file, path);
       await supabase.from("contracts").update({ liquidation_file_url: url } as any).eq("id", contractId);
       toast.success("Đã tải biên bản thanh lý");
