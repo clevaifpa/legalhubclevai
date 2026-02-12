@@ -2,3 +2,6 @@ project_id = "kfjndfmbiatymgiczkhw"
 
 [functions.analyze-contract]
 verify_jwt = false
+
+[functions.send-notification-email]
+verify_jwt = false
