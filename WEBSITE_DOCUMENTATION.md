@@ -28,8 +28,16 @@
 
 | Vai trò | Quyền hạn |
 |---|---|
-| **Admin (Pháp chế)** | Toàn quyền: Dashboard, Kho điều khoản, Tổng hợp đồng, Yêu cầu review, AI Kiểm tra |
-| **User (Người dùng)** | Chỉ truy cập: UserDashboard (xem/tạo/xóa yêu cầu review của mình) |
+| **Admin (Pháp chế)** | Toàn quyền: Dashboard, Kho điều khoản, Tổng hợp đồng, Yêu cầu review (đa phòng ban), AI Kiểm tra |
+| **User (Người dùng)** | Chỉ truy cập: UserDashboard (xem/tạo/xóa yêu cầu review của mình, xem tiến trình review đa phòng ban) |
+
+### Hệ thống review đa phòng ban:
+
+| Phòng ban | Vai trò review |
+|---|---|
+| **⚖️ Pháp lý** | Kiểm tra tính hợp pháp, điều khoản ràng buộc |
+| **💰 Tài chính** | Đánh giá giá trị, điều khoản thanh toán |
+| **📊 Kế toán** | Kiểm tra hạch toán, thuế, chứng từ |
 
 ### Luồng xác thực:
 1. Đăng ký/Đăng nhập qua **Supabase Auth** (email + password)
@@ -133,12 +141,19 @@
   - Người yêu cầu, Bộ phận
   - Deadline review, Mức ưu tiên (Cao/Trung bình/Thấp)
   - Mô tả, File đính kèm
+- **Review đa phòng ban:**
+  - 3 phòng ban review: Pháp lý (⚖️), Tài chính (💰), Kế toán (📊)
+  - Mỗi phòng ban có trạng thái riêng: Chờ review / Đã duyệt / Từ chối / Cần chỉnh sửa
+  - Hiển thị tiến trình review (compact icons + progress bar + department cards)
+  - Dashboard tổng hợp số lượng chờ review theo từng phòng ban
+  - Dialog xử lý cho phép chọn phòng ban + đánh giá + ghi chú riêng
 - **Thao tác Admin:**
-  - Cập nhật trạng thái: Chờ xử lý → Đang review → Đã hoàn thành / Yêu cầu chỉnh sửa / Từ chối
+  - Cập nhật trạng thái tổng thể: Chờ xử lý → Đang review → Đã hoàn thành / Yêu cầu chỉnh sửa / Từ chối
+  - Thêm đánh giá theo từng phòng ban
   - Thêm ghi chú admin
   - Xóa yêu cầu
-- **Bộ lọc:** Theo trạng thái
-- **Lọc tab-style:** với icon + số lượng theo từng status
+- **Bộ lọc:** Theo trạng thái, theo phòng ban review
+- **Lọc:** Cards phòng ban + status filter
 
 ---
 
@@ -225,9 +240,10 @@ src/
 ├── components/
 │   ├── NavLink.tsx            # Navigation link wrapper
 │   ├── common/
-│   │   ├── ContractTypeBadge.tsx  # Badge hiển thị loại HĐ
-│   │   ├── RiskBadge.tsx          # Badge mức rủi ro
-│   │   └── StatusBadge.tsx        # Badge trạng thái
+│   │   ├── ContractTypeBadge.tsx       # Badge hiển thị loại HĐ
+│   │   ├── DepartmentReviewTracker.tsx # ★ Tiến trình review đa phòng ban
+│   │   ├── RiskBadge.tsx               # Badge mức rủi ro
+│   │   └── StatusBadge.tsx             # Badge trạng thái
 │   ├── layout/
 │   │   ├── AppLayout.tsx      # Layout chung (Sidebar + Content)
 │   │   └── AppSidebar.tsx     # Sidebar navigation
@@ -245,7 +261,8 @@ src/
 │   └── format.ts              # Utility functions (formatDate, formatCurrency)
 ├── pages/                     # 10 page components
 ├── types/
-│   └── index.ts               # TypeScript types & label constants
+│   ├── index.ts               # TypeScript types & label constants
+│   └── reviewDepartments.ts   # ★ Types & utils cho review đa phòng ban
 └── test/                      # Test files
 ```
 
