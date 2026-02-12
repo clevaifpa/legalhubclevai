@@ -46,7 +46,7 @@ import {
   Loader2,
   MessageSquare,
   Trash2,
-  Upload,
+  Link,
   ExternalLink,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -54,16 +54,10 @@ import { toast } from "sonner";
 import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTracker";
 import { extractDeptReviews, decodeDeptReview } from "@/types/reviewDepartments";
 
-// Sanitize file name: remove Vietnamese diacritics, spaces, and special characters
-// to avoid Supabase Storage "Invalid key" errors
-const sanitizeFileName = (name: string): string => {
-  return name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Remove diacritical marks
-    .replace(/đ/g, "d")
-    .replace(/Đ/g, "D")
-    .replace(/\s+/g, "_") // Replace spaces with underscores
-    .replace(/[^a-zA-Z0-9._-]/g, ""); // Remove remaining unsafe characters
+// Validate Google Doc URL
+const isValidGoogleDocUrl = (url: string): boolean => {
+  if (!url) return true; // Empty is valid (optional field)
+  return /^https:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\/d\//.test(url);
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -95,8 +89,6 @@ const UserDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [uploadingFile, setUploadingFile] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [form, setForm] = useState({
     priority: "trung_binh",
@@ -108,6 +100,7 @@ const UserDashboard = () => {
     contract_end_date: "",
     review_deadline: "",
     description: "",
+    google_doc_url: "",
   });
 
   const fetchRequests = async () => {
@@ -150,19 +143,14 @@ const UserDashboard = () => {
 
   const handleSubmit = async () => {
     if (!user || !profile) return;
-    setSubmitting(true);
 
-    let fileUrl: string | null = null;
-    if (selectedFile) {
-      setUploadingFile(true);
-      const path = `reviews/${user.id}/${Date.now()}_${sanitizeFileName(selectedFile.name)}`;
-      const { error: uploadErr } = await supabase.storage.from("contracts").upload(path, selectedFile);
-      if (!uploadErr) {
-        const { data: urlData } = supabase.storage.from("contracts").getPublicUrl(path);
-        fileUrl = urlData.publicUrl;
-      }
-      setUploadingFile(false);
+    // Validate Google Doc URL if provided
+    if (form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url)) {
+      toast.error("Link không hợp lệ", { description: "Vui lòng nhập đúng link Google Docs (https://docs.google.com/...)" });
+      return;
     }
+
+    setSubmitting(true);
 
     const { error } = await supabase.from("review_requests").insert({
       requester_id: user.id,
@@ -177,7 +165,7 @@ const UserDashboard = () => {
       contract_end_date: form.contract_end_date || null,
       review_deadline: form.review_deadline || null,
       description: form.description,
-      file_url: fileUrl,
+      file_url: form.google_doc_url || null,
     });
     setSubmitting(false);
     if (error) {
@@ -185,8 +173,7 @@ const UserDashboard = () => {
     } else {
       toast.success("Yêu cầu review đã được tạo!");
       setDialogOpen(false);
-      setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "" });
-      setSelectedFile(null);
+      setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "" });
       fetchRequests();
     }
   };
@@ -270,9 +257,23 @@ const UserDashboard = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>File hợp đồng</Label>
-                <Input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-                <p className="text-xs text-muted-foreground">Hỗ trợ file PDF, DOC, DOCX</p>
+                <Label className="flex items-center gap-1.5">
+                  <Link className="h-3.5 w-3.5" />
+                  Link Google Doc *
+                </Label>
+                <Input
+                  type="url"
+                  value={form.google_doc_url}
+                  onChange={(e) => setForm({ ...form, google_doc_url: e.target.value })}
+                  placeholder="https://docs.google.com/document/d/..."
+                  className={form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url) ? "border-destructive focus-visible:ring-destructive" : ""}
+                />
+                <p className="text-xs text-muted-foreground">
+                  📌 Dán link Google Docs và đảm bảo đã <span className="font-semibold text-accent">cấp quyền chỉnh sửa</span> (Editor) cho admin
+                </p>
+                {form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url) && (
+                  <p className="text-xs text-destructive">⚠️ Link không hợp lệ. Vui lòng nhập link Google Docs</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Mô tả chi tiết</Label>
@@ -281,7 +282,7 @@ const UserDashboard = () => {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSubmit} disabled={submitting || !form.contract_title || !form.request_deadline}>
+              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSubmit} disabled={submitting || !form.contract_title || !form.request_deadline || !form.google_doc_url || !isValidGoogleDocUrl(form.google_doc_url)}>
                 {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Gửi yêu cầu
               </Button>
