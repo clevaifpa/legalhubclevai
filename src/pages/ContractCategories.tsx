@@ -184,7 +184,16 @@ const ContractCategories = () => {
     return path;
   };
 
-  const getSignedUrl = async (storagePath: string) => {
+  // Extract storage path from full URL or return as-is if already a path
+  const extractStoragePath = (urlOrPath: string): string => {
+    const publicPrefix = "/storage/v1/object/public/contracts/";
+    const idx = urlOrPath.indexOf(publicPrefix);
+    if (idx !== -1) return urlOrPath.substring(idx + publicPrefix.length);
+    return urlOrPath;
+  };
+
+  const getSignedUrl = async (urlOrPath: string) => {
+    const storagePath = extractStoragePath(urlOrPath);
     const { data, error } = await supabase.storage.from("contracts").createSignedUrl(storagePath, 3600);
     if (error) {
       toast.error("Không thể mở file", { description: error.message });
@@ -193,8 +202,8 @@ const ContractCategories = () => {
     return data.signedUrl;
   };
 
-  const openFile = async (storagePath: string) => {
-    const url = await getSignedUrl(storagePath);
+  const openFile = async (urlOrPath: string) => {
+    const url = await getSignedUrl(urlOrPath);
     if (url) window.open(url, "_blank");
   };
 

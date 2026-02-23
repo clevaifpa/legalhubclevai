@@ -374,10 +374,23 @@ const UserDashboard = () => {
 
               {/* File link */}
               {req.file_url && (
-                <a href={req.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
+                <button
+                  onClick={async () => {
+                    const url = req.file_url as string;
+                    if (url.includes("/storage/v1/object/public/contracts/")) {
+                      const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
+                      const { data, error } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
+                      if (data) window.open(data.signedUrl, "_blank");
+                      else toast.error("Không thể mở file");
+                    } else {
+                      window.open(url, "_blank");
+                    }
+                  }}
+                  className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
+                >
                   <ExternalLink className="h-3.5 w-3.5" />
                   Xem tài liệu đính kèm
-                </a>
+                </button>
               )}
 
               {req.admin_notes && (
