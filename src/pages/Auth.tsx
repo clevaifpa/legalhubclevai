@@ -9,11 +9,31 @@ import { toast } from "sonner";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [department, setDepartment] = useState("");
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("Email đặt lại mật khẩu đã được gửi!", {
+        description: "Vui lòng kiểm tra hộp thư email của bạn.",
+      });
+      setIsForgotPassword(false);
+    } catch (error: any) {
+      toast.error("Gửi email thất bại", { description: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,64 +84,70 @@ const Auth = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <>
+          {isForgotPassword ? (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="email@congty.vn"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={loading}>
+                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Gửi email đặt lại mật khẩu
+              </Button>
+              <div className="text-center">
+                <button type="button" onClick={() => setIsForgotPassword(false)} className="text-sm text-accent hover:underline">
+                  ← Quay lại đăng nhập
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {!isLogin && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Họ và tên</Label>
+                      <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nguyễn Văn A" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Bộ phận</Label>
+                      <Input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="VD: Phòng Kinh doanh" required />
+                    </div>
+                  </>
+                )}
                 <div className="space-y-2">
-                  <Label>Họ và tên</Label>
-                  <Input
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Nguyễn Văn A"
-                    required
-                  />
+                  <Label>Email</Label>
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@congty.vn" required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Bộ phận</Label>
-                  <Input
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    placeholder="VD: Phòng Kinh doanh"
-                    required
-                  />
+                  <Label>Mật khẩu</Label>
+                  <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
                 </div>
-              </>
-            )}
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@congty.vn"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Mật khẩu</Label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-              />
-            </div>
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={loading}>
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {isLogin ? "Đăng nhập" : "Đăng ký"}
-            </Button>
-          </form>
-          <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-accent hover:underline"
-            >
-              {isLogin ? "Chưa có tài khoản? Đăng ký" : "Đã có tài khoản? Đăng nhập"}
-            </button>
-          </div>
+                {isLogin && (
+                  <div className="text-right">
+                    <button type="button" onClick={() => setIsForgotPassword(true)} className="text-sm text-accent hover:underline">
+                      Quên mật khẩu?
+                    </button>
+                  </div>
+                )}
+                <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={loading}>
+                  {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {isLogin ? "Đăng nhập" : "Đăng ký"}
+                </Button>
+              </form>
+              <div className="mt-4 text-center">
+                <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-sm text-accent hover:underline">
+                  {isLogin ? "Chưa có tài khoản? Đăng ký" : "Đã có tài khoản? Đăng nhập"}
+                </button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

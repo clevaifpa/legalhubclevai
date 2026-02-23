@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -49,6 +49,7 @@ import {
   Edit,
   Shield,
   Users,
+  Link as LinkIcon,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
@@ -88,11 +89,21 @@ const PRIORITY_LABELS: Record<string, string> = {
   thap: "🟢 Thấp",
 };
 
+const isValidGoogleDocUrl = (url: string): boolean => {
+  if (!url) return false;
+  return /^https:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\/d\//.test(url);
+};
+
 const AdminReviewRequests = () => {
   const { user, profile, roles } = useAuth();
-  const canApprove = roles.includes("accountant" as any) || roles.includes("finance" as any) || roles.includes("admin" as any);
+  const isAdmin = roles.includes("admin" as any);
+  const isAccountant = roles.includes("accountant" as any);
+  const isFinance = roles.includes("finance" as any);
+  const canApprove = isAccountant || isFinance || isAdmin;
+
   const [requests, setRequests] = useState<any[]>([]);
   const [notes, setNotes] = useState<Record<string, any[]>>({});
+  const [paymentSchedules, setPaymentSchedules] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -100,6 +111,7 @@ const AdminReviewRequests = () => {
   const [newNote, setNewNote] = useState("");
   const [newStatus, setNewStatus] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
+  const [legalReviewDocLink, setLegalReviewDocLink] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Department review state
@@ -117,18 +129,25 @@ const AdminReviewRequests = () => {
       setRequests(data);
       const ids = data.map((r: any) => r.id);
       if (ids.length > 0) {
-        const { data: notesData } = await supabase
-          .from("review_notes")
-          .select("*")
-          .in("review_request_id", ids)
-          .order("created_at", { ascending: true });
-        if (notesData) {
+        const [notesRes, paymentsRes] = await Promise.all([
+          supabase.from("review_notes").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
+          supabase.from("payment_schedules").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
+        ]);
+        if (notesRes.data) {
           const grouped: Record<string, any[]> = {};
-          notesData.forEach((n: any) => {
+          notesRes.data.forEach((n: any) => {
             if (!grouped[n.review_request_id]) grouped[n.review_request_id] = [];
             grouped[n.review_request_id].push(n);
           });
           setNotes(grouped);
+        }
+        if (paymentsRes.data) {
+          const grouped: Record<string, any[]> = {};
+          paymentsRes.data.forEach((p: any) => {
+            if (!grouped[p.review_request_id]) grouped[p.review_request_id] = [];
+            grouped[p.review_request_id].push(p);
+          });
+          setPaymentSchedules(grouped);
         }
       }
     }
@@ -144,7 +163,6 @@ const AdminReviewRequests = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Get department reviews for a request
   const getDeptReviews = (reqId: string) => {
     const reqNotes = notes[reqId] || [];
     return extractDeptReviews(reqNotes);
@@ -154,19 +172,17 @@ const AdminReviewRequests = () => {
     const matchSearch = search === "" ||
       req.contract_title.toLowerCase().includes(search.toLowerCase()) ||
       req.partner_name?.toLowerCase().includes(search.toLowerCase()) ||
-      req.requester_name?.toLowerCase().includes(search.toLowerCase());
+      req.requester_name?.toLowerCase().includes(search.toLowerCase()) ||
+      req.department?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "all" || req.status === statusFilter;
 
-    // Filter by active tab (department filter)
     if (activeTab !== "all") {
       const deptReviews = getDeptReviews(req.id);
       const dept = activeTab as ReviewDepartment;
       if (activeTab === "pending_review") {
-        // Show requests that have at least one pending department
         const progress = getReviewProgress(deptReviews);
         return matchSearch && matchStatus && progress.completed < progress.total;
       }
-      // Show requests pending for this specific department
       return matchSearch && matchStatus && deptReviews[dept]?.status === "pending";
     }
 
@@ -177,16 +193,15 @@ const AdminReviewRequests = () => {
     setSelectedReq(req);
     setNewStatus(req.status);
     setAdminNotes(req.admin_notes || "");
+    setLegalReviewDocLink(req.legal_review_doc_link || "");
     setNewNote("");
     setSelectedDept("phap_ly");
     setDeptReviewNotes("");
 
-    // Load current dept review status
     const deptReviews = getDeptReviews(req.id);
     setDeptReviewStatus(deptReviews.phap_ly?.status || "pending");
   };
 
-  // When department changes in dialog, update status
   const handleDeptChange = (dept: ReviewDepartment) => {
     setSelectedDept(dept);
     if (selectedReq) {
@@ -201,10 +216,17 @@ const AdminReviewRequests = () => {
     setSaving(true);
     const oldStatus = selectedReq.status;
 
-    // Update the overall status
+    // Build update object
+    const updateData: any = { status: newStatus as any, admin_notes: adminNotes };
+
+    // Admin can set legal_review_doc_link
+    if (isAdmin && legalReviewDocLink) {
+      updateData.legal_review_doc_link = legalReviewDocLink;
+    }
+
     await supabase
       .from("review_requests")
-      .update({ status: newStatus as any, admin_notes: adminNotes })
+      .update(updateData)
       .eq("id", selectedReq.id);
 
     // Save department review as a note
@@ -218,7 +240,7 @@ const AdminReviewRequests = () => {
       });
     }
 
-    // Save regular note if provided
+    // Save regular note
     if (newNote.trim()) {
       await supabase.from("review_notes").insert({
         review_request_id: selectedReq.id,
@@ -267,7 +289,6 @@ const AdminReviewRequests = () => {
     return acc;
   }, {});
 
-  // Count pending per department
   const deptPendingCounts = requests.reduce((acc: Record<string, number>, req) => {
     const deptReviews = getDeptReviews(req.id);
     (Object.keys(REVIEW_DEPARTMENTS) as ReviewDepartment[]).forEach((dept) => {
@@ -277,6 +298,16 @@ const AdminReviewRequests = () => {
     });
     return acc;
   }, {});
+
+  // Determine which doc link to show for accountant/finance
+  const getDocLinkForRole = (req: any) => {
+    if (isAccountant || isFinance) {
+      // Only show legal_review_doc_link, hide original
+      return req.legal_review_doc_link || null;
+    }
+    // Admin sees both
+    return null; // handled separately in JSX
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-accent" /></div>;
@@ -297,8 +328,7 @@ const AdminReviewRequests = () => {
           return (
             <Card
               key={dept}
-              className={`border shadow-sm cursor-pointer transition-all hover:shadow-md ${activeTab === dept ? "ring-2 ring-accent" : ""
-                }`}
+              className={`border shadow-sm cursor-pointer transition-all hover:shadow-md ${activeTab === dept ? "ring-2 ring-accent" : ""}`}
               onClick={() => setActiveTab(activeTab === dept ? "all" : dept)}
             >
               <CardContent className="p-4">
@@ -339,7 +369,7 @@ const AdminReviewRequests = () => {
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Tìm theo tên hợp đồng, đối tác, người yêu cầu..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+              <Input placeholder="Tìm theo tên hợp đồng, đối tác, người yêu cầu, phòng ban..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Trạng thái" /></SelectTrigger>
@@ -370,6 +400,7 @@ const AdminReviewRequests = () => {
         {filtered.map((req, i) => {
           const deptReviews = getDeptReviews(req.id);
           const reqNotes = (notes[req.id] || []).filter((n: any) => !decodeDeptReview(n.content));
+          const reqPayments = paymentSchedules[req.id] || [];
           return (
             <Card key={req.id} className="border shadow-sm hover:shadow-md transition-all animate-slide-up" style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}>
               <CardHeader className="pb-3">
@@ -412,6 +443,21 @@ const AdminReviewRequests = () => {
                   </div>
                 </div>
 
+                {/* Payment Schedule */}
+                {reqPayments.length > 0 && (
+                  <div className="p-3 rounded-lg bg-muted/30 space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">💰 Đợt thanh toán</p>
+                    <div className="space-y-1">
+                      {reqPayments.map((ps: any) => (
+                        <div key={ps.id} className="flex items-center justify-between text-sm">
+                          <span className="font-medium">{ps.phase_name}</span>
+                          <span>{formatCurrency(ps.payment_amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Department Review Progress */}
                 <DepartmentReviewTracker deptReviews={deptReviews} />
 
@@ -423,28 +469,52 @@ const AdminReviewRequests = () => {
                   </div>
                 )}
 
-                {/* File link */}
-                {req.file_url && (
-                  <button
-                    onClick={async () => {
-                      const url = req.file_url as string;
-                      if (url.includes("/storage/v1/object/public/contracts/")) {
-                        const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
-                        const { data, error } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
-                        if (data) window.open(data.signedUrl, "_blank");
-                        else toast.error("Không thể mở file");
-                      } else {
-                        window.open(url, "_blank");
-                      }
-                    }}
-                    className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    Xem tài liệu đính kèm
-                  </button>
-                )}
+                {/* File links - different visibility based on role */}
+                <div className="space-y-1">
+                  {isAdmin && (
+                    <>
+                      {req.file_url && (
+                        <button
+                          onClick={async () => {
+                            const url = req.file_url as string;
+                            if (url.includes("/storage/v1/object/public/contracts/")) {
+                              const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
+                              const { data, error } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
+                              if (data) window.open(data.signedUrl, "_blank");
+                              else toast.error("Không thể mở file");
+                            } else {
+                              window.open(url, "_blank");
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Xem tài liệu ban đầu
+                        </button>
+                      )}
+                      {req.legal_review_doc_link && (
+                        <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
+                          <LinkIcon className="h-3.5 w-3.5" />
+                          Xem tài liệu đã review (Pháp chế)
+                        </a>
+                      )}
+                    </>
+                  )}
+                  {(isAccountant || isFinance) && (
+                    <>
+                      {req.legal_review_doc_link ? (
+                        <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Xem tài liệu review
+                        </a>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">Pháp chế chưa upload tài liệu review</p>
+                      )}
+                    </>
+                  )}
+                </div>
 
-                {/* Notes / Timeline (exclude dept review notes) */}
+                {/* Notes / Timeline */}
                 {reqNotes.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -511,7 +581,7 @@ const AdminReviewRequests = () => {
         </div>
       )}
 
-      {/* Detail Dialog with Department Review */}
+      {/* Detail Dialog */}
       <Dialog open={!!selectedReq} onOpenChange={(open) => !open && setSelectedReq(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -528,14 +598,12 @@ const AdminReviewRequests = () => {
                 <h3 className="font-semibold text-sm">Review theo phòng ban</h3>
               </div>
 
-              {/* Current department reviews */}
               {selectedReq && (
                 <DepartmentReviewTracker deptReviews={getDeptReviews(selectedReq.id)} />
               )}
 
               <Separator />
 
-              {/* Select department to review */}
               <div className="p-4 rounded-xl bg-muted/30 border space-y-4">
                 <p className="text-sm font-medium">Thêm đánh giá phòng ban</p>
                 <div className="grid grid-cols-3 gap-2">
@@ -563,9 +631,7 @@ const AdminReviewRequests = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Kết quả đánh giá — {REVIEW_DEPARTMENTS[selectedDept].label}</label>
                   <Select value={deptReviewStatus} onValueChange={(v) => setDeptReviewStatus(v as DepartmentReviewStatus["status"])}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pending">⏳ Chờ review</SelectItem>
                       <SelectItem value="approved">✅ Đã duyệt</SelectItem>
@@ -588,6 +654,26 @@ const AdminReviewRequests = () => {
             </div>
 
             <Separator />
+
+            {/* Legal Review Doc Link - only for admin */}
+            {isAdmin && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <LinkIcon className="h-3.5 w-3.5" />
+                  Link Google Doc review (Pháp chế)
+                </Label>
+                <Input
+                  type="url"
+                  value={legalReviewDocLink}
+                  onChange={(e) => setLegalReviewDocLink(e.target.value)}
+                  placeholder="https://docs.google.com/document/d/..."
+                  className={legalReviewDocLink && !isValidGoogleDocUrl(legalReviewDocLink) ? "border-destructive focus-visible:ring-destructive" : ""}
+                />
+                <p className="text-xs text-muted-foreground">
+                  📌 Upload link Google Doc đã review. Link này sẽ được gửi cho Kế toán và Tài chính để review tiếp.
+                </p>
+              </div>
+            )}
 
             {/* Overall status */}
             <div className="space-y-2">
