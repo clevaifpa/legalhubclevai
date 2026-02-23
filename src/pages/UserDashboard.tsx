@@ -101,6 +101,7 @@ const UserDashboard = () => {
     review_deadline: "",
     description: "",
     google_doc_url: "",
+    approved_pe_number: "",
   });
 
   const fetchRequests = async () => {
@@ -166,14 +167,15 @@ const UserDashboard = () => {
       review_deadline: form.review_deadline || null,
       description: form.description,
       file_url: form.google_doc_url || null,
-    });
+      approved_pe_number: form.approved_pe_number.trim() || null,
+    } as any);
     setSubmitting(false);
     if (error) {
       toast.error("Lỗi tạo yêu cầu", { description: error.message });
     } else {
       toast.success("Yêu cầu review đã được tạo!");
       setDialogOpen(false);
-      setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "" });
+      setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "" });
       fetchRequests();
     }
   };
@@ -274,6 +276,10 @@ const UserDashboard = () => {
                 {form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url) && (
                   <p className="text-xs text-destructive">⚠️ Link không hợp lệ. Vui lòng nhập link Google Docs</p>
                 )}
+              </div>
+              <div className="space-y-2">
+                <Label>Số PE đã duyệt</Label>
+                <Input value={form.approved_pe_number} onChange={(e) => setForm({ ...form, approved_pe_number: e.target.value })} placeholder="VD: PE-2026-001" />
               </div>
               <div className="space-y-2">
                 <Label>Mô tả chi tiết</Label>

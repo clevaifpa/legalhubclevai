@@ -210,6 +210,7 @@ export type Database = {
       review_requests: {
         Row: {
           admin_notes: string | null
+          approved_pe_number: string | null
           contract_end_date: string | null
           contract_start_date: string | null
           contract_title: string
@@ -230,6 +231,7 @@ export type Database = {
         }
         Insert: {
           admin_notes?: string | null
+          approved_pe_number?: string | null
           contract_end_date?: string | null
           contract_start_date?: string | null
           contract_title: string
@@ -250,6 +252,7 @@ export type Database = {
         }
         Update: {
           admin_notes?: string | null
+          approved_pe_number?: string | null
           contract_end_date?: string | null
           contract_start_date?: string | null
           contract_title?: string
