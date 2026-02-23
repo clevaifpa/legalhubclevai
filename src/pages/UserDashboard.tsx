@@ -54,11 +54,25 @@ import { toast } from "sonner";
 import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTracker";
 import { extractDeptReviews, decodeDeptReview } from "@/types/reviewDepartments";
 
-// Validate Google Doc URL
 const isValidGoogleDocUrl = (url: string): boolean => {
-  if (!url) return true; // Empty is valid (optional field)
+  if (!url) return true;
   return /^https:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\/d\//.test(url);
 };
+
+const DEPARTMENT_OPTIONS = [
+  "Phòng Kinh doanh",
+  "Phòng Marketing",
+  "Phòng Nhân sự",
+  "Phòng Kế toán",
+  "Phòng Tài chính",
+  "Phòng IT",
+  "Phòng Hành chính",
+  "Phòng Pháp chế",
+  "Phòng Sản xuất",
+  "Phòng R&D",
+  "Ban Giám đốc",
+  "Khác",
+];
 
 const PRIORITY_LABELS: Record<string, string> = {
   cao: "Cao",
@@ -82,10 +96,16 @@ const STATUS_COLORS: Record<string, string> = {
   tu_choi: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
+interface PaymentPhase {
+  phase_name: string;
+  payment_amount: string;
+}
+
 const UserDashboard = () => {
   const { user, profile } = useAuth();
   const [requests, setRequests] = useState<any[]>([]);
   const [notes, setNotes] = useState<Record<string, any[]>>({});
+  const [paymentSchedules, setPaymentSchedules] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -102,7 +122,26 @@ const UserDashboard = () => {
     description: "",
     google_doc_url: "",
     approved_pe_number: "",
+    department: "",
   });
+
+  const [paymentPhases, setPaymentPhases] = useState<PaymentPhase[]>([
+    { phase_name: "Đợt 01", payment_amount: "" },
+  ]);
+
+  const addPaymentPhase = () => {
+    const num = paymentPhases.length + 1;
+    setPaymentPhases([...paymentPhases, { phase_name: `Đợt ${String(num).padStart(2, "0")}`, payment_amount: "" }]);
+  };
+
+  const removePaymentPhase = (idx: number) => {
+    if (paymentPhases.length <= 1) return;
+    setPaymentPhases(paymentPhases.filter((_, i) => i !== idx));
+  };
+
+  const updatePaymentPhase = (idx: number, field: keyof PaymentPhase, value: string) => {
+    setPaymentPhases(paymentPhases.map((p, i) => i === idx ? { ...p, [field]: value } : p));
+  };
 
   const fetchRequests = async () => {
     if (!user) return;
@@ -115,18 +154,25 @@ const UserDashboard = () => {
       setRequests(data);
       const ids = data.map((r: any) => r.id);
       if (ids.length > 0) {
-        const { data: notesData } = await supabase
-          .from("review_notes")
-          .select("*")
-          .in("review_request_id", ids)
-          .order("created_at", { ascending: true });
-        if (notesData) {
+        const [notesRes, paymentsRes] = await Promise.all([
+          supabase.from("review_notes").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
+          supabase.from("payment_schedules").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
+        ]);
+        if (notesRes.data) {
           const grouped: Record<string, any[]> = {};
-          notesData.forEach((n: any) => {
+          notesRes.data.forEach((n: any) => {
             if (!grouped[n.review_request_id]) grouped[n.review_request_id] = [];
             grouped[n.review_request_id].push(n);
           });
           setNotes(grouped);
+        }
+        if (paymentsRes.data) {
+          const grouped: Record<string, any[]> = {};
+          paymentsRes.data.forEach((p: any) => {
+            if (!grouped[p.review_request_id]) grouped[p.review_request_id] = [];
+            grouped[p.review_request_id].push(p);
+          });
+          setPaymentSchedules(grouped);
         }
       }
     }
@@ -145,18 +191,24 @@ const UserDashboard = () => {
   const handleSubmit = async () => {
     if (!user || !profile) return;
 
-    // Validate Google Doc URL if provided
     if (form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url)) {
       toast.error("Link không hợp lệ", { description: "Vui lòng nhập đúng link Google Docs (https://docs.google.com/...)" });
       return;
     }
 
+    // Validate payment phases
+    const invalidPhases = paymentPhases.some(p => !p.payment_amount || parseInt(p.payment_amount) <= 0);
+    if (invalidPhases) {
+      toast.error("Vui lòng nhập giá trị thanh toán cho tất cả các đợt");
+      return;
+    }
+
     setSubmitting(true);
 
-    const { error } = await supabase.from("review_requests").insert({
+    const { data: insertedReq, error } = await supabase.from("review_requests").insert({
       requester_id: user.id,
       requester_name: profile.full_name || user.email || "",
-      department: profile.department || "",
+      department: form.department,
       priority: form.priority as any,
       contract_title: form.contract_title,
       partner_name: form.partner_name,
@@ -168,16 +220,30 @@ const UserDashboard = () => {
       description: form.description,
       file_url: form.google_doc_url || null,
       approved_pe_number: form.approved_pe_number.trim() || null,
-    } as any);
-    setSubmitting(false);
+    } as any).select().single();
+
     if (error) {
       toast.error("Lỗi tạo yêu cầu", { description: error.message });
-    } else {
-      toast.success("Yêu cầu review đã được tạo!");
-      setDialogOpen(false);
-      setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "" });
-      fetchRequests();
+      setSubmitting(false);
+      return;
     }
+
+    // Insert payment schedules
+    if (insertedReq) {
+      const schedules = paymentPhases.map(p => ({
+        review_request_id: insertedReq.id,
+        phase_name: p.phase_name,
+        payment_amount: parseInt(p.payment_amount) || 0,
+      }));
+      await supabase.from("payment_schedules").insert(schedules as any);
+    }
+
+    setSubmitting(false);
+    toast.success("Yêu cầu review đã được tạo!");
+    setDialogOpen(false);
+    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "" });
+    setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "" }]);
+    fetchRequests();
   };
 
   const handleDelete = async (reqId: string) => {
@@ -193,6 +259,8 @@ const UserDashboard = () => {
   if (loading) {
     return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-accent" /></div>;
   }
+
+  const isFormValid = form.contract_title && form.request_deadline && form.google_doc_url && isValidGoogleDocUrl(form.google_doc_url) && form.approved_pe_number.trim() && form.partner_name.trim() && form.contract_value && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && paymentPhases.every(p => p.payment_amount && parseInt(p.payment_amount) > 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -213,16 +281,29 @@ const UserDashboard = () => {
               <DialogTitle>Tạo yêu cầu review hợp đồng</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Mức độ ưu tiên *</Label>
-                <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cao">🔴 Cao</SelectItem>
-                    <SelectItem value="trung_binh">🟡 Trung bình</SelectItem>
-                    <SelectItem value="thap">🟢 Thấp</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Mức độ ưu tiên *</Label>
+                  <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cao">🔴 Cao</SelectItem>
+                      <SelectItem value="trung_binh">🟡 Trung bình</SelectItem>
+                      <SelectItem value="thap">🟢 Thấp</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Phòng ban *</Label>
+                  <Select value={form.department} onValueChange={(v) => setForm({ ...form, department: v })}>
+                    <SelectTrigger><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
+                    <SelectContent>
+                      {DEPARTMENT_OPTIONS.map((dept) => (
+                        <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Tên hợp đồng *</Label>
@@ -281,6 +362,39 @@ const UserDashboard = () => {
                 <Label>Số PE đã duyệt *</Label>
                 <Input value={form.approved_pe_number} onChange={(e) => setForm({ ...form, approved_pe_number: e.target.value })} placeholder="VD: PE-2026-001" />
               </div>
+
+              {/* Payment Schedule Section */}
+              <div className="space-y-3 p-4 rounded-lg border bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">Đợt thanh toán *</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addPaymentPhase}>
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Thêm đợt
+                  </Button>
+                </div>
+                {paymentPhases.map((phase, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Input
+                      value={phase.phase_name}
+                      onChange={(e) => updatePaymentPhase(idx, "phase_name", e.target.value)}
+                      className="w-28 shrink-0"
+                      placeholder="Tên đợt"
+                    />
+                    <Input
+                      type="number"
+                      value={phase.payment_amount}
+                      onChange={(e) => updatePaymentPhase(idx, "payment_amount", e.target.value)}
+                      placeholder="Giá trị (VNĐ)"
+                      className="flex-1"
+                    />
+                    {paymentPhases.length > 1 && (
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive" onClick={() => removePaymentPhase(idx)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
               <div className="space-y-2">
                 <Label>Mô tả chi tiết *</Label>
                 <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả thêm về hợp đồng cần review..." rows={3} />
@@ -288,7 +402,7 @@ const UserDashboard = () => {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSubmit} disabled={submitting || !form.contract_title || !form.request_deadline || !form.google_doc_url || !isValidGoogleDocUrl(form.google_doc_url) || !form.approved_pe_number.trim() || !form.partner_name.trim() || !form.contract_value || !form.review_deadline || !form.contract_start_date || !form.contract_end_date || !form.description.trim()}>
+              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSubmit} disabled={submitting || !isFormValid}>
                 {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Gửi yêu cầu
               </Button>
@@ -329,6 +443,7 @@ const UserDashboard = () => {
                     <CardTitle className="text-base font-semibold">{req.contract_title}</CardTitle>
                     <p className="text-sm text-muted-foreground mt-0.5">
                       Ưu tiên: <span className="font-medium">{PRIORITY_LABELS[req.priority] || req.priority}</span>
+                      {req.department && <> — Phòng ban: <span className="font-medium">{req.department}</span></>}
                     </p>
                   </div>
                 </div>
@@ -367,30 +482,55 @@ const UserDashboard = () => {
                 </div>
               </div>
 
+              {/* Payment Schedule */}
+              {paymentSchedules[req.id] && paymentSchedules[req.id].length > 0 && (
+                <div className="p-3 rounded-lg bg-muted/30 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">💰 Đợt thanh toán</p>
+                  <div className="space-y-1">
+                    {paymentSchedules[req.id].map((ps: any) => (
+                      <div key={ps.id} className="flex items-center justify-between text-sm">
+                        <span className="font-medium">{ps.phase_name}</span>
+                        <span>{formatCurrency(ps.payment_amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Department Review Progress */}
               {notes[req.id] && notes[req.id].length > 0 && (
                 <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[req.id])} />
               )}
 
-              {/* File link */}
-              {req.file_url && (
-                <button
-                  onClick={async () => {
-                    const url = req.file_url as string;
-                    if (url.includes("/storage/v1/object/public/contracts/")) {
-                      const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
-                      const { data, error } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
-                      if (data) window.open(data.signedUrl, "_blank");
-                      else toast.error("Không thể mở file");
-                    } else {
-                      window.open(url, "_blank");
-                    }
-                  }}
-                  className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Xem tài liệu đính kèm
-                </button>
+              {/* File link - show legal_review_doc_link if available, otherwise original */}
+              {(req.legal_review_doc_link || req.file_url) && (
+                <div className="space-y-1">
+                  {req.legal_review_doc_link && (
+                    <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Xem tài liệu đã review (Pháp chế)
+                    </a>
+                  )}
+                  {req.file_url && (
+                    <button
+                      onClick={async () => {
+                        const url = req.file_url as string;
+                        if (url.includes("/storage/v1/object/public/contracts/")) {
+                          const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
+                          const { data, error } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
+                          if (data) window.open(data.signedUrl, "_blank");
+                          else toast.error("Không thể mở file");
+                        } else {
+                          window.open(url, "_blank");
+                        }
+                      }}
+                      className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Xem tài liệu ban đầu
+                    </button>
+                  )}
+                </div>
               )}
 
               {req.admin_notes && (

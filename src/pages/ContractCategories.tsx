@@ -52,27 +52,25 @@ import {
   Trash2,
   Download,
   Eye,
+  Search,
 } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
 
-// Sanitize file name: remove Vietnamese diacritics, spaces, and special characters
-// to avoid Supabase Storage "Invalid key" errors
 const sanitizeFileName = (name: string): string => {
   return name
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Remove diacritical marks
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/đ/g, "d")
     .replace(/Đ/g, "D")
-    .replace(/\s+/g, "_") // Replace spaces with underscores
-    .replace(/[^a-zA-Z0-9._-]/g, ""); // Remove remaining unsafe characters
+    .replace(/\s+/g, "_")
+    .replace(/[^a-zA-Z0-9._-]/g, "");
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  nhap: "Nháp",
-  dang_review: "Đang review",
   da_ky: "Đã ký",
   het_hieu_luc: "Hết hiệu lực",
+  da_thanh_ly: "Đã thanh lý",
 };
 
 const ContractCategories = () => {
@@ -89,13 +87,13 @@ const ContractCategories = () => {
   const [newCatDesc, setNewCatDesc] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Upload form state
   const [form, setForm] = useState({
     title: "",
     partner_name: "",
     contract_type: "khac" as string,
-    status: "nhap" as string,
+    status: "da_ky" as string,
     value: "",
     effective_date: "",
     expiry_date: "",
@@ -110,7 +108,6 @@ const ContractCategories = () => {
     const { data } = await supabase.from("contract_categories").select("*").order("name");
     if (data) {
       setCategories(data);
-      // Fetch contract counts per category
       const { data: allContracts } = await supabase.from("contracts").select("category_id");
       if (allContracts) {
         const counts: Record<string, number> = {};
@@ -180,11 +177,9 @@ const ContractCategories = () => {
   const uploadFile = async (file: File, path: string) => {
     const { data, error } = await supabase.storage.from("contracts").upload(path, file, { upsert: true });
     if (error) throw error;
-    // Store the path, not a public URL (bucket is private)
     return path;
   };
 
-  // Extract storage path from full URL or return as-is if already a path
   const extractStoragePath = (urlOrPath: string): string => {
     const publicPrefix = "/storage/v1/object/public/contracts/";
     const idx = urlOrPath.indexOf(publicPrefix);
@@ -267,7 +262,7 @@ const ContractCategories = () => {
   };
 
   const resetForm = () => {
-    setForm({ title: "", partner_name: "", contract_type: "khac", status: "nhap", value: "", effective_date: "", expiry_date: "", department: "", risk_level: "thap", approved_pe_number: "" });
+    setForm({ title: "", partner_name: "", contract_type: "khac", status: "da_ky", value: "", effective_date: "", expiry_date: "", department: "", risk_level: "thap", approved_pe_number: "" });
     setDocFile(null);
     setSignedPdfFile(null);
   };
@@ -276,12 +271,24 @@ const ContractCategories = () => {
     return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-accent" /></div>;
   }
 
+  // Filter contracts by search
+  const filteredContracts = contracts.filter((c) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      c.title?.toLowerCase().includes(term) ||
+      c.department?.toLowerCase().includes(term) ||
+      c.partner_name?.toLowerCase().includes(term) ||
+      (STATUS_LABELS[c.status] || c.status)?.toLowerCase().includes(term)
+    );
+  });
+
   // Contract detail view
   if (selectedCategory) {
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => { setSelectedCategory(null); setContracts([]); }}>
+          <Button variant="ghost" size="icon" onClick={() => { setSelectedCategory(null); setContracts([]); setSearchTerm(""); }}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1">
@@ -333,10 +340,9 @@ const ContractCategories = () => {
                     <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="nhap">Nháp (Draft)</SelectItem>
-                        <SelectItem value="dang_review">Đang review</SelectItem>
-                        <SelectItem value="da_ky">Đã ký (Signed)</SelectItem>
-                        <SelectItem value="het_hieu_luc">Hết hiệu lực (Expired)</SelectItem>
+                        <SelectItem value="da_ky">Đã ký</SelectItem>
+                        <SelectItem value="het_hieu_luc">Đã hết hạn</SelectItem>
+                        <SelectItem value="da_thanh_ly">Đã thanh lý</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -346,8 +352,8 @@ const ContractCategories = () => {
                     <Label>Ngày hiệu lực *</Label>
                     <Input type="date" value={form.effective_date} onChange={(e) => setForm({ ...form, effective_date: e.target.value })} />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Thời hạn nghĩa vụ *</Label>
+                   <div className="space-y-2">
+                    <Label>Ngày hết hiệu lực *</Label>
                     <Input type="date" value={form.expiry_date} onChange={(e) => setForm({ ...form, expiry_date: e.target.value })} />
                   </div>
                 </div>
@@ -392,6 +398,17 @@ const ContractCategories = () => {
           </Dialog>
         </div>
 
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Tìm theo tên hợp đồng, phòng ban, trạng thái, đối tác..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
         <Card className="border-none shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
@@ -401,7 +418,7 @@ const ContractCategories = () => {
                   <TableHead>Đối tác</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Hiệu lực</TableHead>
-                  <TableHead>Hết hạn</TableHead>
+                  <TableHead>Hết hiệu lực</TableHead>
                   <TableHead>Đơn vị</TableHead>
                   <TableHead>Số PE</TableHead>
                   <TableHead>Files</TableHead>
@@ -409,7 +426,7 @@ const ContractCategories = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {contracts.map((c) => (
+                {filteredContracts.map((c) => (
                   <TableRow key={c.id} className="hover:bg-muted/30 transition-colors">
                     <TableCell className="font-medium max-w-[200px]">
                       <span className="truncate block">{c.title}</span>
@@ -463,7 +480,7 @@ const ContractCategories = () => {
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
-                              <AlertDialogDescription>Hợp đồng "{c.title}" sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.</AlertDialogDescription>
+                              <AlertDialogDescription>Hợp đồng "{c.title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Hủy</AlertDialogCancel>
@@ -480,11 +497,11 @@ const ContractCategories = () => {
           </div>
         </Card>
 
-        {contracts.length === 0 && (
+        {filteredContracts.length === 0 && (
           <div className="text-center py-12">
             <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground font-medium">Chưa có hợp đồng nào</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">Nhấn "Upload hợp đồng" để thêm</p>
+            <p className="text-muted-foreground font-medium">{searchTerm ? "Không tìm thấy hợp đồng" : "Chưa có hợp đồng nào"}</p>
+            {!searchTerm && <p className="text-sm text-muted-foreground/70 mt-1">Nhấn "Upload hợp đồng" để thêm</p>}
           </div>
         )}
       </div>
@@ -558,7 +575,7 @@ const ContractCategories = () => {
                     <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
-                        <AlertDialogDescription>Loại "{cat.name}" sẽ bị xóa. Các hợp đồng trong danh mục này sẽ không bị xóa nhưng sẽ mất liên kết.</AlertDialogDescription>
+                        <AlertDialogDescription>Loại "{cat.name}" sẽ bị xóa.</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Hủy</AlertDialogCancel>

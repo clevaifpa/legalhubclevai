@@ -74,6 +74,47 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_payment_schedules: {
+        Row: {
+          contract_id: string
+          created_at: string
+          id: string
+          payment_amount: number
+          payment_due_date: string | null
+          payment_status: string
+          phase_name: string
+          updated_at: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          id?: string
+          payment_amount?: number
+          payment_due_date?: string | null
+          payment_status?: string
+          phase_name: string
+          updated_at?: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          id?: string
+          payment_amount?: number
+          payment_due_date?: string | null
+          payment_status?: string
+          phase_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_payment_schedules_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           approved_pe_number: string | null
@@ -141,6 +182,47 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "contract_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_schedules: {
+        Row: {
+          created_at: string
+          id: string
+          payment_amount: number
+          payment_due_date: string | null
+          payment_status: string
+          phase_name: string
+          review_request_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payment_amount?: number
+          payment_due_date?: string | null
+          payment_status?: string
+          phase_name: string
+          review_request_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payment_amount?: number
+          payment_due_date?: string | null
+          payment_status?: string
+          phase_name?: string
+          review_request_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_schedules_review_request_id_fkey"
+            columns: ["review_request_id"]
+            isOneToOne: false
+            referencedRelation: "review_requests"
             referencedColumns: ["id"]
           },
         ]
@@ -220,6 +302,7 @@ export type Database = {
           description: string | null
           file_url: string | null
           id: string
+          legal_review_doc_link: string | null
           partner_name: string
           priority: Database["public"]["Enums"]["priority_level"]
           request_deadline: string
@@ -241,6 +324,7 @@ export type Database = {
           description?: string | null
           file_url?: string | null
           id?: string
+          legal_review_doc_link?: string | null
           partner_name?: string
           priority?: Database["public"]["Enums"]["priority_level"]
           request_deadline: string
@@ -262,6 +346,7 @@ export type Database = {
           description?: string | null
           file_url?: string | null
           id?: string
+          legal_review_doc_link?: string | null
           partner_name?: string
           priority?: Database["public"]["Enums"]["priority_level"]
           request_deadline?: string
@@ -307,7 +392,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user" | "accountant" | "finance"
-      contract_status: "nhap" | "dang_review" | "da_ky" | "het_hieu_luc"
+      contract_status:
+        | "nhap"
+        | "dang_review"
+        | "da_ky"
+        | "het_hieu_luc"
+        | "da_thanh_ly"
       contract_type:
         | "mua_ban"
         | "dich_vu"
@@ -452,7 +542,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user", "accountant", "finance"],
-      contract_status: ["nhap", "dang_review", "da_ky", "het_hieu_luc"],
+      contract_status: [
+        "nhap",
+        "dang_review",
+        "da_ky",
+        "het_hieu_luc",
+        "da_thanh_ly",
+      ],
       contract_type: [
         "mua_ban",
         "dich_vu",
