@@ -278,7 +278,7 @@ const UserDashboard = () => {
                 )}
               </div>
               <div className="space-y-2">
-                <Label>Số PE đã duyệt</Label>
+                <Label>Số PE đã duyệt *</Label>
                 <Input value={form.approved_pe_number} onChange={(e) => setForm({ ...form, approved_pe_number: e.target.value })} placeholder="VD: PE-2026-001" />
               </div>
               <div className="space-y-2">
@@ -288,7 +288,7 @@ const UserDashboard = () => {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSubmit} disabled={submitting || !form.contract_title || !form.request_deadline || !form.google_doc_url || !isValidGoogleDocUrl(form.google_doc_url)}>
+              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSubmit} disabled={submitting || !form.contract_title || !form.request_deadline || !form.google_doc_url || !isValidGoogleDocUrl(form.google_doc_url) || !form.approved_pe_number.trim()}>
                 {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Gửi yêu cầu
               </Button>

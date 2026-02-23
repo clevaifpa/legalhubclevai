@@ -360,7 +360,7 @@ const ContractCategories = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Số PE đã duyệt</Label>
+                  <Label>Số PE đã duyệt *</Label>
                   <Input value={form.approved_pe_number} onChange={(e) => setForm({ ...form, approved_pe_number: e.target.value })} placeholder="VD: PE-2026-001" />
                 </div>
                 <div className="space-y-2">
@@ -374,7 +374,7 @@ const ContractCategories = () => {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => { setUploadDialogOpen(false); resetForm(); }}>Hủy</Button>
-                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleUploadContract} disabled={uploading || !form.title.trim()}>
+                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleUploadContract} disabled={uploading || !form.title.trim() || !form.approved_pe_number.trim()}>
                   {uploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Upload
                 </Button>
