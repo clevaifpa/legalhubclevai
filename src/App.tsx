@@ -11,6 +11,7 @@ import ClauseLibrary from "@/pages/ClauseLibrary";
 import ContractCategories from "@/pages/ContractCategories";
 import AdminReviewRequests from "@/pages/AdminReviewRequests";
 import AIReview from "@/pages/AIReview";
+import RoleManagement from "@/pages/RoleManagement";
 import UserDashboard from "@/pages/UserDashboard";
 import NotFound from "@/pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -39,6 +40,7 @@ function ProtectedRoutes() {
           <Route path="/tong-hop-dong" element={<ContractCategories />} />
           <Route path="/yeu-cau-review" element={<AdminReviewRequests />} />
           <Route path="/ai-kiem-tra" element={<AIReview />} />
+          <Route path="/quan-ly-nguoi-duyet" element={<RoleManagement />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>

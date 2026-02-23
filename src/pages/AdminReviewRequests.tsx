@@ -89,7 +89,8 @@ const PRIORITY_LABELS: Record<string, string> = {
 };
 
 const AdminReviewRequests = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, roles } = useAuth();
+  const canApprove = roles.includes("accountant" as any) || roles.includes("finance" as any) || roles.includes("admin" as any);
   const [requests, setRequests] = useState<any[]>([]);
   const [notes, setNotes] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
@@ -472,10 +473,17 @@ const AdminReviewRequests = () => {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                  <Button size="sm" className="text-xs bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => openDetail(req)}>
-                    <Shield className="h-3.5 w-3.5 mr-1" />
-                    Xử lý yêu cầu
-                  </Button>
+                  {canApprove && (
+                    <Button size="sm" className="text-xs bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => openDetail(req)}>
+                      <Shield className="h-3.5 w-3.5 mr-1" />
+                      Duyệt hợp đồng
+                    </Button>
+                  )}
+                  {!canApprove && (
+                    <Button size="sm" className="text-xs" variant="outline" onClick={() => openDetail(req)}>
+                      Xem chi tiết
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

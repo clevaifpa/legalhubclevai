@@ -76,6 +76,7 @@ export type Database = {
       }
       contracts: {
         Row: {
+          approved_pe_number: string | null
           category_id: string | null
           contract_type: Database["public"]["Enums"]["contract_type"]
           created_at: string
@@ -95,6 +96,7 @@ export type Database = {
           value: number | null
         }
         Insert: {
+          approved_pe_number?: string | null
           category_id?: string | null
           contract_type?: Database["public"]["Enums"]["contract_type"]
           created_at?: string
@@ -114,6 +116,7 @@ export type Database = {
           value?: number | null
         }
         Update: {
+          approved_pe_number?: string | null
           category_id?: string | null
           contract_type?: Database["public"]["Enums"]["contract_type"]
           created_at?: string
@@ -300,7 +303,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "accountant" | "finance"
       contract_status: "nhap" | "dang_review" | "da_ky" | "het_hieu_luc"
       contract_type:
         | "mua_ban"
@@ -445,7 +448,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "accountant", "finance"],
       contract_status: ["nhap", "dang_review", "da_ky", "het_hieu_luc"],
       contract_type: [
         "mua_ban",
