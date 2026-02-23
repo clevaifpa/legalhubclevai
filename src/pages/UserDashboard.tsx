@@ -125,21 +125,8 @@ const UserDashboard = () => {
   // Fetch managers filtered by department
   const fetchManagers = async (dept: string) => {
     if (!dept) { setManagers([]); return; }
-    const { data } = await supabase
-      .from("user_roles")
-      .select("user_id, department")
-      .eq("role", "manager" as any)
-      .eq("department", dept);
-    if (data && data.length > 0) {
-      const userIds = data.map((r: any) => r.user_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name")
-        .in("user_id", userIds);
-      setManagers(profiles || []);
-    } else {
-      setManagers([]);
-    }
+    const { data } = await supabase.rpc("get_managers_by_department", { _department: dept } as any);
+    setManagers(data || []);
   };
 
   useEffect(() => {

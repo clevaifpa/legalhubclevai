@@ -397,6 +397,13 @@ export type Database = {
     }
     Functions: {
       auto_expire_contracts: { Args: never; Returns: undefined }
+      get_managers_by_department: {
+        Args: { _department: string }
+        Returns: {
+          full_name: string
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
