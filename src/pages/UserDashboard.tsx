@@ -230,11 +230,11 @@ const UserDashboard = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Tên đối tác</Label>
+                  <Label>Tên đối tác *</Label>
                   <Input value={form.partner_name} onChange={(e) => setForm({ ...form, partner_name: e.target.value })} placeholder="Tên công ty đối tác" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Giá trị hợp đồng (VNĐ)</Label>
+                  <Label>Giá trị hợp đồng (VNĐ) *</Label>
                   <Input type="number" value={form.contract_value} onChange={(e) => setForm({ ...form, contract_value: e.target.value })} placeholder="0" />
                 </div>
               </div>
@@ -244,17 +244,17 @@ const UserDashboard = () => {
                   <Input type="date" value={form.request_deadline} onChange={(e) => setForm({ ...form, request_deadline: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Hạn review</Label>
+                  <Label>Hạn review *</Label>
                   <Input type="date" value={form.review_deadline} onChange={(e) => setForm({ ...form, review_deadline: e.target.value })} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Ngày bắt đầu HĐ</Label>
+                  <Label>Ngày bắt đầu HĐ *</Label>
                   <Input type="date" value={form.contract_start_date} onChange={(e) => setForm({ ...form, contract_start_date: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Ngày kết thúc HĐ</Label>
+                  <Label>Ngày kết thúc HĐ *</Label>
                   <Input type="date" value={form.contract_end_date} onChange={(e) => setForm({ ...form, contract_end_date: e.target.value })} />
                 </div>
               </div>
@@ -282,13 +282,13 @@ const UserDashboard = () => {
                 <Input value={form.approved_pe_number} onChange={(e) => setForm({ ...form, approved_pe_number: e.target.value })} placeholder="VD: PE-2026-001" />
               </div>
               <div className="space-y-2">
-                <Label>Mô tả chi tiết</Label>
+                <Label>Mô tả chi tiết *</Label>
                 <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả thêm về hợp đồng cần review..." rows={3} />
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSubmit} disabled={submitting || !form.contract_title || !form.request_deadline || !form.google_doc_url || !isValidGoogleDocUrl(form.google_doc_url) || !form.approved_pe_number.trim()}>
+              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSubmit} disabled={submitting || !form.contract_title || !form.request_deadline || !form.google_doc_url || !isValidGoogleDocUrl(form.google_doc_url) || !form.approved_pe_number.trim() || !form.partner_name.trim() || !form.contract_value || !form.review_deadline || !form.contract_start_date || !form.contract_end_date || !form.description.trim()}>
                 {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Gửi yêu cầu
               </Button>
