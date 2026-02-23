@@ -8,76 +8,43 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import {
-  FolderArchive,
-  Plus,
-  ChevronRight,
-  ArrowLeft,
-  Loader2,
-  FileText,
-  Upload,
-  Trash2,
-  Download,
-  Eye,
-  Search,
-} from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
 
 const sanitizeFileName = (name: string): string => {
-  return name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/Đ/g, "D")
-    .replace(/\s+/g, "_")
-    .replace(/[^a-zA-Z0-9._-]/g, "");
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
 };
 
 const STATUS_LABELS: Record<string, string> = {
   da_ky: "Đã ký",
-  het_hieu_luc: "Hết hiệu lực",
+  het_hieu_luc: "Đã hết hạn",
   da_thanh_ly: "Đã thanh lý",
 };
+
+interface PaymentPhase {
+  phase_name: string;
+  payment_amount: string;
+  payment_due_date: string;
+}
 
 const ContractCategories = () => {
   const { user, role } = useAuth();
   const isAdmin = role === "admin";
   const [categories, setCategories] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
+  const [contractPayments, setContractPayments] = useState<Record<string, any[]>>({});
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -90,19 +57,25 @@ const ContractCategories = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const [form, setForm] = useState({
-    title: "",
-    partner_name: "",
-    contract_type: "khac" as string,
-    status: "da_ky" as string,
-    value: "",
-    effective_date: "",
-    expiry_date: "",
-    department: "",
-    risk_level: "thap" as string,
-    approved_pe_number: "",
+    title: "", partner_name: "", contract_type: "khac", status: "da_ky",
+    value: "", effective_date: "", expiry_date: "", department: "",
+    risk_level: "thap", approved_pe_number: "", tax_code: "",
   });
+  const [paymentPhases, setPaymentPhases] = useState<PaymentPhase[]>([
+    { phase_name: "Đợt 01", payment_amount: "", payment_due_date: "" },
+  ]);
   const [docFile, setDocFile] = useState<File | null>(null);
   const [signedPdfFile, setSignedPdfFile] = useState<File | null>(null);
+
+  const addPaymentPhase = () => {
+    const num = paymentPhases.length + 1;
+    setPaymentPhases([...paymentPhases, { phase_name: `Đợt ${String(num).padStart(2, "0")}`, payment_amount: "", payment_due_date: "" }]);
+  };
+
+  const removePaymentPhase = (idx: number) => {
+    if (paymentPhases.length <= 1) return;
+    setPaymentPhases(paymentPhases.filter((_, i) => i !== idx));
+  };
 
   const fetchCategories = async () => {
     const { data } = await supabase.from("contract_categories").select("*").order("name");
@@ -111,9 +84,7 @@ const ContractCategories = () => {
       const { data: allContracts } = await supabase.from("contracts").select("category_id");
       if (allContracts) {
         const counts: Record<string, number> = {};
-        allContracts.forEach((c: any) => {
-          if (c.category_id) counts[c.category_id] = (counts[c.category_id] || 0) + 1;
-        });
+        allContracts.forEach((c: any) => { if (c.category_id) counts[c.category_id] = (counts[c.category_id] || 0) + 1; });
         setCategoryCounts(counts);
       }
     }
@@ -121,61 +92,50 @@ const ContractCategories = () => {
   };
 
   const fetchContracts = async (categoryId: string) => {
-    const { data } = await supabase
-      .from("contracts")
-      .select("*")
-      .eq("category_id", categoryId)
-      .order("created_at", { ascending: false });
-    if (data) setContracts(data);
+    const { data } = await supabase.from("contracts").select("*").eq("category_id", categoryId).order("created_at", { ascending: false });
+    if (data) {
+      setContracts(data);
+      const ids = data.map((c: any) => c.id);
+      if (ids.length > 0) {
+        const { data: payments } = await supabase.from("contract_payment_schedules").select("*").in("contract_id", ids).order("created_at", { ascending: true });
+        if (payments) {
+          const grouped: Record<string, any[]> = {};
+          payments.forEach((p: any) => {
+            if (!grouped[p.contract_id]) grouped[p.contract_id] = [];
+            grouped[p.contract_id].push(p);
+          });
+          setContractPayments(grouped);
+        }
+      }
+    }
   };
 
   useEffect(() => { fetchCategories(); }, []);
-  useEffect(() => {
-    if (selectedCategory) fetchContracts(selectedCategory.id);
-  }, [selectedCategory]);
+  useEffect(() => { if (selectedCategory) fetchContracts(selectedCategory.id); }, [selectedCategory]);
 
   const handleAddCategory = async () => {
     if (!newCatName.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("contract_categories").insert({
-      name: newCatName.trim(),
-      description: newCatDesc.trim(),
-      created_by: user?.id,
-    });
+    const { error } = await supabase.from("contract_categories").insert({ name: newCatName.trim(), description: newCatDesc.trim(), created_by: user?.id });
     setSaving(false);
-    if (error) {
-      toast.error("Lỗi", { description: error.message });
-    } else {
-      toast.success("Đã tạo loại hợp đồng mới");
-      setDialogOpen(false);
-      setNewCatName("");
-      setNewCatDesc("");
-      fetchCategories();
-    }
+    if (error) toast.error("Lỗi", { description: error.message });
+    else { toast.success("Đã tạo loại hợp đồng mới"); setDialogOpen(false); setNewCatName(""); setNewCatDesc(""); fetchCategories(); }
   };
 
   const handleDeleteCategory = async (catId: string) => {
     const { error } = await supabase.from("contract_categories").delete().eq("id", catId);
-    if (error) {
-      toast.error("Lỗi xóa", { description: error.message });
-    } else {
-      toast.success("Đã xóa loại hợp đồng");
-      fetchCategories();
-    }
+    if (error) toast.error("Lỗi xóa", { description: error.message });
+    else { toast.success("Đã xóa loại hợp đồng"); fetchCategories(); }
   };
 
   const handleDeleteContract = async (contractId: string) => {
     const { error } = await supabase.from("contracts").delete().eq("id", contractId);
-    if (error) {
-      toast.error("Lỗi xóa", { description: error.message });
-    } else {
-      toast.success("Đã xóa hợp đồng");
-      if (selectedCategory) fetchContracts(selectedCategory.id);
-    }
+    if (error) toast.error("Lỗi xóa", { description: error.message });
+    else { toast.success("Đã xóa hợp đồng"); if (selectedCategory) fetchContracts(selectedCategory.id); }
   };
 
   const uploadFile = async (file: File, path: string) => {
-    const { data, error } = await supabase.storage.from("contracts").upload(path, file, { upsert: true });
+    const { error } = await supabase.storage.from("contracts").upload(path, file, { upsert: true });
     if (error) throw error;
     return path;
   };
@@ -187,23 +147,15 @@ const ContractCategories = () => {
     return urlOrPath;
   };
 
-  const getSignedUrl = async (urlOrPath: string) => {
+  const openFile = async (urlOrPath: string) => {
     const storagePath = extractStoragePath(urlOrPath);
     const { data, error } = await supabase.storage.from("contracts").createSignedUrl(storagePath, 3600);
-    if (error) {
-      toast.error("Không thể mở file", { description: error.message });
-      return null;
-    }
-    return data.signedUrl;
-  };
-
-  const openFile = async (urlOrPath: string) => {
-    const url = await getSignedUrl(urlOrPath);
-    if (url) window.open(url, "_blank");
+    if (error) { toast.error("Không thể mở file", { description: error.message }); return; }
+    window.open(data.signedUrl, "_blank");
   };
 
   const handleUploadContract = async () => {
-    if (!form.title.trim() || !selectedCategory) return;
+    if (!form.title.trim() || !selectedCategory || !form.expiry_date) return;
     setUploading(true);
 
     try {
@@ -220,24 +172,32 @@ const ContractCategories = () => {
         signedFileUrl = await uploadFile(signedPdfFile, path);
       }
 
-      const { error } = await supabase.from("contracts").insert({
-        title: form.title.trim(),
-        partner_name: form.partner_name.trim(),
-        contract_type: form.contract_type as any,
-        status: form.status as any,
-        value: parseInt(form.value) || 0,
-        effective_date: form.effective_date || null,
-        expiry_date: form.expiry_date || null,
-        department: form.department,
-        risk_level: form.risk_level as any,
-        category_id: selectedCategory.id,
-        created_by: user?.id,
-        file_url: fileUrl,
-        signed_file_url: signedFileUrl,
+      const { data: insertedContract, error } = await supabase.from("contracts").insert({
+        title: form.title.trim(), partner_name: form.partner_name.trim(),
+        contract_type: form.contract_type as any, status: form.status as any,
+        value: parseInt(form.value) || 0, effective_date: form.effective_date || null,
+        expiry_date: form.expiry_date, department: form.department,
+        risk_level: form.risk_level as any, category_id: selectedCategory.id,
+        created_by: user?.id, file_url: fileUrl, signed_file_url: signedFileUrl,
         approved_pe_number: form.approved_pe_number.trim() || null,
-      } as any);
+        tax_code: form.tax_code.trim(),
+      } as any).select().single();
 
       if (error) throw error;
+
+      // Insert payment schedules
+      if (insertedContract) {
+        const validPhases = paymentPhases.filter(p => p.phase_name.trim());
+        if (validPhases.length > 0) {
+          const schedules = validPhases.map(p => ({
+            contract_id: insertedContract.id,
+            phase_name: p.phase_name,
+            payment_amount: parseInt(p.payment_amount) || 0,
+            payment_due_date: p.payment_due_date || null,
+          }));
+          await supabase.from("contract_payment_schedules").insert(schedules as any);
+        }
+      }
 
       toast.success("Đã thêm hợp đồng thành công");
       setUploadDialogOpen(false);
@@ -249,6 +209,12 @@ const ContractCategories = () => {
     setUploading(false);
   };
 
+  const handleMarkPaid = async (scheduleId: string, contractId: string) => {
+    await supabase.from("contract_payment_schedules").update({ payment_status: "da_thanh_toan" } as any).eq("id", scheduleId);
+    toast.success("Đã đánh dấu thanh toán");
+    if (selectedCategory) fetchContracts(selectedCategory.id);
+  };
+
   const handleUploadLiquidation = async (contractId: string, file: File) => {
     try {
       const path = `${user?.id}/${Date.now()}_liquidation_${sanitizeFileName(file.name)}`;
@@ -256,40 +222,46 @@ const ContractCategories = () => {
       await supabase.from("contracts").update({ liquidation_file_url: url } as any).eq("id", contractId);
       toast.success("Đã tải biên bản thanh lý");
       if (selectedCategory) fetchContracts(selectedCategory.id);
-    } catch (err: any) {
-      toast.error("Lỗi", { description: err.message });
-    }
+    } catch (err: any) { toast.error("Lỗi", { description: err.message }); }
   };
 
   const resetForm = () => {
-    setForm({ title: "", partner_name: "", contract_type: "khac", status: "da_ky", value: "", effective_date: "", expiry_date: "", department: "", risk_level: "thap", approved_pe_number: "" });
+    setForm({ title: "", partner_name: "", contract_type: "khac", status: "da_ky", value: "", effective_date: "", expiry_date: "", department: "", risk_level: "thap", approved_pe_number: "", tax_code: "" });
+    setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "" }]);
     setDocFile(null);
     setSignedPdfFile(null);
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-accent" /></div>;
+    return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Đang tải...</p></div>;
   }
 
-  // Filter contracts by search
   const filteredContracts = contracts.filter((c) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (
-      c.title?.toLowerCase().includes(term) ||
-      c.department?.toLowerCase().includes(term) ||
-      c.partner_name?.toLowerCase().includes(term) ||
+      c.title?.toLowerCase().includes(term) || c.department?.toLowerCase().includes(term) ||
+      c.partner_name?.toLowerCase().includes(term) || c.tax_code?.toLowerCase().includes(term) ||
       (STATUS_LABELS[c.status] || c.status)?.toLowerCase().includes(term)
     );
   });
+
+  // Get nearest obligation date for a contract
+  const getNearestObligation = (contractId: string) => {
+    const payments = contractPayments[contractId] || [];
+    const unpaid = payments.filter((p: any) => p.payment_status !== "da_thanh_toan" && p.payment_due_date);
+    if (unpaid.length === 0) return null;
+    unpaid.sort((a: any, b: any) => new Date(a.payment_due_date).getTime() - new Date(b.payment_due_date).getTime());
+    return unpaid[0];
+  };
 
   // Contract detail view
   if (selectedCategory) {
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => { setSelectedCategory(null); setContracts([]); setSearchTerm(""); }}>
-            <ArrowLeft className="h-4 w-4" />
+          <Button variant="ghost" size="sm" onClick={() => { setSelectedCategory(null); setContracts([]); setSearchTerm(""); setContractPayments({}); }}>
+            ← Quay lại
           </Button>
           <div className="flex-1">
             <h1 className="text-2xl font-bold tracking-tight">{selectedCategory.name}</h1>
@@ -297,10 +269,7 @@ const ContractCategories = () => {
           </div>
           <Dialog open={uploadDialogOpen} onOpenChange={(o) => { setUploadDialogOpen(o); if (!o) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload hợp đồng
-              </Button>
+              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">Upload hợp đồng</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Upload hợp đồng mới</DialogTitle></DialogHeader>
@@ -315,19 +284,8 @@ const ContractCategories = () => {
                     <Input value={form.partner_name} onChange={(e) => setForm({ ...form, partner_name: e.target.value })} placeholder="Tên đối tác" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Loại hợp đồng</Label>
-                    <Select value={form.contract_type} onValueChange={(v) => setForm({ ...form, contract_type: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="mua_ban">Mua bán</SelectItem>
-                        <SelectItem value="dich_vu">Dịch vụ</SelectItem>
-                        <SelectItem value="nda">NDA</SelectItem>
-                        <SelectItem value="hop_tac">Hợp tác</SelectItem>
-                        <SelectItem value="lao_dong">Lao động</SelectItem>
-                        <SelectItem value="thue">Thuê</SelectItem>
-                        <SelectItem value="khac">Khác</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Mã số thuế đối tác</Label>
+                    <Input value={form.tax_code} onChange={(e) => setForm({ ...form, tax_code: e.target.value })} placeholder="0123456789" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -349,10 +307,10 @@ const ContractCategories = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Ngày hiệu lực *</Label>
+                    <Label>Ngày hiệu lực</Label>
                     <Input type="date" value={form.effective_date} onChange={(e) => setForm({ ...form, effective_date: e.target.value })} />
                   </div>
-                   <div className="space-y-2">
+                  <div className="space-y-2">
                     <Label>Ngày hết hiệu lực *</Label>
                     <Input type="date" value={form.expiry_date} onChange={(e) => setForm({ ...form, expiry_date: e.target.value })} />
                   </div>
@@ -363,21 +321,51 @@ const ContractCategories = () => {
                     <Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="VD: Phòng Pháp chế" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Mức rủi ro</Label>
-                    <Select value={form.risk_level} onValueChange={(v) => setForm({ ...form, risk_level: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="thap">Thấp</SelectItem>
-                        <SelectItem value="trung_binh">Trung bình</SelectItem>
-                        <SelectItem value="cao">Cao</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Số PE đã duyệt *</Label>
+                    <Input value={form.approved_pe_number} onChange={(e) => setForm({ ...form, approved_pe_number: e.target.value })} placeholder="PE-2026-001" />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Số PE đã duyệt *</Label>
-                  <Input value={form.approved_pe_number} onChange={(e) => setForm({ ...form, approved_pe_number: e.target.value })} placeholder="VD: PE-2026-001" />
+
+                {/* Payment Schedule */}
+                <div className="space-y-3 p-4 rounded-lg border bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-semibold">Đợt thanh toán *</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addPaymentPhase}>Thêm đợt</Button>
+                  </div>
+                  {paymentPhases.map((phase, idx) => (
+                    <div key={idx} className="space-y-2 p-3 rounded border bg-background">
+                      <div className="flex items-center justify-between">
+                        <Input value={phase.phase_name} onChange={(e) => {
+                          const updated = [...paymentPhases];
+                          updated[idx].phase_name = e.target.value;
+                          setPaymentPhases(updated);
+                        }} className="w-28" placeholder="Tên đợt" />
+                        {paymentPhases.length > 1 && (
+                          <Button type="button" variant="ghost" size="sm" className="text-destructive text-xs" onClick={() => removePaymentPhase(idx)}>Xóa</Button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="text-xs text-muted-foreground">Giá trị (VNĐ) *</span>
+                          <Input type="number" value={phase.payment_amount} onChange={(e) => {
+                            const updated = [...paymentPhases];
+                            updated[idx].payment_amount = e.target.value;
+                            setPaymentPhases(updated);
+                          }} placeholder="0" />
+                        </div>
+                        <div>
+                          <span className="text-xs text-muted-foreground">Ngày thanh toán *</span>
+                          <Input type="date" value={phase.payment_due_date} onChange={(e) => {
+                            const updated = [...paymentPhases];
+                            updated[idx].payment_due_date = e.target.value;
+                            setPaymentPhases(updated);
+                          }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
+
                 <div className="space-y-2">
                   <Label>File .doc / .docx</Label>
                   <Input type="file" accept=".doc,.docx" onChange={(e) => setDocFile(e.target.files?.[0] || null)} />
@@ -389,25 +377,16 @@ const ContractCategories = () => {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => { setUploadDialogOpen(false); resetForm(); }}>Hủy</Button>
-                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleUploadContract} disabled={uploading || !form.title.trim() || !form.approved_pe_number.trim()}>
-                  {uploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Upload
+                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleUploadContract} disabled={uploading || !form.title.trim() || !form.approved_pe_number.trim() || !form.expiry_date}>
+                  {uploading ? "Đang upload..." : "Upload"}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Tìm theo tên hợp đồng, phòng ban, trạng thái, đối tác..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+        {/* Search */}
+        <Input placeholder="Tìm theo tên hợp đồng, phòng ban, trạng thái, đối tác, MST..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
 
         <Card className="border-none shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -416,9 +395,10 @@ const ContractCategories = () => {
                 <TableRow className="bg-muted/30">
                   <TableHead>Tên hợp đồng</TableHead>
                   <TableHead>Đối tác</TableHead>
+                  <TableHead>MST</TableHead>
                   <TableHead>Trạng thái</TableHead>
-                  <TableHead>Hiệu lực</TableHead>
                   <TableHead>Hết hiệu lực</TableHead>
+                  <TableHead>Nghĩa vụ tiếp theo</TableHead>
                   <TableHead>Đơn vị</TableHead>
                   <TableHead>Số PE</TableHead>
                   <TableHead>Files</TableHead>
@@ -426,72 +406,79 @@ const ContractCategories = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredContracts.map((c) => (
-                  <TableRow key={c.id} className="hover:bg-muted/30 transition-colors">
-                    <TableCell className="font-medium max-w-[200px]">
-                      <span className="truncate block">{c.title}</span>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{c.partner_name || "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{STATUS_LABELS[c.status] || c.status}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{c.effective_date ? formatDate(c.effective_date) : "—"}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{c.expiry_date ? formatDate(c.expiry_date) : "—"}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{c.department || "—"}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{c.approved_pe_number || "—"}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        {c.file_url && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="File DOC" onClick={() => openFile(c.file_url)}>
-                            <FileText className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        {c.signed_file_url && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="PDF đã ký" onClick={() => openFile(c.signed_file_url)}>
-                            <Eye className="h-3.5 w-3.5 text-success" />
-                          </Button>
-                        )}
-                        {c.liquidation_file_url && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Biên bản thanh lý" onClick={() => openFile(c.liquidation_file_url)}>
-                            <Download className="h-3.5 w-3.5 text-info" />
-                          </Button>
-                        )}
-                        {(c.status === "het_hieu_luc" || c.status === "da_ky") && !c.liquidation_file_url && isAdmin && (
-                          <label className="cursor-pointer">
-                            <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleUploadLiquidation(c.id, file);
-                            }} />
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Thêm biên bản thanh lý" asChild>
-                              <span><Upload className="h-3.5 w-3.5 text-warning" /></span>
-                            </Button>
-                          </label>
-                        )}
-                      </div>
-                    </TableCell>
-                    {isAdmin && (
-                      <TableCell>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
-                              <AlertDialogDescription>Hợp đồng "{c.title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Hủy</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteContract(c.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                {filteredContracts.map((c) => {
+                  const nearestObl = getNearestObligation(c.id);
+                  const payments = contractPayments[c.id] || [];
+                  return (
+                    <TableRow key={c.id} className="hover:bg-muted/30 transition-colors">
+                      <TableCell className="font-medium max-w-[200px]">
+                        <span className="truncate block">{c.title}</span>
                       </TableCell>
-                    )}
-                  </TableRow>
-                ))}
+                      <TableCell className="text-muted-foreground">{c.partner_name || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{c.tax_code || "—"}</TableCell>
+                      <TableCell><Badge variant="secondary">{STATUS_LABELS[c.status] || c.status}</Badge></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{c.expiry_date ? formatDate(c.expiry_date) : "—"}</TableCell>
+                      <TableCell className="text-sm">
+                        {nearestObl ? (
+                          <div>
+                            <p className="font-medium text-xs">{nearestObl.phase_name}</p>
+                            <p className="text-xs text-muted-foreground">{formatDate(nearestObl.payment_due_date)} — {formatCurrency(nearestObl.payment_amount)}</p>
+                            {isAdmin && (
+                              <Button size="sm" variant="outline" className="text-xs mt-1 h-6" onClick={() => handleMarkPaid(nearestObl.id, c.id)}>
+                                Đã thanh toán
+                              </Button>
+                            )}
+                          </div>
+                        ) : payments.length > 0 ? (
+                          <span className="text-xs text-success">Đã hoàn thành</span>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{c.department || "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{c.approved_pe_number || "—"}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          {c.file_url && (
+                            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openFile(c.file_url)}>DOC</Button>
+                          )}
+                          {c.signed_file_url && (
+                            <Button variant="ghost" size="sm" className="h-7 text-xs text-success" onClick={() => openFile(c.signed_file_url)}>PDF</Button>
+                          )}
+                          {c.liquidation_file_url && (
+                            <Button variant="ghost" size="sm" className="h-7 text-xs text-info" onClick={() => openFile(c.liquidation_file_url)}>TL</Button>
+                          )}
+                          {(c.status === "het_hieu_luc" || c.status === "da_ky") && !c.liquidation_file_url && isAdmin && (
+                            <label className="cursor-pointer">
+                              <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleUploadLiquidation(c.id, file);
+                              }} />
+                              <Button variant="ghost" size="sm" className="h-7 text-xs text-warning" asChild><span>+TL</span></Button>
+                            </label>
+                          )}
+                        </div>
+                      </TableCell>
+                      {isAdmin && (
+                        <TableCell>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive">Xóa</Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
+                                <AlertDialogDescription>Hợp đồng "{c.title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Hủy</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteContract(c.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -499,9 +486,7 @@ const ContractCategories = () => {
 
         {filteredContracts.length === 0 && (
           <div className="text-center py-12">
-            <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
             <p className="text-muted-foreground font-medium">{searchTerm ? "Không tìm thấy hợp đồng" : "Chưa có hợp đồng nào"}</p>
-            {!searchTerm && <p className="text-sm text-muted-foreground/70 mt-1">Nhấn "Upload hợp đồng" để thêm</p>}
           </div>
         )}
       </div>
@@ -519,10 +504,7 @@ const ContractCategories = () => {
         {isAdmin && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">
-                <Plus className="h-4 w-4 mr-2" />
-                Tạo loại hợp đồng
-              </Button>
+              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">Tạo loại hợp đồng</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Tạo loại hợp đồng mới</DialogTitle></DialogHeader>
@@ -539,8 +521,7 @@ const ContractCategories = () => {
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
                 <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleAddCategory} disabled={saving || !newCatName.trim()}>
-                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Tạo
+                  {saving ? "Đang tạo..." : "Tạo"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -557,9 +538,6 @@ const ContractCategories = () => {
             onClick={() => setSelectedCategory(cat)}
           >
             <CardContent className="p-5 flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-accent/10 shrink-0">
-                <FolderArchive className="h-6 w-6 text-accent" />
-              </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold truncate">{cat.name}</p>
                 <p className="text-sm text-muted-foreground truncate">{categoryCounts[cat.id] || 0} hợp đồng</p>
@@ -568,8 +546,8 @@ const ContractCategories = () => {
                 {isAdmin && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive" onClick={(e) => e.stopPropagation()}>
-                        <Trash2 className="h-4 w-4" />
+                      <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive text-xs" onClick={(e) => e.stopPropagation()}>
+                        Xóa
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent onClick={(e) => e.stopPropagation()}>
@@ -584,7 +562,7 @@ const ContractCategories = () => {
                     </AlertDialogContent>
                   </AlertDialog>
                 )}
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-muted-foreground">→</span>
               </div>
             </CardContent>
           </Card>
@@ -593,7 +571,6 @@ const ContractCategories = () => {
 
       {categories.length === 0 && (
         <div className="text-center py-12">
-          <FolderArchive className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
           <p className="text-muted-foreground font-medium">Chưa có loại hợp đồng nào</p>
           <p className="text-sm text-muted-foreground/70 mt-1">{isAdmin ? 'Nhấn "Tạo loại hợp đồng" để bắt đầu' : "Liên hệ admin để tạo danh mục"}</p>
         </div>

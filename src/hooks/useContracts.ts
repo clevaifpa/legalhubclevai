@@ -19,14 +19,12 @@ export function useContracts() {
 
   useEffect(() => {
     fetchContracts();
-
     const channel = supabase
       .channel("contracts-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "contracts" }, () => {
         fetchContracts();
       })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [fetchContracts]);
 
@@ -42,26 +40,19 @@ export function useContractStats() {
 
   const total = contracts.length;
   const signed = contracts.filter((c) => c.status === "da_ky").length;
-  const pendingReview = contracts.filter((c) => c.status === "dang_review").length;
+  const expired = contracts.filter((c) => c.status === "het_hieu_luc").length;
+  const liquidated = contracts.filter((c) => c.status === ("da_thanh_ly" as any)).length;
+  const pendingReview = 0; // removed draft/review statuses
   const expiringSoon = contracts.filter((c) => {
     if (!c.expiry_date || c.status === "het_hieu_luc") return false;
     const exp = new Date(c.expiry_date);
     return exp >= today && exp <= in30Days;
   }).length;
-  const expired = contracts.filter((c) => c.status === "het_hieu_luc").length;
-  const draft = contracts.filter((c) => c.status === "nhap").length;
-
-  const byCategory = contracts.reduce<Record<string, number>>((acc, c) => {
-    const key = c.category_id || "uncategorized";
-    acc[key] = (acc[key] || 0) + 1;
-    return acc;
-  }, {});
 
   const byStatus = [
-    { name: "Nháp", value: draft, fill: "hsl(var(--muted-foreground))" },
-    { name: "Đang review", value: pendingReview, fill: "hsl(var(--info))" },
     { name: "Đã ký", value: signed, fill: "hsl(var(--success))" },
     { name: "Hết hiệu lực", value: expired, fill: "hsl(var(--destructive))" },
+    { name: "Đã thanh lý", value: liquidated, fill: "hsl(var(--muted-foreground))" },
   ];
 
   return {
@@ -72,8 +63,8 @@ export function useContractStats() {
     pendingReview,
     expiringSoon,
     expired,
-    draft,
-    byCategory,
+    draft: 0,
+    byCategory: {},
     byStatus,
   };
 }

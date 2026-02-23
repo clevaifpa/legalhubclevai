@@ -1,7 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Check, X, Clock, AlertTriangle } from "lucide-react";
 import {
     type ReviewDepartment,
     type DepartmentReviewStatus,
@@ -17,22 +16,19 @@ interface DepartmentReviewTrackerProps {
     compact?: boolean;
 }
 
-const StatusIcon = ({ status }: { status: DepartmentReviewStatus["status"] }) => {
+const StatusText = ({ status }: { status: DepartmentReviewStatus["status"] }) => {
     switch (status) {
-        case "approved":
-            return <Check className="h-3.5 w-3.5 text-green-600" />;
-        case "rejected":
-            return <X className="h-3.5 w-3.5 text-red-600" />;
-        case "needs_revision":
-            return <AlertTriangle className="h-3.5 w-3.5 text-yellow-600" />;
-        default:
-            return <Clock className="h-3.5 w-3.5 text-gray-400" />;
+        case "approved": return <span className="text-green-600 font-semibold text-xs">✓</span>;
+        case "rejected": return <span className="text-red-600 font-semibold text-xs">✗</span>;
+        case "needs_revision": return <span className="text-yellow-600 font-semibold text-xs">!</span>;
+        default: return <span className="text-gray-400 text-xs">—</span>;
     }
 };
 
 export function DepartmentReviewTracker({ deptReviews, compact = false }: DepartmentReviewTrackerProps) {
     const progress = getReviewProgress(deptReviews);
-    const departments = Object.keys(REVIEW_DEPARTMENTS) as ReviewDepartment[];
+    const departments = (Object.keys(REVIEW_DEPARTMENTS) as ReviewDepartment[])
+        .sort((a, b) => REVIEW_DEPARTMENTS[a].stepOrder - REVIEW_DEPARTMENTS[b].stepOrder);
 
     if (compact) {
         return (
@@ -53,16 +49,14 @@ export function DepartmentReviewTracker({ deptReviews, compact = false }: Depart
                                                     : "border-gray-200 bg-gray-50"
                                         }`}
                                 >
-                                    <span className="text-xs">{config.icon}</span>
+                                    <span className="text-[10px] font-bold">{config.label.charAt(0)}</span>
                                 </div>
                             </TooltipTrigger>
                             <TooltipContent side="top" className="text-xs">
                                 <p className="font-semibold">{config.label}</p>
                                 <p>{DEPARTMENT_REVIEW_STATUS_LABELS[review.status]}</p>
                                 {review.reviewerName && (
-                                    <p className="text-muted-foreground">
-                                        Bởi: {review.reviewerName}
-                                    </p>
+                                    <p className="text-muted-foreground">Bởi: {review.reviewerName}</p>
                                 )}
                             </TooltipContent>
                         </Tooltip>
@@ -77,18 +71,16 @@ export function DepartmentReviewTracker({ deptReviews, compact = false }: Depart
 
     return (
         <div className="space-y-3">
-            {/* Progress bar */}
             <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-muted-foreground">Tiến trình review</span>
-                    <span className="font-semibold">{progress.completed}/{progress.total} phòng ban</span>
+                    <span className="font-medium text-muted-foreground">Tiến trình duyệt</span>
+                    <span className="font-semibold">{progress.completed}/{progress.total} bước</span>
                 </div>
                 <Progress value={progress.percentage} className="h-2" />
             </div>
 
-            {/* Department cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {departments.map((dept) => {
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {departments.map((dept, idx) => {
                     const review = deptReviews[dept];
                     const config = REVIEW_DEPARTMENTS[dept];
                     return (
@@ -104,11 +96,8 @@ export function DepartmentReviewTracker({ deptReviews, compact = false }: Depart
                                 }`}
                         >
                             <div className="flex items-center justify-between mb-1.5">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-sm">{config.icon}</span>
-                                    <span className="text-xs font-semibold">{config.label}</span>
-                                </div>
-                                <StatusIcon status={review.status} />
+                                <span className="text-xs font-semibold">Bước {idx + 1}: {config.label}</span>
+                                <StatusText status={review.status} />
                             </div>
                             <Badge
                                 variant="outline"

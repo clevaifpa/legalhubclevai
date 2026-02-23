@@ -9,48 +9,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Search,
-  FileSearch,
-  Calendar,
-  Building2,
-  DollarSign,
-  MessageSquare,
-  Loader2,
-  Trash2,
-  ExternalLink,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Edit,
-  Shield,
-  Users,
-  Link as LinkIcon,
-} from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTracker";
@@ -62,13 +29,19 @@ import {
   extractDeptReviews,
   encodeDeptReview,
   decodeDeptReview,
-  isFullyApproved,
-  hasRejection,
   getReviewProgress,
+  getCurrentStep,
+  getNextStatus,
+  WORKFLOW_STATUSES,
 } from "@/types/reviewDepartments";
 
 const STATUS_LABELS: Record<string, string> = {
   cho_xu_ly: "Chờ xử lý",
+  cho_quan_ly: "Chờ Quản lý xác nhận",
+  cho_phap_che: "Chờ Pháp chế review",
+  cho_ke_toan: "Chờ Kế toán review",
+  cho_tai_chinh: "Chờ Tài chính review",
+  hoan_tat: "Hoàn tất",
   dang_review: "Đang review",
   da_hoan_thanh: "Đã hoàn thành",
   yeu_cau_chinh_sua: "Yêu cầu chỉnh sửa",
@@ -77,16 +50,15 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   cho_xu_ly: "bg-muted text-muted-foreground",
+  cho_quan_ly: "bg-muted text-muted-foreground",
+  cho_phap_che: "bg-info/10 text-info border-info/20",
+  cho_ke_toan: "bg-info/10 text-info border-info/20",
+  cho_tai_chinh: "bg-info/10 text-info border-info/20",
+  hoan_tat: "bg-success/10 text-success border-success/20",
   dang_review: "bg-info/10 text-info border-info/20",
   da_hoan_thanh: "bg-success/10 text-success border-success/20",
   yeu_cau_chinh_sua: "bg-warning/10 text-warning border-warning/20",
   tu_choi: "bg-destructive/10 text-destructive border-destructive/20",
-};
-
-const PRIORITY_LABELS: Record<string, string> = {
-  cao: "🔴 Cao",
-  trung_binh: "🟡 Trung bình",
-  thap: "🟢 Thấp",
 };
 
 const isValidGoogleDocUrl = (url: string): boolean => {
@@ -95,11 +67,31 @@ const isValidGoogleDocUrl = (url: string): boolean => {
 };
 
 const AdminReviewRequests = () => {
-  const { user, profile, roles } = useAuth();
-  const isAdmin = roles.includes("admin" as any);
+  const { user, profile, role, roles, managerDepartment } = useAuth();
+  const isAdmin = role === "admin";
+  const isManager = roles.includes("manager" as any);
   const isAccountant = roles.includes("accountant" as any);
   const isFinance = roles.includes("finance" as any);
-  const canApprove = isAccountant || isFinance || isAdmin;
+
+  // Determine which step this user can approve
+  const getMyStep = (): ReviewDepartment | null => {
+    if (isAdmin) return null; // admin can do any step
+    if (isManager) return "quan_ly";
+    if (isAccountant) return "ke_toan";
+    if (isFinance) return "tai_chinh";
+    return null;
+  };
+
+  const myStep = getMyStep();
+
+  // Determine which status this role should see
+  const getMyStatusFilter = (): string | null => {
+    if (isAdmin) return null;
+    if (isManager) return "cho_quan_ly";
+    if (isAccountant) return "cho_ke_toan";
+    if (isFinance) return "cho_tai_chinh";
+    return null;
+  };
 
   const [requests, setRequests] = useState<any[]>([]);
   const [notes, setNotes] = useState<Record<string, any[]>>({});
@@ -109,22 +101,22 @@ const AdminReviewRequests = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedReq, setSelectedReq] = useState<any>(null);
   const [newNote, setNewNote] = useState("");
-  const [newStatus, setNewStatus] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [legalReviewDocLink, setLegalReviewDocLink] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Department review state
-  const [selectedDept, setSelectedDept] = useState<ReviewDepartment>("phap_ly");
-  const [deptReviewStatus, setDeptReviewStatus] = useState<DepartmentReviewStatus["status"]>("pending");
-  const [deptReviewNotes, setDeptReviewNotes] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
-
   const fetchRequests = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from("review_requests")
       .select("*")
       .order("created_at", { ascending: false });
+
+    // Manager only sees requests from their department
+    if (isManager && !isAdmin && managerDepartment) {
+      query = query.eq("department", managerDepartment);
+    }
+
+    const { data } = await query;
     if (data) {
       setRequests(data);
       const ids = data.map((r: any) => r.id);
@@ -163,125 +155,151 @@ const AdminReviewRequests = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const getDeptReviews = (reqId: string) => {
-    const reqNotes = notes[reqId] || [];
-    return extractDeptReviews(reqNotes);
-  };
-
   const filtered = requests.filter((req) => {
     const matchSearch = search === "" ||
       req.contract_title.toLowerCase().includes(search.toLowerCase()) ||
       req.partner_name?.toLowerCase().includes(search.toLowerCase()) ||
       req.requester_name?.toLowerCase().includes(search.toLowerCase()) ||
-      req.department?.toLowerCase().includes(search.toLowerCase());
+      req.department?.toLowerCase().includes(search.toLowerCase()) ||
+      req.tax_code?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "all" || req.status === statusFilter;
-
-    if (activeTab !== "all") {
-      const deptReviews = getDeptReviews(req.id);
-      const dept = activeTab as ReviewDepartment;
-      if (activeTab === "pending_review") {
-        const progress = getReviewProgress(deptReviews);
-        return matchSearch && matchStatus && progress.completed < progress.total;
-      }
-      return matchSearch && matchStatus && deptReviews[dept]?.status === "pending";
-    }
-
     return matchSearch && matchStatus;
   });
 
   const openDetail = (req: any) => {
     setSelectedReq(req);
-    setNewStatus(req.status);
     setAdminNotes(req.admin_notes || "");
     setLegalReviewDocLink(req.legal_review_doc_link || "");
     setNewNote("");
-    setSelectedDept("phap_ly");
-    setDeptReviewNotes("");
-
-    const deptReviews = getDeptReviews(req.id);
-    setDeptReviewStatus(deptReviews.phap_ly?.status || "pending");
   };
 
-  const handleDeptChange = (dept: ReviewDepartment) => {
-    setSelectedDept(dept);
-    if (selectedReq) {
-      const deptReviews = getDeptReviews(selectedReq.id);
-      setDeptReviewStatus(deptReviews[dept]?.status || "pending");
-      setDeptReviewNotes("");
-    }
-  };
-
-  const handleSave = async () => {
+  // Approve current step and advance workflow
+  const handleApproveStep = async () => {
     if (!selectedReq || !user) return;
     setSaving(true);
-    const oldStatus = selectedReq.status;
 
-    // Build update object
-    const updateData: any = { status: newStatus as any, admin_notes: adminNotes };
+    const currentStatus = selectedReq.status;
+    const nextStatus = getNextStatus(currentStatus);
 
-    // Admin can set legal_review_doc_link
-    if (isAdmin && legalReviewDocLink) {
-      updateData.legal_review_doc_link = legalReviewDocLink;
-    }
+    // Determine the department being reviewed
+    const stepDept = getCurrentStep(currentStatus);
 
-    await supabase
-      .from("review_requests")
-      .update(updateData)
-      .eq("id", selectedReq.id);
-
-    // Save department review as a note
-    if (deptReviewStatus !== "pending") {
-      const encodedContent = encodeDeptReview(selectedDept, deptReviewStatus, deptReviewNotes);
+    // Save department review note
+    if (stepDept) {
+      const encodedContent = encodeDeptReview(stepDept, "approved", newNote || "Đã duyệt");
       await supabase.from("review_notes").insert({
         review_request_id: selectedReq.id,
         author_id: user.id,
-        author_name: profile?.full_name || user.email || "Pháp chế",
+        author_name: profile?.full_name || user.email || "",
         content: encodedContent,
       });
     }
+
+    // Build update
+    const updateData: any = { status: nextStatus as any };
+
+    // Admin (Legal) can set legal_review_doc_link
+    if (isAdmin && legalReviewDocLink && currentStatus === "cho_phap_che") {
+      updateData.legal_review_doc_link = legalReviewDocLink;
+    }
+
+    if (adminNotes) {
+      updateData.admin_notes = adminNotes;
+    }
+
+    await supabase.from("review_requests").update(updateData).eq("id", selectedReq.id);
 
     // Save regular note
     if (newNote.trim()) {
       await supabase.from("review_notes").insert({
         review_request_id: selectedReq.id,
         author_id: user.id,
-        author_name: profile?.full_name || user.email || "Pháp chế",
+        author_name: profile?.full_name || user.email || "",
         content: newNote.trim(),
       });
     }
 
-    // Send email notification if status changed
-    if (oldStatus !== newStatus) {
-      try {
-        await supabase.functions.invoke("send-notification-email", {
-          body: {
-            requestId: selectedReq.id,
-            contractTitle: selectedReq.contract_title,
-            newStatus: STATUS_LABELS[newStatus] || newStatus,
-            updatedBy: profile?.full_name || user.email,
-            requesterEmail: null,
-            requesterId: selectedReq.requester_id,
-          },
-        });
-      } catch (e) {
-        console.warn("Email notification failed:", e);
-      }
+    // Send email notification
+    try {
+      await supabase.functions.invoke("send-notification-email", {
+        body: {
+          requestId: selectedReq.id,
+          contractTitle: selectedReq.contract_title,
+          newStatus: STATUS_LABELS[nextStatus] || nextStatus,
+          updatedBy: profile?.full_name || user.email,
+          requesterId: selectedReq.requester_id,
+        },
+      });
+    } catch (e) {
+      console.warn("Email notification failed:", e);
     }
 
     setSaving(false);
     setSelectedReq(null);
-    toast.success("Đã cập nhật yêu cầu review");
+    toast.success(`Đã duyệt và chuyển sang: ${STATUS_LABELS[nextStatus] || nextStatus}`);
+    fetchRequests();
+  };
+
+  const handleReject = async () => {
+    if (!selectedReq || !user) return;
+    setSaving(true);
+
+    const currentStatus = selectedReq.status;
+    const stepDept = getCurrentStep(currentStatus);
+
+    if (stepDept) {
+      const encodedContent = encodeDeptReview(stepDept, "rejected", newNote || "Từ chối");
+      await supabase.from("review_notes").insert({
+        review_request_id: selectedReq.id,
+        author_id: user.id,
+        author_name: profile?.full_name || user.email || "",
+        content: encodedContent,
+      });
+    }
+
+    await supabase.from("review_requests").update({
+      status: "tu_choi" as any,
+      admin_notes: adminNotes,
+    } as any).eq("id", selectedReq.id);
+
+    if (newNote.trim()) {
+      await supabase.from("review_notes").insert({
+        review_request_id: selectedReq.id,
+        author_id: user.id,
+        author_name: profile?.full_name || user.email || "",
+        content: newNote.trim(),
+      });
+    }
+
+    try {
+      await supabase.functions.invoke("send-notification-email", {
+        body: {
+          requestId: selectedReq.id,
+          contractTitle: selectedReq.contract_title,
+          newStatus: "Từ chối",
+          updatedBy: profile?.full_name || user.email,
+          requesterId: selectedReq.requester_id,
+        },
+      });
+    } catch (e) { console.warn(e); }
+
+    setSaving(false);
+    setSelectedReq(null);
+    toast.success("Đã từ chối yêu cầu");
     fetchRequests();
   };
 
   const handleDelete = async (reqId: string) => {
     const { error } = await supabase.from("review_requests").delete().eq("id", reqId);
-    if (error) {
-      toast.error("Lỗi xóa", { description: error.message });
-    } else {
-      toast.success("Đã xóa yêu cầu");
-      fetchRequests();
-    }
+    if (error) toast.error("Lỗi xóa", { description: error.message });
+    else { toast.success("Đã xóa yêu cầu"); fetchRequests(); }
+  };
+
+  // Can this user act on this request?
+  const canActOnRequest = (req: any): boolean => {
+    if (isAdmin) return true;
+    const myStatusFilter = getMyStatusFilter();
+    return req.status === myStatusFilter;
   };
 
   const statusCounts = requests.reduce((acc: Record<string, number>, r) => {
@@ -289,133 +307,72 @@ const AdminReviewRequests = () => {
     return acc;
   }, {});
 
-  const deptPendingCounts = requests.reduce((acc: Record<string, number>, req) => {
-    const deptReviews = getDeptReviews(req.id);
-    (Object.keys(REVIEW_DEPARTMENTS) as ReviewDepartment[]).forEach((dept) => {
-      if (deptReviews[dept]?.status === "pending") {
-        acc[dept] = (acc[dept] || 0) + 1;
-      }
-    });
-    return acc;
-  }, {});
-
-  // Determine which doc link to show for accountant/finance
-  const getDocLinkForRole = (req: any) => {
-    if (isAccountant || isFinance) {
-      // Only show legal_review_doc_link, hide original
-      return req.legal_review_doc_link || null;
-    }
-    // Admin sees both
-    return null; // handled separately in JSX
-  };
-
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-accent" /></div>;
+    return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Đang tải...</p></div>;
   }
+
+  const roleLabel = isAdmin ? "Pháp chế" : isManager ? "Quản lý" : isAccountant ? "Kế toán" : isFinance ? "Tài chính" : "";
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Quản lý yêu cầu review</h1>
-        <p className="text-muted-foreground">Xem và xử lý các yêu cầu review hợp đồng theo phòng ban</p>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {isAdmin ? "Quản lý yêu cầu review" : `Yêu cầu review — ${roleLabel}`}
+        </h1>
+        <p className="text-muted-foreground">
+          {isAdmin ? "Xem và xử lý các yêu cầu review hợp đồng" : `Duyệt các yêu cầu ở bước ${roleLabel}`}
+        </p>
       </div>
 
-      {/* Department Review Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {(Object.keys(REVIEW_DEPARTMENTS) as ReviewDepartment[]).map((dept) => {
-          const config = REVIEW_DEPARTMENTS[dept];
-          const pendingCount = deptPendingCounts[dept] || 0;
-          return (
-            <Card
-              key={dept}
-              className={`border shadow-sm cursor-pointer transition-all hover:shadow-md ${activeTab === dept ? "ring-2 ring-accent" : ""}`}
-              onClick={() => setActiveTab(activeTab === dept ? "all" : dept)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2.5 rounded-xl ${config.bgColor}`}>
-                    <span className="text-lg">{config.icon}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm">{config.label}</p>
-                    <p className="text-xs text-muted-foreground truncate">{config.description}</p>
-                  </div>
-                  <div className="text-center shrink-0">
-                    <p className="text-2xl font-bold">{pendingCount}</p>
-                    <p className="text-[10px] text-muted-foreground">chờ review</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Status Summary */}
+      {/* Workflow Status Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {Object.entries(STATUS_LABELS).map(([key, label]) => (
+        {Object.entries(WORKFLOW_STATUSES).map(([key, ws]) => (
           <Card key={key} className={`border shadow-sm cursor-pointer transition-all hover:shadow-md ${statusFilter === key ? "ring-2 ring-accent" : ""}`} onClick={() => setStatusFilter(statusFilter === key ? "all" : key)}>
             <CardContent className="p-3 text-center">
               <p className="text-2xl font-bold">{statusCounts[key] || 0}</p>
-              <p className="text-xs text-muted-foreground mt-1">{label}</p>
+              <p className="text-xs text-muted-foreground mt-1">{ws.label}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Search & Filter */}
+      {/* Search */}
       <Card className="border-none shadow-sm">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Tìm theo tên hợp đồng, đối tác, người yêu cầu, phòng ban..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-            </div>
+            <Input placeholder="Tìm theo tên hợp đồng, đối tác, phòng ban, MST..." value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1" />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Trạng thái" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                <SelectItem value="all">Tất cả</SelectItem>
                 {Object.entries(STATUS_LABELS).map(([key, label]) => (
                   <SelectItem key={key} value={key}>{label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          {activeTab !== "all" && (
-            <div className="mt-3 flex items-center gap-2">
-              <Badge variant="secondary" className="text-xs">
-                <Users className="h-3 w-3 mr-1" />
-                Đang lọc: {activeTab === "pending_review" ? "Chưa review đầy đủ" : REVIEW_DEPARTMENTS[activeTab as ReviewDepartment]?.label}
-              </Badge>
-              <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setActiveTab("all")}>
-                Xóa bộ lọc
-              </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
 
       {/* Request Cards */}
       <div className="space-y-4">
         {filtered.map((req, i) => {
-          const deptReviews = getDeptReviews(req.id);
+          const deptReviews = extractDeptReviews(notes[req.id] || []);
           const reqNotes = (notes[req.id] || []).filter((n: any) => !decodeDeptReview(n.content));
           const reqPayments = paymentSchedules[req.id] || [];
+          const canAct = canActOnRequest(req);
+
           return (
             <Card key={req.id} className="border shadow-sm hover:shadow-md transition-all animate-slide-up" style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}>
               <CardHeader className="pb-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-info/10 shrink-0 mt-0.5">
-                      <FileSearch className="h-4 w-4 text-info" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base font-semibold">{req.contract_title}</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        Yêu cầu bởi <span className="font-medium text-foreground">{req.requester_name}</span> — {req.department}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Ưu tiên: {PRIORITY_LABELS[req.priority] || req.priority}</p>
-                    </div>
+                  <div>
+                    <CardTitle className="text-base font-semibold">{req.contract_title}</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      Yêu cầu bởi <span className="font-medium text-foreground">{req.requester_name}</span> — {req.department}
+                      {req.contract_type_category && <> — {req.contract_type_category}</>}
+                      {req.tax_code && <> — MST: {req.tax_code}</>}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <DepartmentReviewTracker deptReviews={deptReviews} compact />
@@ -425,51 +382,42 @@ const AdminReviewRequests = () => {
               </CardHeader>
               <CardContent className="pt-0 space-y-4">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3 rounded-lg bg-muted/40">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <div><p className="text-xs text-muted-foreground">Đối tác</p><p className="text-sm font-medium">{req.partner_name || "—"}</p></div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Đối tác</p>
+                    <p className="text-sm font-medium">{req.partner_name || "—"}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <div><p className="text-xs text-muted-foreground">Giá trị</p><p className="text-sm font-medium">{req.contract_value > 0 ? formatCurrency(req.contract_value) : "—"}</p></div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Giá trị</p>
+                    <p className="text-sm font-medium">{req.contract_value > 0 ? formatCurrency(req.contract_value) : "N/A"}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <div><p className="text-xs text-muted-foreground">Thời hạn HĐ</p><p className="text-sm font-medium">{req.contract_start_date && req.contract_end_date ? `${formatDate(req.contract_start_date)} - ${formatDate(req.contract_end_date)}` : "—"}</p></div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Thời hạn HĐ</p>
+                    <p className="text-sm font-medium">{req.contract_start_date && req.contract_end_date ? `${formatDate(req.contract_start_date)} - ${formatDate(req.contract_end_date)}` : "—"}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <div><p className="text-xs text-muted-foreground">Ngày gửi</p><p className="text-sm font-medium">{formatDate(req.created_at)}</p></div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Hạn review</p>
+                    <p className="text-sm font-medium">{req.review_deadline ? formatDate(req.review_deadline) : "—"}</p>
                   </div>
                 </div>
 
                 {/* Payment Schedule */}
                 {reqPayments.length > 0 && (
                   <div className="p-3 rounded-lg bg-muted/30 space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">💰 Đợt thanh toán</p>
+                    <p className="text-xs font-medium text-muted-foreground">Đợt thanh toán</p>
                     <div className="space-y-1">
                       {reqPayments.map((ps: any) => (
                         <div key={ps.id} className="flex items-center justify-between text-sm">
                           <span className="font-medium">{ps.phase_name}</span>
-                          <span>{formatCurrency(ps.payment_amount)}</span>
+                          <span>{ps.payment_amount > 0 ? formatCurrency(ps.payment_amount) : "N/A"} — {ps.payment_due_date ? formatDate(ps.payment_due_date) : "—"}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Department Review Progress */}
                 <DepartmentReviewTracker deptReviews={deptReviews} />
 
-                {/* Description */}
-                {req.description && (
-                  <div className="p-3 rounded-lg bg-muted/30 text-sm">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Mô tả:</p>
-                    <p>{req.description}</p>
-                  </div>
-                )}
-
-                {/* File links - different visibility based on role */}
+                {/* File links */}
                 <div className="space-y-1">
                   {isAdmin && (
                     <>
@@ -479,7 +427,7 @@ const AdminReviewRequests = () => {
                             const url = req.file_url as string;
                             if (url.includes("/storage/v1/object/public/contracts/")) {
                               const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
-                              const { data, error } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
+                              const { data } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
                               if (data) window.open(data.signedUrl, "_blank");
                               else toast.error("Không thể mở file");
                             } else {
@@ -488,13 +436,11 @@ const AdminReviewRequests = () => {
                           }}
                           className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
                         >
-                          <ExternalLink className="h-3.5 w-3.5" />
                           Xem tài liệu ban đầu
                         </button>
                       )}
                       {req.legal_review_doc_link && (
                         <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
-                          <LinkIcon className="h-3.5 w-3.5" />
                           Xem tài liệu đã review (Pháp chế)
                         </a>
                       )}
@@ -504,7 +450,6 @@ const AdminReviewRequests = () => {
                     <>
                       {req.legal_review_doc_link ? (
                         <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
-                          <ExternalLink className="h-3.5 w-3.5" />
                           Xem tài liệu review
                         </a>
                       ) : (
@@ -512,61 +457,57 @@ const AdminReviewRequests = () => {
                       )}
                     </>
                   )}
+                  {isManager && req.file_url && (
+                    <button
+                      onClick={async () => {
+                        const url = req.file_url as string;
+                        if (url.includes("/storage/v1/object/public/contracts/")) {
+                          const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
+                          const { data } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
+                          if (data) window.open(data.signedUrl, "_blank");
+                          else toast.error("Không thể mở file");
+                        } else {
+                          window.open(url, "_blank");
+                        }
+                      }}
+                      className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
+                    >
+                      Xem tài liệu
+                    </button>
+                  )}
                 </div>
-
-                {/* Notes / Timeline */}
-                {reqNotes.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-sm font-medium">Lịch sử xử lý ({reqNotes.length})</p>
-                    </div>
-                    <div className="space-y-2 pl-6 border-l-2 border-muted ml-2">
-                      {reqNotes.map((note: any) => (
-                        <div key={note.id} className="p-3 rounded-lg bg-card border text-sm relative">
-                          <div className="absolute -left-[1.65rem] top-3 w-3 h-3 rounded-full bg-accent border-2 border-background" />
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-medium text-xs">{note.author_name}</span>
-                            <span className="text-xs text-muted-foreground">{formatDate(note.created_at)}</span>
-                          </div>
-                          <p className="text-muted-foreground">{note.content}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 <Separator />
                 <div className="flex items-center justify-between">
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-xs text-destructive hover:text-destructive">
-                        <Trash2 className="h-3.5 w-3.5 mr-1" />
-                        Xóa
+                  {isAdmin && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-xs text-destructive hover:text-destructive">Xóa</Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
+                          <AlertDialogDescription>Yêu cầu review "{req.contract_title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Hủy</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(req.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                  <div className="flex gap-2 ml-auto">
+                    {canAct && (
+                      <Button size="sm" className="text-xs bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => openDetail(req)}>
+                        Duyệt
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
-                        <AlertDialogDescription>Yêu cầu review "{req.contract_title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Hủy</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(req.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  {canApprove && (
-                    <Button size="sm" className="text-xs bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => openDetail(req)}>
-                      <Shield className="h-3.5 w-3.5 mr-1" />
-                      Duyệt hợp đồng
-                    </Button>
-                  )}
-                  {!canApprove && (
-                    <Button size="sm" className="text-xs" variant="outline" onClick={() => openDetail(req)}>
-                      Xem chi tiết
-                    </Button>
-                  )}
+                    )}
+                    {!canAct && (
+                      <Button size="sm" className="text-xs" variant="outline" onClick={() => openDetail(req)}>
+                        Xem chi tiết
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -576,92 +517,37 @@ const AdminReviewRequests = () => {
 
       {filtered.length === 0 && (
         <div className="text-center py-12">
-          <FileSearch className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
           <p className="text-muted-foreground font-medium">Không có yêu cầu review nào</p>
         </div>
       )}
 
-      {/* Detail Dialog */}
+      {/* Detail / Approve Dialog */}
       <Dialog open={!!selectedReq} onOpenChange={(open) => !open && setSelectedReq(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-accent" />
-              Xử lý: {selectedReq?.contract_title}
+            <DialogTitle>
+              {canActOnRequest(selectedReq) ? "Duyệt" : "Chi tiết"}: {selectedReq?.contract_title}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-6 py-4">
-            {/* Department Review Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-accent" />
-                <h3 className="font-semibold text-sm">Review theo phòng ban</h3>
-              </div>
-
-              {selectedReq && (
-                <DepartmentReviewTracker deptReviews={getDeptReviews(selectedReq.id)} />
-              )}
-
-              <Separator />
-
-              <div className="p-4 rounded-xl bg-muted/30 border space-y-4">
-                <p className="text-sm font-medium">Thêm đánh giá phòng ban</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {(Object.keys(REVIEW_DEPARTMENTS) as ReviewDepartment[]).map((dept) => {
-                    const config = REVIEW_DEPARTMENTS[dept];
-                    const isSelected = selectedDept === dept;
-                    return (
-                      <button
-                        key={dept}
-                        onClick={() => handleDeptChange(dept)}
-                        className={`p-3 rounded-lg border-2 transition-all text-center ${isSelected
-                            ? `${config.borderColor} ${config.bgColor} shadow-sm`
-                            : "border-transparent bg-card hover:bg-muted/50"
-                          }`}
-                      >
-                        <span className="text-lg block mb-1">{config.icon}</span>
-                        <span className={`text-xs font-semibold ${isSelected ? config.color : "text-muted-foreground"}`}>
-                          {config.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Kết quả đánh giá — {REVIEW_DEPARTMENTS[selectedDept].label}</label>
-                  <Select value={deptReviewStatus} onValueChange={(v) => setDeptReviewStatus(v as DepartmentReviewStatus["status"])}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">⏳ Chờ review</SelectItem>
-                      <SelectItem value="approved">✅ Đã duyệt</SelectItem>
-                      <SelectItem value="rejected">❌ Từ chối</SelectItem>
-                      <SelectItem value="needs_revision">⚠️ Cần chỉnh sửa</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Ghi chú {REVIEW_DEPARTMENTS[selectedDept].label}</label>
-                  <Textarea
-                    value={deptReviewNotes}
-                    onChange={(e) => setDeptReviewNotes(e.target.value)}
-                    placeholder={`Nhận xét từ phòng ${REVIEW_DEPARTMENTS[selectedDept].label}...`}
-                    rows={2}
-                  />
-                </div>
-              </div>
+            {/* Current workflow step */}
+            <div className="p-4 rounded-lg bg-muted/30 border">
+              <p className="text-sm font-medium mb-2">Trạng thái hiện tại</p>
+              <Badge className={`${STATUS_COLORS[selectedReq?.status] || ""} text-sm px-3 py-1`}>
+                {STATUS_LABELS[selectedReq?.status] || selectedReq?.status}
+              </Badge>
             </div>
+
+            {selectedReq && (
+              <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[selectedReq.id] || [])} />
+            )}
 
             <Separator />
 
-            {/* Legal Review Doc Link - only for admin */}
-            {isAdmin && (
+            {/* Legal Review Doc Link - only for admin at legal review step */}
+            {isAdmin && selectedReq?.status === "cho_phap_che" && (
               <div className="space-y-2">
-                <Label className="flex items-center gap-1.5">
-                  <LinkIcon className="h-3.5 w-3.5" />
-                  Link Google Doc review (Pháp chế)
-                </Label>
+                <Label>Link Google Doc review (Pháp chế)</Label>
                 <Input
                   type="url"
                   value={legalReviewDocLink}
@@ -670,40 +556,38 @@ const AdminReviewRequests = () => {
                   className={legalReviewDocLink && !isValidGoogleDocUrl(legalReviewDocLink) ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
                 <p className="text-xs text-muted-foreground">
-                  📌 Upload link Google Doc đã review. Link này sẽ được gửi cho Kế toán và Tài chính để review tiếp.
+                  Upload link Google Doc đã review. Link này sẽ được gửi cho Kế toán và Tài chính.
                 </p>
               </div>
             )}
 
-            {/* Overall status */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Trạng thái tổng thể</label>
-              <Select value={newStatus} onValueChange={setNewStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Admin notes */}
+            {isAdmin && (
+              <div className="space-y-2">
+                <Label>Nhận xét pháp chế</Label>
+                <Textarea value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} placeholder="Nhận xét tổng quan..." rows={3} />
+              </div>
+            )}
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Nhận xét pháp chế (tổng hợp)</label>
-              <Textarea value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} placeholder="Nhận xét tổng quan cho người yêu cầu..." rows={3} />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Thêm ghi chú mới</label>
-              <Textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Ghi chú chi tiết..." rows={2} />
-            </div>
+            {canActOnRequest(selectedReq) && (
+              <div className="space-y-2">
+                <Label>Ghi chú</Label>
+                <Textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Ghi chú khi duyệt/từ chối..." rows={2} />
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedReq(null)}>Hủy</Button>
-            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSave} disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Lưu thay đổi
-            </Button>
+            <Button variant="outline" onClick={() => setSelectedReq(null)}>Đóng</Button>
+            {canActOnRequest(selectedReq) && (
+              <>
+                <Button variant="destructive" onClick={handleReject} disabled={saving}>
+                  {saving ? "Đang xử lý..." : "Từ chối"}
+                </Button>
+                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleApproveStep} disabled={saving}>
+                  {saving ? "Đang xử lý..." : "Duyệt & chuyển bước tiếp"}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

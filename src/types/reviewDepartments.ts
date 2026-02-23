@@ -1,8 +1,7 @@
 // Review Department types and constants
-// Defines the multi-department review workflow where each contract
-// can be reviewed by Legal (Pháp lý), Finance (Tài chính), and Accounting (Kế toán)
+// Workflow: Employee → Manager → Legal → Accountant → Finance → Complete
 
-export type ReviewDepartment = 'phap_ly' | 'tai_chinh' | 'ke_toan';
+export type ReviewDepartment = 'quan_ly' | 'phap_ly' | 'ke_toan' | 'tai_chinh';
 
 export interface DepartmentReviewStatus {
     department: ReviewDepartment;
@@ -14,36 +13,43 @@ export interface DepartmentReviewStatus {
 
 export const REVIEW_DEPARTMENTS: Record<ReviewDepartment, {
     label: string;
-    icon: string;
-    color: string;
-    bgColor: string;
-    borderColor: string;
     description: string;
+    stepOrder: number;
+    requiredRole: string;
 }> = {
-    phap_ly: {
-        label: 'Pháp lý',
-        icon: '⚖️',
-        color: 'text-blue-600',
-        bgColor: 'bg-blue-50',
-        borderColor: 'border-blue-200',
-        description: 'Kiểm tra tính hợp pháp, điều khoản ràng buộc',
+    quan_ly: {
+        label: 'Quản lý',
+        description: 'Xác nhận yêu cầu từ phòng ban',
+        stepOrder: 1,
+        requiredRole: 'manager',
     },
-    tai_chinh: {
-        label: 'Tài chính',
-        icon: '💰',
-        color: 'text-emerald-600',
-        bgColor: 'bg-emerald-50',
-        borderColor: 'border-emerald-200',
-        description: 'Đánh giá giá trị, điều khoản thanh toán',
+    phap_ly: {
+        label: 'Pháp chế',
+        description: 'Kiểm tra tính hợp pháp, điều khoản ràng buộc',
+        stepOrder: 2,
+        requiredRole: 'admin',
     },
     ke_toan: {
         label: 'Kế toán',
-        icon: '📊',
-        color: 'text-amber-600',
-        bgColor: 'bg-amber-50',
-        borderColor: 'border-amber-200',
         description: 'Kiểm tra hạch toán, thuế, chứng từ',
+        stepOrder: 3,
+        requiredRole: 'accountant',
     },
+    tai_chinh: {
+        label: 'Tài chính',
+        description: 'Đánh giá giá trị, điều khoản thanh toán',
+        stepOrder: 4,
+        requiredRole: 'finance',
+    },
+};
+
+// Workflow status mapping
+export const WORKFLOW_STATUSES: Record<string, { label: string; nextStep: ReviewDepartment | null; prevStep: ReviewDepartment | null }> = {
+    cho_quan_ly: { label: 'Chờ Quản lý xác nhận', nextStep: 'quan_ly', prevStep: null },
+    cho_phap_che: { label: 'Chờ Pháp chế review', nextStep: 'phap_ly', prevStep: 'quan_ly' },
+    cho_ke_toan: { label: 'Chờ Kế toán review', nextStep: 'ke_toan', prevStep: 'phap_ly' },
+    cho_tai_chinh: { label: 'Chờ Tài chính review', nextStep: 'tai_chinh', prevStep: 'ke_toan' },
+    hoan_tat: { label: 'Hoàn tất', nextStep: null, prevStep: 'tai_chinh' },
 };
 
 export const DEPARTMENT_REVIEW_STATUS_LABELS: Record<DepartmentReviewStatus['status'], string> = {
@@ -60,8 +66,6 @@ export const DEPARTMENT_REVIEW_STATUS_COLORS: Record<DepartmentReviewStatus['sta
     needs_revision: 'bg-yellow-50 text-yellow-700 border-yellow-200',
 };
 
-// Parse department review data from review_notes
-// Convention: notes with content starting with [DEPT_REVIEW:department:status] are department reviews
 export const DEPT_REVIEW_PREFIX = '[DEPT_REVIEW]';
 
 export function encodeDeptReview(
@@ -88,17 +92,16 @@ export function decodeDeptReview(content: string): {
     };
 }
 
-// Extract the latest department review statuses from review_notes
 export function extractDeptReviews(
     notes: Array<{ content: string; author_name: string; created_at: string }>
 ): Record<ReviewDepartment, DepartmentReviewStatus> {
     const result: Record<ReviewDepartment, DepartmentReviewStatus> = {
+        quan_ly: { department: 'quan_ly', status: 'pending' },
         phap_ly: { department: 'phap_ly', status: 'pending' },
-        tai_chinh: { department: 'tai_chinh', status: 'pending' },
         ke_toan: { department: 'ke_toan', status: 'pending' },
+        tai_chinh: { department: 'tai_chinh', status: 'pending' },
     };
 
-    // Process notes in order (oldest to newest) - last one wins
     for (const note of notes) {
         const decoded = decodeDeptReview(note.content);
         if (decoded) {
@@ -115,17 +118,14 @@ export function extractDeptReviews(
     return result;
 }
 
-// Check if all departments have approved
 export function isFullyApproved(deptReviews: Record<ReviewDepartment, DepartmentReviewStatus>): boolean {
     return Object.values(deptReviews).every((r) => r.status === 'approved');
 }
 
-// Check if any department has rejected
 export function hasRejection(deptReviews: Record<ReviewDepartment, DepartmentReviewStatus>): boolean {
     return Object.values(deptReviews).some((r) => r.status === 'rejected');
 }
 
-// Get overall progress
 export function getReviewProgress(deptReviews: Record<ReviewDepartment, DepartmentReviewStatus>): {
     completed: number;
     total: number;
@@ -134,4 +134,17 @@ export function getReviewProgress(deptReviews: Record<ReviewDepartment, Departme
     const total = Object.keys(deptReviews).length;
     const completed = Object.values(deptReviews).filter((r) => r.status !== 'pending').length;
     return { completed, total, percentage: Math.round((completed / total) * 100) };
+}
+
+// Get the current workflow step based on status
+export function getCurrentStep(status: string): ReviewDepartment | null {
+    return WORKFLOW_STATUSES[status]?.nextStep || null;
+}
+
+// Get the next status after a step is approved
+export function getNextStatus(currentStatus: string): string {
+    const statusOrder = ['cho_quan_ly', 'cho_phap_che', 'cho_ke_toan', 'cho_tai_chinh', 'hoan_tat'];
+    const idx = statusOrder.indexOf(currentStatus);
+    if (idx === -1 || idx >= statusOrder.length - 1) return 'hoan_tat';
+    return statusOrder[idx + 1];
 }
