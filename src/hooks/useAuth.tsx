@@ -2,12 +2,13 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
-type AppRole = "admin" | "user";
+type AppRole = "admin" | "user" | "accountant" | "finance";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   role: AppRole | null;
+  roles: AppRole[];
   profile: { full_name: string; department: string } | null;
   loading: boolean;
   signOut: () => Promise<void>;
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   role: null,
+  roles: [],
   profile: null,
   loading: true,
   signOut: async () => {},
@@ -26,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [roles, setRoles] = useState<AppRole[]>([]);
   const [profile, setProfile] = useState<{ full_name: string; department: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -36,10 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ]);
 
     if (rolesRes.data && rolesRes.data.length > 0) {
-      const hasAdmin = rolesRes.data.some((r: any) => r.role === "admin");
+      const allRoles = rolesRes.data.map((r: any) => r.role as AppRole);
+      setRoles(allRoles);
+      const hasAdmin = allRoles.includes("admin");
       setRole(hasAdmin ? "admin" : "user");
     } else {
       setRole("user");
+      setRoles(["user"]);
     }
 
     if (profileRes.data) {
@@ -56,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTimeout(() => fetchUserData(session.user.id), 0);
         } else {
           setRole(null);
+          setRoles([]);
           setProfile(null);
         }
         setLoading(false);
@@ -79,11 +86,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setRole(null);
+    setRoles([]);
     setProfile(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, profile, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, role, roles, profile, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -5,6 +5,7 @@ import {
   FileSearch,
   Brain,
   Scale,
+  UserCog,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,6 +30,7 @@ const adminMenuItems = [
 
 const advancedMenuItems = [
   { title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Brain },
+  { title: "Quản lý người duyệt", url: "/quan-ly-nguoi-duyet", icon: UserCog },
 ];
 
 const userMenuItems = [

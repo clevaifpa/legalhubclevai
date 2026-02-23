@@ -101,6 +101,7 @@ const ContractCategories = () => {
     expiry_date: "",
     department: "",
     risk_level: "thap" as string,
+    approved_pe_number: "",
   });
   const [docFile, setDocFile] = useState<File | null>(null);
   const [signedPdfFile, setSignedPdfFile] = useState<File | null>(null);
@@ -215,7 +216,8 @@ const ContractCategories = () => {
         created_by: user?.id,
         file_url: fileUrl,
         signed_file_url: signedFileUrl,
-      });
+        approved_pe_number: form.approved_pe_number.trim() || null,
+      } as any);
 
       if (error) throw error;
 
@@ -242,7 +244,7 @@ const ContractCategories = () => {
   };
 
   const resetForm = () => {
-    setForm({ title: "", partner_name: "", contract_type: "khac", status: "nhap", value: "", effective_date: "", expiry_date: "", department: "", risk_level: "thap" });
+    setForm({ title: "", partner_name: "", contract_type: "khac", status: "nhap", value: "", effective_date: "", expiry_date: "", department: "", risk_level: "thap", approved_pe_number: "" });
     setDocFile(null);
     setSignedPdfFile(null);
   };
@@ -344,6 +346,10 @@ const ContractCategories = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
+                  <Label>Số PE đã duyệt</Label>
+                  <Input value={form.approved_pe_number} onChange={(e) => setForm({ ...form, approved_pe_number: e.target.value })} placeholder="VD: PE-2026-001" />
+                </div>
+                <div className="space-y-2">
                   <Label>File .doc / .docx</Label>
                   <Input type="file" accept=".doc,.docx" onChange={(e) => setDocFile(e.target.files?.[0] || null)} />
                 </div>
@@ -374,6 +380,7 @@ const ContractCategories = () => {
                   <TableHead>Hiệu lực</TableHead>
                   <TableHead>Hết hạn</TableHead>
                   <TableHead>Đơn vị</TableHead>
+                  <TableHead>Số PE</TableHead>
                   <TableHead>Files</TableHead>
                   {isAdmin && <TableHead>Thao tác</TableHead>}
                 </TableRow>
@@ -391,6 +398,7 @@ const ContractCategories = () => {
                     <TableCell className="text-sm text-muted-foreground">{c.effective_date ? formatDate(c.effective_date) : "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{c.expiry_date ? formatDate(c.expiry_date) : "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{c.department || "—"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{c.approved_pe_number || "—"}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         {c.file_url && (
