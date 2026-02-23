@@ -71,7 +71,7 @@ const Auth = () => {
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
             <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary">
-              <Scale className="h-6 w-6 text-primary-foreground" />
+              <span className="text-primary-foreground font-bold text-lg">LH</span>
             </div>
           </div>
           <div>
@@ -95,8 +95,7 @@ const Auth = () => {
                 />
               </div>
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={loading}>
-                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Gửi email đặt lại mật khẩu
+                {loading ? "Đang gửi..." : "Gửi email đặt lại mật khẩu"}
               </Button>
               <div className="text-center">
                 <button type="button" onClick={() => setIsForgotPassword(false)} className="text-sm text-accent hover:underline">
@@ -135,8 +134,7 @@ const Auth = () => {
                   </div>
                 )}
                 <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={loading}>
-                  {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  {isLogin ? "Đăng nhập" : "Đăng ký"}
+                  {loading ? "Đang xử lý..." : isLogin ? "Đăng nhập" : "Đăng ký"}
                 </Button>
               </form>
               <div className="mt-4 text-center">
