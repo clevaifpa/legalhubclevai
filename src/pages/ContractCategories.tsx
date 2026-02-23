@@ -180,8 +180,22 @@ const ContractCategories = () => {
   const uploadFile = async (file: File, path: string) => {
     const { data, error } = await supabase.storage.from("contracts").upload(path, file, { upsert: true });
     if (error) throw error;
-    const { data: urlData } = supabase.storage.from("contracts").getPublicUrl(path);
-    return urlData.publicUrl;
+    // Store the path, not a public URL (bucket is private)
+    return path;
+  };
+
+  const getSignedUrl = async (storagePath: string) => {
+    const { data, error } = await supabase.storage.from("contracts").createSignedUrl(storagePath, 3600);
+    if (error) {
+      toast.error("Không thể mở file", { description: error.message });
+      return null;
+    }
+    return data.signedUrl;
+  };
+
+  const openFile = async (storagePath: string) => {
+    const url = await getSignedUrl(storagePath);
+    if (url) window.open(url, "_blank");
   };
 
   const handleUploadContract = async () => {
@@ -402,25 +416,19 @@ const ContractCategories = () => {
                     <TableCell>
                       <div className="flex gap-1">
                         {c.file_url && (
-                          <a href={c.file_url} target="_blank" rel="noopener noreferrer">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="File DOC">
-                              <FileText className="h-3.5 w-3.5" />
-                            </Button>
-                          </a>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="File DOC" onClick={() => openFile(c.file_url)}>
+                            <FileText className="h-3.5 w-3.5" />
+                          </Button>
                         )}
                         {c.signed_file_url && (
-                          <a href={c.signed_file_url} target="_blank" rel="noopener noreferrer">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="PDF đã ký">
-                              <Eye className="h-3.5 w-3.5 text-success" />
-                            </Button>
-                          </a>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="PDF đã ký" onClick={() => openFile(c.signed_file_url)}>
+                            <Eye className="h-3.5 w-3.5 text-success" />
+                          </Button>
                         )}
                         {c.liquidation_file_url && (
-                          <a href={c.liquidation_file_url} target="_blank" rel="noopener noreferrer">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Biên bản thanh lý">
-                              <Download className="h-3.5 w-3.5 text-info" />
-                            </Button>
-                          </a>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Biên bản thanh lý" onClick={() => openFile(c.liquidation_file_url)}>
+                            <Download className="h-3.5 w-3.5 text-info" />
+                          </Button>
                         )}
                         {(c.status === "het_hieu_luc" || c.status === "da_ky") && !c.liquidation_file_url && isAdmin && (
                           <label className="cursor-pointer">
