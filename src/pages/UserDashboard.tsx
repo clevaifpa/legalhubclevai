@@ -8,51 +8,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  Plus,
-  FileSearch,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Calendar,
-  Building2,
-  DollarSign,
-  Loader2,
-  MessageSquare,
-  Trash2,
-  Link,
-  ExternalLink,
-} from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTracker";
-import { extractDeptReviews, decodeDeptReview } from "@/types/reviewDepartments";
+import { extractDeptReviews, decodeDeptReview, WORKFLOW_STATUSES } from "@/types/reviewDepartments";
 
 const isValidGoogleDocUrl = (url: string): boolean => {
   if (!url) return true;
@@ -60,28 +30,25 @@ const isValidGoogleDocUrl = (url: string): boolean => {
 };
 
 const DEPARTMENT_OPTIONS = [
-  "Phòng Kinh doanh",
-  "Phòng Marketing",
-  "Phòng Nhân sự",
-  "Phòng Kế toán",
-  "Phòng Tài chính",
-  "Phòng IT",
-  "Phòng Hành chính",
-  "Phòng Pháp chế",
-  "Phòng Sản xuất",
-  "Phòng R&D",
-  "Ban Giám đốc",
-  "Khác",
+  "Phòng Kinh doanh", "Phòng Marketing", "Phòng Nhân sự", "Phòng Kế toán",
+  "Phòng Tài chính", "Phòng IT", "Phòng Hành chính", "Phòng Pháp chế",
+  "Phòng Sản xuất", "Phòng R&D", "Ban Giám đốc", "Khác",
 ];
 
-const PRIORITY_LABELS: Record<string, string> = {
-  cao: "Cao",
-  trung_binh: "Trung bình",
-  thap: "Thấp",
-};
+const CONTRACT_TYPE_CATEGORIES = [
+  "Hợp đồng nguyên tắc",
+  "Hợp đồng sử dụng 1 lần",
+  "Hợp đồng sử dụng dài hạn",
+  "Hợp đồng/phụ lục gia hạn",
+];
 
 const STATUS_LABELS: Record<string, string> = {
   cho_xu_ly: "Chờ xử lý",
+  cho_quan_ly: "Chờ Quản lý xác nhận",
+  cho_phap_che: "Chờ Pháp chế review",
+  cho_ke_toan: "Chờ Kế toán review",
+  cho_tai_chinh: "Chờ Tài chính review",
+  hoan_tat: "Hoàn tất",
   dang_review: "Đang review",
   da_hoan_thanh: "Đã hoàn thành",
   yeu_cau_chinh_sua: "Yêu cầu chỉnh sửa",
@@ -90,6 +57,11 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   cho_xu_ly: "bg-muted text-muted-foreground",
+  cho_quan_ly: "bg-muted text-muted-foreground",
+  cho_phap_che: "bg-info/10 text-info border-info/20",
+  cho_ke_toan: "bg-info/10 text-info border-info/20",
+  cho_tai_chinh: "bg-info/10 text-info border-info/20",
+  hoan_tat: "bg-success/10 text-success border-success/20",
   dang_review: "bg-info/10 text-info border-info/20",
   da_hoan_thanh: "bg-success/10 text-success border-success/20",
   yeu_cau_chinh_sua: "bg-warning/10 text-warning border-warning/20",
@@ -99,6 +71,8 @@ const STATUS_COLORS: Record<string, string> = {
 interface PaymentPhase {
   phase_name: string;
   payment_amount: string;
+  payment_due_date: string;
+  is_na: boolean;
 }
 
 const UserDashboard = () => {
@@ -106,6 +80,7 @@ const UserDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
   const [notes, setNotes] = useState<Record<string, any[]>>({});
   const [paymentSchedules, setPaymentSchedules] = useState<Record<string, any[]>>({});
+  const [managers, setManagers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -115,6 +90,7 @@ const UserDashboard = () => {
     contract_title: "",
     partner_name: "",
     contract_value: "",
+    contract_value_na: false,
     request_deadline: "",
     contract_start_date: "",
     contract_end_date: "",
@@ -123,15 +99,18 @@ const UserDashboard = () => {
     google_doc_url: "",
     approved_pe_number: "",
     department: "",
+    contract_type_category: "",
+    tax_code: "",
+    manager_id: "",
   });
 
   const [paymentPhases, setPaymentPhases] = useState<PaymentPhase[]>([
-    { phase_name: "Đợt 01", payment_amount: "" },
+    { phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false },
   ]);
 
   const addPaymentPhase = () => {
     const num = paymentPhases.length + 1;
-    setPaymentPhases([...paymentPhases, { phase_name: `Đợt ${String(num).padStart(2, "0")}`, payment_amount: "" }]);
+    setPaymentPhases([...paymentPhases, { phase_name: `Đợt ${String(num).padStart(2, "0")}`, payment_amount: "", payment_due_date: "", is_na: false }]);
   };
 
   const removePaymentPhase = (idx: number) => {
@@ -139,9 +118,33 @@ const UserDashboard = () => {
     setPaymentPhases(paymentPhases.filter((_, i) => i !== idx));
   };
 
-  const updatePaymentPhase = (idx: number, field: keyof PaymentPhase, value: string) => {
+  const updatePaymentPhase = (idx: number, field: keyof PaymentPhase, value: any) => {
     setPaymentPhases(paymentPhases.map((p, i) => i === idx ? { ...p, [field]: value } : p));
   };
+
+  // Fetch managers filtered by department
+  const fetchManagers = async (dept: string) => {
+    if (!dept) { setManagers([]); return; }
+    const { data } = await supabase
+      .from("user_roles")
+      .select("user_id, department")
+      .eq("role", "manager" as any)
+      .eq("department", dept);
+    if (data && data.length > 0) {
+      const userIds = data.map((r: any) => r.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", userIds);
+      setManagers(profiles || []);
+    } else {
+      setManagers([]);
+    }
+  };
+
+  useEffect(() => {
+    if (form.department) fetchManagers(form.department);
+  }, [form.department]);
 
   const fetchRequests = async () => {
     if (!user) return;
@@ -192,14 +195,19 @@ const UserDashboard = () => {
     if (!user || !profile) return;
 
     if (form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url)) {
-      toast.error("Link không hợp lệ", { description: "Vui lòng nhập đúng link Google Docs (https://docs.google.com/...)" });
+      toast.error("Link không hợp lệ", { description: "Vui lòng nhập đúng link Google Docs" });
       return;
     }
 
-    // Validate payment phases
-    const invalidPhases = paymentPhases.some(p => !p.payment_amount || parseInt(p.payment_amount) <= 0);
+    const invalidPhases = paymentPhases.some(p => !p.is_na && (!p.payment_amount || parseInt(p.payment_amount) <= 0));
     if (invalidPhases) {
-      toast.error("Vui lòng nhập giá trị thanh toán cho tất cả các đợt");
+      toast.error("Vui lòng nhập giá trị thanh toán hoặc chọn N/A cho tất cả các đợt");
+      return;
+    }
+
+    const missingDates = paymentPhases.some(p => !p.payment_due_date);
+    if (missingDates) {
+      toast.error("Vui lòng nhập ngày thanh toán cho tất cả các đợt");
       return;
     }
 
@@ -212,7 +220,7 @@ const UserDashboard = () => {
       priority: form.priority as any,
       contract_title: form.contract_title,
       partner_name: form.partner_name,
-      contract_value: parseInt(form.contract_value) || 0,
+      contract_value: form.contract_value_na ? 0 : (parseInt(form.contract_value) || 0),
       request_deadline: form.request_deadline,
       contract_start_date: form.contract_start_date || null,
       contract_end_date: form.contract_end_date || null,
@@ -220,6 +228,10 @@ const UserDashboard = () => {
       description: form.description,
       file_url: form.google_doc_url || null,
       approved_pe_number: form.approved_pe_number.trim() || null,
+      contract_type_category: form.contract_type_category,
+      tax_code: form.tax_code,
+      manager_id: form.manager_id || null,
+      status: "cho_quan_ly" as any,
     } as any).select().single();
 
     if (error) {
@@ -228,12 +240,12 @@ const UserDashboard = () => {
       return;
     }
 
-    // Insert payment schedules
     if (insertedReq) {
       const schedules = paymentPhases.map(p => ({
         review_request_id: insertedReq.id,
         phase_name: p.phase_name,
-        payment_amount: parseInt(p.payment_amount) || 0,
+        payment_amount: p.is_na ? 0 : (parseInt(p.payment_amount) || 0),
+        payment_due_date: p.payment_due_date,
       }));
       await supabase.from("payment_schedules").insert(schedules as any);
     }
@@ -241,8 +253,8 @@ const UserDashboard = () => {
     setSubmitting(false);
     toast.success("Yêu cầu review đã được tạo!");
     setDialogOpen(false);
-    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "" });
-    setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "" }]);
+    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "" });
+    setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
     fetchRequests();
   };
 
@@ -257,10 +269,10 @@ const UserDashboard = () => {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-accent" /></div>;
+    return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Đang tải...</p></div>;
   }
 
-  const isFormValid = form.contract_title && form.request_deadline && form.google_doc_url && isValidGoogleDocUrl(form.google_doc_url) && form.approved_pe_number.trim() && form.partner_name.trim() && form.contract_value && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && paymentPhases.every(p => p.payment_amount && parseInt(p.payment_amount) > 0);
+  const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && form.manager_id && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -272,7 +284,6 @@ const UserDashboard = () => {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">
-              <Plus className="h-4 w-4 mr-2" />
               Tạo yêu cầu mới
             </Button>
           </DialogTrigger>
@@ -283,24 +294,48 @@ const UserDashboard = () => {
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Mức độ ưu tiên *</Label>
-                  <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cao">🔴 Cao</SelectItem>
-                      <SelectItem value="trung_binh">🟡 Trung bình</SelectItem>
-                      <SelectItem value="thap">🟢 Thấp</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
                   <Label>Phòng ban *</Label>
-                  <Select value={form.department} onValueChange={(v) => setForm({ ...form, department: v })}>
+                  <Select value={form.department} onValueChange={(v) => setForm({ ...form, department: v, manager_id: "" })}>
                     <SelectTrigger><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
                     <SelectContent>
                       {DEPARTMENT_OPTIONS.map((dept) => (
                         <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Người quản lý *</Label>
+                  <Select value={form.manager_id} onValueChange={(v) => setForm({ ...form, manager_id: v })}>
+                    <SelectTrigger><SelectValue placeholder={managers.length === 0 ? "Chọn phòng ban trước" : "Chọn quản lý"} /></SelectTrigger>
+                    <SelectContent>
+                      {managers.map((m) => (
+                        <SelectItem key={m.user_id} value={m.user_id}>{m.full_name || "Chưa đặt tên"}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Loại hợp đồng *</Label>
+                  <Select value={form.contract_type_category} onValueChange={(v) => setForm({ ...form, contract_type_category: v })}>
+                    <SelectTrigger><SelectValue placeholder="Chọn loại" /></SelectTrigger>
+                    <SelectContent>
+                      {CONTRACT_TYPE_CATEGORIES.map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Mức độ ưu tiên *</Label>
+                  <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cao">Cao</SelectItem>
+                      <SelectItem value="trung_binh">Trung bình</SelectItem>
+                      <SelectItem value="thap">Thấp</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -315,9 +350,21 @@ const UserDashboard = () => {
                   <Input value={form.partner_name} onChange={(e) => setForm({ ...form, partner_name: e.target.value })} placeholder="Tên công ty đối tác" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Giá trị hợp đồng (VNĐ) *</Label>
-                  <Input type="number" value={form.contract_value} onChange={(e) => setForm({ ...form, contract_value: e.target.value })} placeholder="0" />
+                  <Label>Mã số thuế đối tác *</Label>
+                  <Input value={form.tax_code} onChange={(e) => setForm({ ...form, tax_code: e.target.value })} placeholder="VD: 0123456789" />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <Label>Giá trị hợp đồng (VNĐ) *</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Checkbox checked={form.contract_value_na} onCheckedChange={(v) => setForm({ ...form, contract_value_na: !!v, contract_value: "" })} id="value-na" />
+                    <label htmlFor="value-na" className="text-xs text-muted-foreground cursor-pointer">N/A</label>
+                  </div>
+                </div>
+                {!form.contract_value_na && (
+                  <Input type="number" value={form.contract_value} onChange={(e) => setForm({ ...form, contract_value: e.target.value })} placeholder="0" />
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -340,10 +387,7 @@ const UserDashboard = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="flex items-center gap-1.5">
-                  <Link className="h-3.5 w-3.5" />
-                  Link Google Doc *
-                </Label>
+                <Label>Link Google Doc</Label>
                 <Input
                   type="url"
                   value={form.google_doc_url}
@@ -351,11 +395,8 @@ const UserDashboard = () => {
                   placeholder="https://docs.google.com/document/d/..."
                   className={form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url) ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
-                <p className="text-xs text-muted-foreground">
-                  📌 Dán link Google Docs và đảm bảo đã <span className="font-semibold text-accent">cấp quyền chỉnh sửa</span> (Editor) cho admin
-                </p>
                 {form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url) && (
-                  <p className="text-xs text-destructive">⚠️ Link không hợp lệ. Vui lòng nhập link Google Docs</p>
+                  <p className="text-xs text-destructive">Link không hợp lệ</p>
                 )}
               </div>
               <div className="space-y-2">
@@ -368,29 +409,51 @@ const UserDashboard = () => {
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-semibold">Đợt thanh toán *</Label>
                   <Button type="button" variant="outline" size="sm" onClick={addPaymentPhase}>
-                    <Plus className="h-3.5 w-3.5 mr-1" /> Thêm đợt
+                    Thêm đợt
                   </Button>
                 </div>
                 {paymentPhases.map((phase, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <Input
-                      value={phase.phase_name}
-                      onChange={(e) => updatePaymentPhase(idx, "phase_name", e.target.value)}
-                      className="w-28 shrink-0"
-                      placeholder="Tên đợt"
-                    />
-                    <Input
-                      type="number"
-                      value={phase.payment_amount}
-                      onChange={(e) => updatePaymentPhase(idx, "payment_amount", e.target.value)}
-                      placeholder="Giá trị (VNĐ)"
-                      className="flex-1"
-                    />
-                    {paymentPhases.length > 1 && (
-                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive" onClick={() => removePaymentPhase(idx)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
+                  <div key={idx} className="space-y-2 p-3 rounded border bg-background">
+                    <div className="flex items-center justify-between">
+                      <Input
+                        value={phase.phase_name}
+                        onChange={(e) => updatePaymentPhase(idx, "phase_name", e.target.value)}
+                        className="w-28"
+                        placeholder="Tên đợt"
+                      />
+                      {paymentPhases.length > 1 && (
+                        <Button type="button" variant="ghost" size="sm" className="text-destructive text-xs" onClick={() => removePaymentPhase(idx)}>
+                          Xóa
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs text-muted-foreground">Giá trị (VNĐ)</span>
+                          <div className="flex items-center gap-1">
+                            <Checkbox checked={phase.is_na} onCheckedChange={(v) => updatePaymentPhase(idx, "is_na", !!v)} />
+                            <span className="text-xs text-muted-foreground">N/A</span>
+                          </div>
+                        </div>
+                        {!phase.is_na && (
+                          <Input
+                            type="number"
+                            value={phase.payment_amount}
+                            onChange={(e) => updatePaymentPhase(idx, "payment_amount", e.target.value)}
+                            placeholder="0"
+                          />
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Ngày thanh toán *</span>
+                        <Input
+                          type="date"
+                          value={phase.payment_due_date}
+                          onChange={(e) => updatePaymentPhase(idx, "payment_due_date", e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -403,8 +466,7 @@ const UserDashboard = () => {
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
               <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSubmit} disabled={submitting || !isFormValid}>
-                {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Gửi yêu cầu
+                {submitting ? "Đang gửi..." : "Gửi yêu cầu"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -414,15 +476,14 @@ const UserDashboard = () => {
       {/* Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Chờ xử lý", status: "cho_xu_ly", icon: Clock },
-          { label: "Đang review", status: "dang_review", icon: FileSearch },
-          { label: "Hoàn thành", status: "da_hoan_thanh", icon: CheckCircle },
-          { label: "Cần chỉnh sửa", status: "yeu_cau_chinh_sua", icon: AlertCircle },
+          { label: "Chờ duyệt", statuses: ["cho_quan_ly", "cho_phap_che", "cho_ke_toan", "cho_tai_chinh", "cho_xu_ly"] },
+          { label: "Đang review", statuses: ["dang_review"] },
+          { label: "Hoàn tất", statuses: ["hoan_tat", "da_hoan_thanh"] },
+          { label: "Từ chối", statuses: ["tu_choi", "yeu_cau_chinh_sua"] },
         ].map((item) => (
-          <Card key={item.status} className="border shadow-sm">
+          <Card key={item.label} className="border shadow-sm">
             <CardContent className="p-3 text-center">
-              <item.icon className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-              <p className="text-2xl font-bold">{requests.filter((r) => r.status === item.status).length}</p>
+              <p className="text-2xl font-bold">{requests.filter((r) => item.statuses.includes(r.status)).length}</p>
               <p className="text-xs text-muted-foreground mt-1">{item.label}</p>
             </CardContent>
           </Card>
@@ -435,62 +496,46 @@ const UserDashboard = () => {
           <Card key={req.id} className="border shadow-sm hover:shadow-md transition-all animate-slide-up" style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}>
             <CardHeader className="pb-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-info/10 shrink-0 mt-0.5">
-                    <FileSearch className="h-4 w-4 text-info" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base font-semibold">{req.contract_title}</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      Ưu tiên: <span className="font-medium">{PRIORITY_LABELS[req.priority] || req.priority}</span>
-                      {req.department && <> — Phòng ban: <span className="font-medium">{req.department}</span></>}
-                    </p>
-                  </div>
+                <div>
+                  <CardTitle className="text-base font-semibold">{req.contract_title}</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {req.department && <>Phòng ban: <span className="font-medium">{req.department}</span> — </>}
+                    {req.contract_type_category && <>{req.contract_type_category} — </>}
+                    MST: {req.tax_code || "—"}
+                  </p>
                 </div>
                 <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
               </div>
             </CardHeader>
             <CardContent className="pt-0 space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3 rounded-lg bg-muted/40">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Đối tác</p>
-                    <p className="text-sm font-medium">{req.partner_name || "—"}</p>
-                  </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Đối tác</p>
+                  <p className="text-sm font-medium">{req.partner_name || "—"}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Giá trị</p>
-                    <p className="text-sm font-medium">{req.contract_value > 0 ? formatCurrency(req.contract_value) : "—"}</p>
-                  </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Giá trị</p>
+                  <p className="text-sm font-medium">{req.contract_value > 0 ? formatCurrency(req.contract_value) : "N/A"}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Hạn yêu cầu</p>
-                    <p className="text-sm font-medium">{formatDate(req.request_deadline)}</p>
-                  </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Hạn yêu cầu</p>
+                  <p className="text-sm font-medium">{formatDate(req.request_deadline)}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Ngày gửi</p>
-                    <p className="text-sm font-medium">{formatDate(req.created_at)}</p>
-                  </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Ngày gửi</p>
+                  <p className="text-sm font-medium">{formatDate(req.created_at)}</p>
                 </div>
               </div>
 
               {/* Payment Schedule */}
               {paymentSchedules[req.id] && paymentSchedules[req.id].length > 0 && (
                 <div className="p-3 rounded-lg bg-muted/30 space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">💰 Đợt thanh toán</p>
+                  <p className="text-xs font-medium text-muted-foreground">Đợt thanh toán</p>
                   <div className="space-y-1">
                     {paymentSchedules[req.id].map((ps: any) => (
                       <div key={ps.id} className="flex items-center justify-between text-sm">
                         <span className="font-medium">{ps.phase_name}</span>
-                        <span>{formatCurrency(ps.payment_amount)}</span>
+                        <span>{ps.payment_amount > 0 ? formatCurrency(ps.payment_amount) : "N/A"} — {ps.payment_due_date ? formatDate(ps.payment_due_date) : "—"}</span>
                       </div>
                     ))}
                   </div>
@@ -502,12 +547,11 @@ const UserDashboard = () => {
                 <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[req.id])} />
               )}
 
-              {/* File link - show legal_review_doc_link if available, otherwise original */}
+              {/* File links */}
               {(req.legal_review_doc_link || req.file_url) && (
                 <div className="space-y-1">
                   {req.legal_review_doc_link && (
                     <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
-                      <ExternalLink className="h-3.5 w-3.5" />
                       Xem tài liệu đã review (Pháp chế)
                     </a>
                   )}
@@ -517,7 +561,7 @@ const UserDashboard = () => {
                         const url = req.file_url as string;
                         if (url.includes("/storage/v1/object/public/contracts/")) {
                           const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
-                          const { data, error } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
+                          const { data } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
                           if (data) window.open(data.signedUrl, "_blank");
                           else toast.error("Không thể mở file");
                         } else {
@@ -526,7 +570,6 @@ const UserDashboard = () => {
                       }}
                       className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
                     >
-                      <ExternalLink className="h-3.5 w-3.5" />
                       Xem tài liệu ban đầu
                     </button>
                   )}
@@ -535,17 +578,14 @@ const UserDashboard = () => {
 
               {req.admin_notes && (
                 <div className="p-3 rounded-lg bg-accent/5 border border-accent/20">
-                  <p className="text-xs font-medium text-accent mb-1">📋 Nhận xét pháp chế</p>
+                  <p className="text-xs font-medium text-accent mb-1">Nhận xét pháp chế</p>
                   <p className="text-sm">{req.admin_notes}</p>
                 </div>
               )}
 
               {notes[req.id] && notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length > 0 && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm font-medium">Lịch sử xử lý ({notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length})</p>
-                  </div>
+                  <p className="text-sm font-medium">Lịch sử xử lý ({notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length})</p>
                   <div className="space-y-2 pl-6 border-l-2 border-muted ml-2">
                     {notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).map((note: any) => (
                       <div key={note.id} className="p-3 rounded-lg bg-card border text-sm relative">
@@ -561,15 +601,13 @@ const UserDashboard = () => {
                 </div>
               )}
 
-              {/* Delete button for pending requests */}
-              {req.status === "cho_xu_ly" && (
+              {req.status === "cho_quan_ly" && (
                 <>
                   <Separator />
                   <div className="flex justify-end">
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="sm" className="text-xs text-destructive hover:text-destructive">
-                          <Trash2 className="h-3.5 w-3.5 mr-1" />
                           Xóa yêu cầu
                         </Button>
                       </AlertDialogTrigger>
@@ -594,7 +632,6 @@ const UserDashboard = () => {
 
       {requests.length === 0 && (
         <div className="text-center py-12">
-          <FileSearch className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
           <p className="text-muted-foreground font-medium">Chưa có yêu cầu review nào</p>
           <p className="text-sm text-muted-foreground/70 mt-1">Nhấn "Tạo yêu cầu mới" để bắt đầu</p>
         </div>

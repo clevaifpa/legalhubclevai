@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
-type AppRole = "admin" | "user" | "accountant" | "finance";
+type AppRole = "admin" | "user" | "accountant" | "finance" | "manager";
 
 interface AuthContextType {
   user: User | null;
@@ -10,6 +10,7 @@ interface AuthContextType {
   role: AppRole | null;
   roles: AppRole[];
   profile: { full_name: string; department: string } | null;
+  managerDepartment: string | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   roles: [],
   profile: null,
+  managerDepartment: null,
   loading: true,
   signOut: async () => {},
 });
@@ -30,19 +32,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [profile, setProfile] = useState<{ full_name: string; department: string } | null>(null);
+  const [managerDepartment, setManagerDepartment] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (userId: string) => {
     const [rolesRes, profileRes] = await Promise.all([
-      supabase.from("user_roles").select("role").eq("user_id", userId),
+      supabase.from("user_roles").select("role, department").eq("user_id", userId),
       supabase.from("profiles").select("full_name, department").eq("user_id", userId).single(),
     ]);
 
     if (rolesRes.data && rolesRes.data.length > 0) {
       const allRoles = rolesRes.data.map((r: any) => r.role as AppRole);
       setRoles(allRoles);
-      const hasAdmin = allRoles.includes("admin");
-      setRole(hasAdmin ? "admin" : "user");
+      // Priority: admin > manager > accountant > finance > user
+      if (allRoles.includes("admin")) setRole("admin");
+      else if (allRoles.includes("manager")) setRole("manager");
+      else if (allRoles.includes("accountant")) setRole("accountant");
+      else if (allRoles.includes("finance")) setRole("finance");
+      else setRole("user");
+
+      // Get manager department
+      const managerRole = rolesRes.data.find((r: any) => r.role === "manager");
+      if (managerRole) setManagerDepartment((managerRole as any).department || null);
     } else {
       setRole("user");
       setRoles(["user"]);
@@ -64,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(null);
           setRoles([]);
           setProfile(null);
+          setManagerDepartment(null);
         }
         setLoading(false);
       }
@@ -88,10 +100,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole(null);
     setRoles([]);
     setProfile(null);
+    setManagerDepartment(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, roles, profile, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, role, roles, profile, managerDepartment, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

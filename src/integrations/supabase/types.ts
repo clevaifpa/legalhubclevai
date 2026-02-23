@@ -132,6 +132,7 @@ export type Database = {
           risk_level: Database["public"]["Enums"]["risk_level"]
           signed_file_url: string | null
           status: Database["public"]["Enums"]["contract_status"]
+          tax_code: string | null
           title: string
           updated_at: string
           value: number | null
@@ -152,6 +153,7 @@ export type Database = {
           risk_level?: Database["public"]["Enums"]["risk_level"]
           signed_file_url?: string | null
           status?: Database["public"]["Enums"]["contract_status"]
+          tax_code?: string | null
           title: string
           updated_at?: string
           value?: number | null
@@ -172,6 +174,7 @@ export type Database = {
           risk_level?: Database["public"]["Enums"]["risk_level"]
           signed_file_url?: string | null
           status?: Database["public"]["Enums"]["contract_status"]
+          tax_code?: string | null
           title?: string
           updated_at?: string
           value?: number | null
@@ -296,6 +299,7 @@ export type Database = {
           contract_end_date: string | null
           contract_start_date: string | null
           contract_title: string
+          contract_type_category: string | null
           contract_value: number | null
           created_at: string
           department: string
@@ -303,6 +307,7 @@ export type Database = {
           file_url: string | null
           id: string
           legal_review_doc_link: string | null
+          manager_id: string | null
           partner_name: string
           priority: Database["public"]["Enums"]["priority_level"]
           request_deadline: string
@@ -310,6 +315,7 @@ export type Database = {
           requester_name: string
           review_deadline: string | null
           status: Database["public"]["Enums"]["review_request_status"]
+          tax_code: string | null
           updated_at: string
         }
         Insert: {
@@ -318,6 +324,7 @@ export type Database = {
           contract_end_date?: string | null
           contract_start_date?: string | null
           contract_title: string
+          contract_type_category?: string | null
           contract_value?: number | null
           created_at?: string
           department: string
@@ -325,6 +332,7 @@ export type Database = {
           file_url?: string | null
           id?: string
           legal_review_doc_link?: string | null
+          manager_id?: string | null
           partner_name?: string
           priority?: Database["public"]["Enums"]["priority_level"]
           request_deadline: string
@@ -332,6 +340,7 @@ export type Database = {
           requester_name: string
           review_deadline?: string | null
           status?: Database["public"]["Enums"]["review_request_status"]
+          tax_code?: string | null
           updated_at?: string
         }
         Update: {
@@ -340,6 +349,7 @@ export type Database = {
           contract_end_date?: string | null
           contract_start_date?: string | null
           contract_title?: string
+          contract_type_category?: string | null
           contract_value?: number | null
           created_at?: string
           department?: string
@@ -347,6 +357,7 @@ export type Database = {
           file_url?: string | null
           id?: string
           legal_review_doc_link?: string | null
+          manager_id?: string | null
           partner_name?: string
           priority?: Database["public"]["Enums"]["priority_level"]
           request_deadline?: string
@@ -354,22 +365,26 @@ export type Database = {
           requester_name?: string
           review_deadline?: string | null
           status?: Database["public"]["Enums"]["review_request_status"]
+          tax_code?: string | null
           updated_at?: string
         }
         Relationships: []
       }
       user_roles: {
         Row: {
+          department: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
+          department?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
+          department?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
@@ -391,7 +406,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user" | "accountant" | "finance"
+      app_role: "admin" | "user" | "accountant" | "finance" | "manager"
       contract_status:
         | "nhap"
         | "dang_review"
@@ -413,6 +428,11 @@ export type Database = {
         | "da_hoan_thanh"
         | "yeu_cau_chinh_sua"
         | "tu_choi"
+        | "cho_quan_ly"
+        | "cho_phap_che"
+        | "cho_ke_toan"
+        | "cho_tai_chinh"
+        | "hoan_tat"
       risk_level: "thap" | "trung_binh" | "cao"
     }
     CompositeTypes: {
@@ -541,7 +561,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "accountant", "finance"],
+      app_role: ["admin", "user", "accountant", "finance", "manager"],
       contract_status: [
         "nhap",
         "dang_review",
@@ -565,6 +585,11 @@ export const Constants = {
         "da_hoan_thanh",
         "yeu_cau_chinh_sua",
         "tu_choi",
+        "cho_quan_ly",
+        "cho_phap_che",
+        "cho_ke_toan",
+        "cho_tai_chinh",
+        "hoan_tat",
       ],
       risk_level: ["thap", "trung_binh", "cao"],
     },

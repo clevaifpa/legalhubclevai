@@ -6,42 +6,32 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Loader2, UserCog, Plus, Trash2, Search, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
+  admin: "Admin (Pháp chế)",
   user: "User",
+  manager: "Quản lý (Manager)",
   accountant: "Kế toán (Accountant)",
   finance: "Tài chính (Finance)",
 };
 
-const ASSIGNABLE_ROLES = ["accountant", "finance"] as const;
+const ASSIGNABLE_ROLES = ["manager", "accountant", "finance"] as const;
+
+const DEPARTMENT_OPTIONS = [
+  "Phòng Kinh doanh", "Phòng Marketing", "Phòng Nhân sự", "Phòng Kế toán",
+  "Phòng Tài chính", "Phòng IT", "Phòng Hành chính", "Phòng Pháp chế",
+  "Phòng Sản xuất", "Phòng R&D", "Ban Giám đốc", "Khác",
+];
 
 const RoleManagement = () => {
   const { user } = useAuth();
@@ -51,6 +41,7 @@ const RoleManagement = () => {
   const [search, setSearch] = useState("");
   const [selectedUserId, setSelectedUserId] = useState("");
   const [selectedRole, setSelectedRole] = useState<string>("");
+  const [selectedDepartment, setSelectedDepartment] = useState("");
   const [saving, setSaving] = useState(false);
 
   const fetchData = async () => {
@@ -63,20 +54,19 @@ const RoleManagement = () => {
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
-  const getUserRoles = (userId: string) => {
-    return roles.filter((r) => r.user_id === userId);
-  };
+  const getUserRoles = (userId: string) => roles.filter((r) => r.user_id === userId);
 
   const handleAddRole = async () => {
     if (!selectedUserId || !selectedRole) return;
+    if (selectedRole === "manager" && !selectedDepartment) {
+      toast.error("Vui lòng chọn phòng ban cho Manager");
+      return;
+    }
 
-    // Check if already has role
     const existing = roles.find(
-      (r) => r.user_id === selectedUserId && r.role === selectedRole
+      (r) => r.user_id === selectedUserId && r.role === selectedRole && (selectedRole !== "manager" || r.department === selectedDepartment)
     );
     if (existing) {
       toast.error("User đã có vai trò này");
@@ -87,7 +77,8 @@ const RoleManagement = () => {
     const { error } = await supabase.from("user_roles").insert({
       user_id: selectedUserId,
       role: selectedRole as any,
-    });
+      department: selectedRole === "manager" ? selectedDepartment : "",
+    } as any);
     setSaving(false);
 
     if (error) {
@@ -96,18 +87,15 @@ const RoleManagement = () => {
       toast.success("Đã thêm vai trò");
       setSelectedUserId("");
       setSelectedRole("");
+      setSelectedDepartment("");
       fetchData();
     }
   };
 
   const handleRemoveRole = async (roleId: string) => {
     const { error } = await supabase.from("user_roles").delete().eq("id", roleId);
-    if (error) {
-      toast.error("Lỗi xóa", { description: error.message });
-    } else {
-      toast.success("Đã gỡ vai trò");
-      fetchData();
-    }
+    if (error) toast.error("Lỗi xóa", { description: error.message });
+    else { toast.success("Đã gỡ vai trò"); fetchData(); }
   };
 
   const filteredProfiles = profiles.filter((p) => {
@@ -118,18 +106,13 @@ const RoleManagement = () => {
     );
   });
 
-  // Only show users with accountant/finance roles, plus all in search
   const usersWithApproverRoles = profiles.filter((p) => {
     const userRoles = getUserRoles(p.user_id);
-    return userRoles.some((r) => r.role === "accountant" || r.role === "finance");
+    return userRoles.some((r) => ["manager", "accountant", "finance"].includes(r.role));
   });
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Đang tải...</p></div>;
   }
 
   return (
@@ -137,17 +120,14 @@ const RoleManagement = () => {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Quản lý người duyệt hợp đồng</h1>
         <p className="text-muted-foreground">
-          Thêm hoặc gỡ vai trò Kế toán (Accountant) / Tài chính (Finance) cho nhân viên
+          Gán vai trò Manager (theo phòng ban), Kế toán, Tài chính cho nhân viên
         </p>
       </div>
 
       {/* Add Role Section */}
       <Card className="border shadow-sm">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Thêm vai trò duyệt
-          </CardTitle>
+          <CardTitle className="text-base">Thêm vai trò duyệt</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -163,25 +143,34 @@ const RoleManagement = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={selectedRole} onValueChange={setSelectedRole}>
-              <SelectTrigger className="w-full sm:w-56">
+            <Select value={selectedRole} onValueChange={(v) => { setSelectedRole(v); if (v !== "manager") setSelectedDepartment(""); }}>
+              <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Chọn vai trò..." />
               </SelectTrigger>
               <SelectContent>
                 {ASSIGNABLE_ROLES.map((role) => (
-                  <SelectItem key={role} value={role}>
-                    {ROLE_LABELS[role]}
-                  </SelectItem>
+                  <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {selectedRole === "manager" && (
+              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                <SelectTrigger className="w-full sm:w-56">
+                  <SelectValue placeholder="Chọn phòng ban..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEPARTMENT_OPTIONS.map((dept) => (
+                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button
               className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0"
               onClick={handleAddRole}
-              disabled={saving || !selectedUserId || !selectedRole}
+              disabled={saving || !selectedUserId || !selectedRole || (selectedRole === "manager" && !selectedDepartment)}
             >
-              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Thêm vai trò
+              {saving ? "Đang thêm..." : "Thêm vai trò"}
             </Button>
           </div>
         </CardContent>
@@ -190,19 +179,12 @@ const RoleManagement = () => {
       {/* Current Approvers */}
       <Card className="border shadow-sm">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4" />
-              Danh sách người duyệt ({usersWithApproverRoles.length})
-            </CardTitle>
-          </div>
+          <CardTitle className="text-base">Danh sách người duyệt ({usersWithApproverRoles.length})</CardTitle>
           <div className="relative mt-2">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Tìm theo tên hoặc phòng ban..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
             />
           </div>
         </CardHeader>
@@ -220,47 +202,29 @@ const RoleManagement = () => {
               {(search ? filteredProfiles : usersWithApproverRoles).map((p) => {
                 const userRoles = getUserRoles(p.user_id);
                 const approverRoles = userRoles.filter(
-                  (r) => r.role === "accountant" || r.role === "finance"
+                  (r) => ["manager", "accountant", "finance"].includes(r.role)
                 );
                 if (!search && approverRoles.length === 0) return null;
                 return (
                   <TableRow key={p.user_id}>
-                    <TableCell className="font-medium">
-                      {p.full_name || "Chưa đặt tên"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {p.department || "—"}
-                    </TableCell>
+                    <TableCell className="font-medium">{p.full_name || "Chưa đặt tên"}</TableCell>
+                    <TableCell className="text-muted-foreground">{p.department || "—"}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {userRoles.map((r) => (
-                          <Badge
-                            key={r.id}
-                            variant={
-                              r.role === "accountant"
-                                ? "default"
-                                : r.role === "finance"
-                                ? "secondary"
-                                : "outline"
-                            }
-                            className="text-xs"
-                          >
+                          <Badge key={r.id} variant={r.role === "manager" ? "default" : r.role === "accountant" ? "secondary" : "outline"} className="text-xs">
                             {ROLE_LABELS[r.role] || r.role}
+                            {r.role === "manager" && r.department ? ` (${r.department})` : ""}
                           </Badge>
                         ))}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 flex-wrap">
                         {approverRoles.map((r) => (
                           <AlertDialog key={r.id}>
                             <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 text-xs text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-3 w-3 mr-1" />
+                              <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive">
                                 Gỡ {ROLE_LABELS[r.role]?.split(" ")[0]}
                               </Button>
                             </AlertDialogTrigger>
@@ -268,15 +232,12 @@ const RoleManagement = () => {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Xác nhận gỡ vai trò?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Gỡ vai trò "{ROLE_LABELS[r.role]}" khỏi {p.full_name || "user này"}. User sẽ không thể duyệt hợp đồng với vai trò này nữa.
+                                  Gỡ vai trò "{ROLE_LABELS[r.role]}" khỏi {p.full_name || "user này"}.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Hủy</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleRemoveRole(r.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
+                                <AlertDialogAction onClick={() => handleRemoveRole(r.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                                   Gỡ vai trò
                                 </AlertDialogAction>
                               </AlertDialogFooter>
@@ -292,11 +253,8 @@ const RoleManagement = () => {
           </Table>
           {usersWithApproverRoles.length === 0 && !search && (
             <div className="text-center py-12">
-              <UserCog className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
               <p className="text-muted-foreground font-medium">Chưa có người duyệt nào</p>
-              <p className="text-sm text-muted-foreground/70 mt-1">
-                Thêm vai trò Accountant hoặc Finance cho nhân viên ở trên
-              </p>
+              <p className="text-sm text-muted-foreground/70 mt-1">Thêm vai trò cho nhân viên ở trên</p>
             </div>
           )}
         </CardContent>

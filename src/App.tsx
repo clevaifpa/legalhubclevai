@@ -15,7 +15,6 @@ import AIReview from "@/pages/AIReview";
 import RoleManagement from "@/pages/RoleManagement";
 import UserDashboard from "@/pages/UserDashboard";
 import NotFound from "@/pages/NotFound";
-import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
 
@@ -25,7 +24,7 @@ function ProtectedRoutes() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        <p className="text-muted-foreground">Đang tải...</p>
       </div>
     );
   }
@@ -44,6 +43,18 @@ function ProtectedRoutes() {
           <Route path="/quan-ly-nguoi-duyet" element={<RoleManagement />} />
         </Route>
         <Route path="*" element={<NotFound />} />
+      </Routes>
+    );
+  }
+
+  // Manager, Accountant, Finance → see review requests relevant to their step
+  if (role === "manager" || role === "accountant" || role === "finance") {
+    return (
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<AdminReviewRequests />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }
@@ -79,7 +90,7 @@ const App = () => (
 
 function AuthGuard() {
   const { user, loading } = useAuth();
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-accent" /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><p className="text-muted-foreground">Đang tải...</p></div>;
   if (user) return <Navigate to="/" replace />;
   return <Auth />;
 }
