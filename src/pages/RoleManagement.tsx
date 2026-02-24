@@ -136,11 +136,14 @@ const RoleManagement = () => {
                 <SelectValue placeholder="Chọn nhân viên..." />
               </SelectTrigger>
               <SelectContent>
-                {profiles.map((p) => (
-                  <SelectItem key={p.user_id} value={p.user_id}>
-                    {p.full_name || "Chưa đặt tên"} — {p.department || "Chưa có phòng ban"}
-                  </SelectItem>
-                ))}
+                {profiles.map((p) => {
+                  const email = p.full_name || "Chưa đặt tên";
+                  return (
+                    <SelectItem key={p.user_id} value={p.user_id}>
+                      {email}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
             <Select value={selectedRole} onValueChange={(v) => { setSelectedRole(v); if (v !== "manager") setSelectedDepartment(""); }}>

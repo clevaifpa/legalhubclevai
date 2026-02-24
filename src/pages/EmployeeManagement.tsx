@@ -3,15 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
-} from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -38,11 +33,6 @@ const EmployeeManagement = () => {
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [newEmail, setNewEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [newRole, setNewRole] = useState("user");
-  const [saving, setSaving] = useState(false);
 
   const fetchData = async () => {
     const [profilesRes, rolesRes] = await Promise.all([
@@ -59,13 +49,18 @@ const EmployeeManagement = () => {
   const getUserRoles = (userId: string) => roles.filter((r) => r.user_id === userId);
 
   const handleChangeRole = async (userId: string, currentRoleId: string, newRoleValue: string) => {
+    // Block changing admin's role
+    const currentRole = roles.find((r) => r.id === currentRoleId);
+    if (currentRole?.role === "admin") {
+      toast.error("Không được thay đổi vai trò Admin");
+      return;
+    }
     const { error } = await supabase.from("user_roles").update({ role: newRoleValue as any }).eq("id", currentRoleId);
-    if (error) toast.error("Lỗi cập nhật role", { description: error.message });
-    else { toast.success("Đã cập nhật role"); fetchData(); }
+    if (error) toast.error("Lỗi cập nhật vai trò", { description: error.message });
+    else { toast.success("Đã cập nhật vai trò"); fetchData(); }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    // Delete user roles and profile (cascade will handle auth.users if set up)
     await supabase.from("user_roles").delete().eq("user_id", userId);
     await supabase.from("profiles").delete().eq("user_id", userId);
     toast.success("Đã xóa tài khoản");
@@ -102,7 +97,7 @@ const EmployeeManagement = () => {
             <CardTitle className="text-base">Tất cả nhân viên ({profiles.length})</CardTitle>
           </div>
           <Input
-            placeholder="Tìm theo tên hoặc email..."
+            placeholder="Tìm theo tên hoặc phòng ban..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="mt-2"
@@ -115,44 +110,31 @@ const EmployeeManagement = () => {
                 <TableRow className="bg-muted/30">
                   <TableHead>Tên hiển thị</TableHead>
                   <TableHead>Phòng ban</TableHead>
-                  <TableHead>Role</TableHead>
                   <TableHead>Ngày tạo</TableHead>
-                  <TableHead>Thao tác</TableHead>
+                  <TableHead>Vai trò</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredProfiles.map((p) => {
                   const userRoles = getUserRoles(p.user_id);
                   const primaryRole = userRoles[0];
+                  const isAdminUser = userRoles.some((r) => r.role === "admin");
+                  const isSelf = p.user_id === user?.id;
                   return (
                     <TableRow key={p.user_id}>
                       <TableCell className="font-medium">{p.full_name || "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{p.department || "—"}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {userRoles.map((r) => (
-                            <Badge
-                              key={r.id}
-                              variant={r.role === "admin" ? "default" : r.role === "manager" ? "secondary" : "outline"}
-                              className="text-xs"
-                            >
-                              {ROLE_LABELS[r.role] || r.role}
-                              {r.role === "manager" && r.department ? ` (${r.department})` : ""}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {formatDate(p.created_at)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1 items-center">
-                          {primaryRole && p.user_id !== user?.id && (
+                        <div className="flex gap-2 items-center">
+                          {primaryRole && !isSelf && !isAdminUser ? (
                             <Select
                               value={primaryRole.role}
                               onValueChange={(v) => handleChangeRole(p.user_id, primaryRole.id, v)}
                             >
-                              <SelectTrigger className="h-7 w-32 text-xs">
+                              <SelectTrigger className="h-8 w-40 text-xs">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -161,8 +143,14 @@ const EmployeeManagement = () => {
                                 ))}
                               </SelectContent>
                             </Select>
+                          ) : (
+                            <span className="text-sm font-medium text-muted-foreground">
+                              {ROLE_LABELS[primaryRole?.role] || "Nhân viên"}
+                              {isAdminUser && !isSelf && " (khóa)"}
+                              {isSelf && " (bạn)"}
+                            </span>
                           )}
-                          {p.user_id !== user?.id && (
+                          {!isSelf && !isAdminUser && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive">
