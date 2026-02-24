@@ -418,7 +418,44 @@ const ContractCategories = () => {
                       </TableCell>
                       <TableCell className="text-muted-foreground">{c.partner_name || "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{c.tax_code || "—"}</TableCell>
-                      <TableCell><Badge variant="secondary">{STATUS_LABELS[c.status] || c.status}</Badge></TableCell>
+                      <TableCell>
+                        {canEdit ? (
+                          <Select
+                            value={c.status}
+                            onValueChange={async (newStatus) => {
+                              const oldStatus = c.status;
+                              const { error } = await supabase.from("contracts").update({ status: newStatus as any }).eq("id", c.id);
+                              if (error) {
+                                toast.error("Lỗi cập nhật trạng thái", { description: error.message });
+                              } else {
+                                // Log audit
+                                if (user && profile) {
+                                  await supabase.from("edit_logs").insert({
+                                    editor_id: user.id,
+                                    editor_name: profile.full_name || user.email || "",
+                                    record_id: c.id,
+                                    table_name: "contracts",
+                                    changes: { field: "status", old: oldStatus, new: newStatus },
+                                  } as any);
+                                }
+                                toast.success("Đã cập nhật trạng thái");
+                                fetchContracts(selectedCategory.id);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-7 w-32 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="da_ky">Đã ký</SelectItem>
+                              <SelectItem value="het_hieu_luc">Đã hết hạn</SelectItem>
+                              <SelectItem value="da_thanh_ly">Đã thanh lý</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Badge variant="secondary">{STATUS_LABELS[c.status] || c.status}</Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{c.expiry_date ? formatDate(c.expiry_date) : "—"}</TableCell>
                       <TableCell className="text-sm">
                         {nearestObl ? (
