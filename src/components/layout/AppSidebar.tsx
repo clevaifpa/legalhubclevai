@@ -21,7 +21,6 @@ const adminMenuItems = [
 
 const advancedMenuItems = [
   { title: "AI Kiểm tra", url: "/ai-kiem-tra" },
-  { title: "Quản lý người duyệt", url: "/quan-ly-nguoi-duyet" },
   { title: "Quản lý nhân viên", url: "/quan-ly-nhan-vien" },
 ];
 

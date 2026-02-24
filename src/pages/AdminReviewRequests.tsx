@@ -69,24 +69,13 @@ const isValidGoogleDocUrl = (url: string): boolean => {
 const AdminReviewRequests = () => {
   const { user, profile, role, roles, managerDepartment } = useAuth();
   const isAdmin = role === "admin";
-  const isManager = roles.includes("manager" as any);
-  const isAccountant = roles.includes("accountant" as any);
-  const isFinance = roles.includes("finance" as any);
+  const isManager = role === "manager";
+  const isAccountant = role === "accountant";
+  const isFinance = role === "finance";
 
-  // Determine which step this user can approve
-  const getMyStep = (): ReviewDepartment | null => {
-    if (isAdmin) return null; // admin can do any step
-    if (isManager) return "quan_ly";
-    if (isAccountant) return "ke_toan";
-    if (isFinance) return "tai_chinh";
-    return null;
-  };
-
-  const myStep = getMyStep();
-
-  // Determine which status this role should see
-  const getMyStatusFilter = (): string | null => {
-    if (isAdmin) return null;
+  // Determine which status this role can act on
+  const getMyActionableStatus = (): string | null => {
+    if (isAdmin) return null; // admin can act on any
     if (isManager) return "cho_quan_ly";
     if (isAccountant) return "cho_ke_toan";
     if (isFinance) return "cho_tai_chinh";
@@ -180,8 +169,6 @@ const AdminReviewRequests = () => {
 
     const currentStatus = selectedReq.status;
     const nextStatus = getNextStatus(currentStatus);
-
-    // Determine the department being reviewed
     const stepDept = getCurrentStep(currentStatus);
 
     // Save department review note
@@ -207,7 +194,22 @@ const AdminReviewRequests = () => {
       updateData.admin_notes = adminNotes;
     }
 
-    await supabase.from("review_requests").update(updateData).eq("id", selectedReq.id);
+    const { error } = await supabase.from("review_requests").update(updateData).eq("id", selectedReq.id);
+    
+    if (error) {
+      toast.error("Lỗi cập nhật", { description: error.message });
+      setSaving(false);
+      return;
+    }
+
+    // Audit log
+    await supabase.from("edit_logs").insert({
+      editor_id: user.id,
+      editor_name: profile?.full_name || user.email || "",
+      record_id: selectedReq.id,
+      table_name: "review_requests",
+      changes: { field: "status", old: currentStatus, new: nextStatus, action: "approve" },
+    } as any);
 
     // Save regular note
     if (newNote.trim()) {
@@ -257,10 +259,25 @@ const AdminReviewRequests = () => {
       });
     }
 
-    await supabase.from("review_requests").update({
+    const { error } = await supabase.from("review_requests").update({
       status: "tu_choi" as any,
       admin_notes: adminNotes,
     } as any).eq("id", selectedReq.id);
+
+    if (error) {
+      toast.error("Lỗi cập nhật", { description: error.message });
+      setSaving(false);
+      return;
+    }
+
+    // Audit log
+    await supabase.from("edit_logs").insert({
+      editor_id: user.id,
+      editor_name: profile?.full_name || user.email || "",
+      record_id: selectedReq.id,
+      table_name: "review_requests",
+      changes: { field: "status", old: currentStatus, new: "tu_choi", action: "reject" },
+    } as any);
 
     if (newNote.trim()) {
       await supabase.from("review_notes").insert({
@@ -297,9 +314,10 @@ const AdminReviewRequests = () => {
 
   // Can this user act on this request?
   const canActOnRequest = (req: any): boolean => {
+    if (!req) return false;
     if (isAdmin) return true;
-    const myStatusFilter = getMyStatusFilter();
-    return req.status === myStatusFilter;
+    const actionableStatus = getMyActionableStatus();
+    return req.status === actionableStatus;
   };
 
   const statusCounts = requests.reduce((acc: Record<string, number>, r) => {
