@@ -23,7 +23,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   managerDepartment: null,
   loading: true,
-  signOut: async () => {},
+  signOut: async () => { },
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -111,3 +111,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export const useAuth = () => useContext(AuthContext);
+
+// Helper: extract employee name from email (e.g., "Linhnt2@clevai.edu.vn" → "Linhnt2")
+export function getEmployeeName(email?: string | null): string {
+  if (!email) return "";
+  const localPart = email.split("@")[0];
+  return localPart.charAt(0).toUpperCase() + localPart.slice(1);
+}
+
+// Helper: display as "EmployeeName (email)"
+export function getEmployeeDisplayName(email?: string | null): string {
+  if (!email) return "";
+  const name = getEmployeeName(email);
+  return `${name} (${email})`;
+}

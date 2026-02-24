@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -177,7 +177,7 @@ const AdminReviewRequests = () => {
       await supabase.from("review_notes").insert({
         review_request_id: selectedReq.id,
         author_id: user.id,
-        author_name: profile?.full_name || user.email || "",
+        author_name: getEmployeeName(user.email) || user.email || "",
         content: encodedContent,
       });
     }
@@ -195,7 +195,7 @@ const AdminReviewRequests = () => {
     }
 
     const { error } = await supabase.from("review_requests").update(updateData).eq("id", selectedReq.id);
-    
+
     if (error) {
       toast.error("Lỗi cập nhật", { description: error.message });
       setSaving(false);
@@ -205,7 +205,7 @@ const AdminReviewRequests = () => {
     // Audit log
     await supabase.from("edit_logs").insert({
       editor_id: user.id,
-      editor_name: profile?.full_name || user.email || "",
+      editor_name: getEmployeeName(user.email) || user.email || "",
       record_id: selectedReq.id,
       table_name: "review_requests",
       changes: { field: "status", old: currentStatus, new: nextStatus, action: "approve" },
@@ -216,7 +216,7 @@ const AdminReviewRequests = () => {
       await supabase.from("review_notes").insert({
         review_request_id: selectedReq.id,
         author_id: user.id,
-        author_name: profile?.full_name || user.email || "",
+        author_name: getEmployeeName(user.email) || user.email || "",
         content: newNote.trim(),
       });
     }
@@ -228,7 +228,7 @@ const AdminReviewRequests = () => {
           requestId: selectedReq.id,
           contractTitle: selectedReq.contract_title,
           newStatus: STATUS_LABELS[nextStatus] || nextStatus,
-          updatedBy: profile?.full_name || user.email,
+          updatedBy: getEmployeeName(user.email) || user.email,
           requesterId: selectedReq.requester_id,
         },
       });
@@ -254,7 +254,7 @@ const AdminReviewRequests = () => {
       await supabase.from("review_notes").insert({
         review_request_id: selectedReq.id,
         author_id: user.id,
-        author_name: profile?.full_name || user.email || "",
+        author_name: getEmployeeName(user.email) || user.email || "",
         content: encodedContent,
       });
     }
@@ -273,7 +273,7 @@ const AdminReviewRequests = () => {
     // Audit log
     await supabase.from("edit_logs").insert({
       editor_id: user.id,
-      editor_name: profile?.full_name || user.email || "",
+      editor_name: getEmployeeName(user.email) || user.email || "",
       record_id: selectedReq.id,
       table_name: "review_requests",
       changes: { field: "status", old: currentStatus, new: "tu_choi", action: "reject" },
@@ -283,7 +283,7 @@ const AdminReviewRequests = () => {
       await supabase.from("review_notes").insert({
         review_request_id: selectedReq.id,
         author_id: user.id,
-        author_name: profile?.full_name || user.email || "",
+        author_name: getEmployeeName(user.email) || user.email || "",
         content: newNote.trim(),
       });
     }
@@ -294,7 +294,7 @@ const AdminReviewRequests = () => {
           requestId: selectedReq.id,
           contractTitle: selectedReq.contract_title,
           newStatus: "Từ chối",
-          updatedBy: profile?.full_name || user.email,
+          updatedBy: getEmployeeName(user.email) || user.email,
           requesterId: selectedReq.requester_id,
         },
       });

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,7 +76,8 @@ interface PaymentPhase {
 }
 
 const UserDashboard = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, role } = useAuth();
+  const isPhapc = role === "admin"; // Pháp chế = admin role
   const [requests, setRequests] = useState<any[]>([]);
   const [notes, setNotes] = useState<Record<string, any[]>>({});
   const [paymentSchedules, setPaymentSchedules] = useState<Record<string, any[]>>({});
@@ -200,9 +201,14 @@ const UserDashboard = () => {
 
     setSubmitting(true);
 
+    const employeeName = getEmployeeName(user.email);
+
+    // For Pháp chế: set status directly to dang_review (skip manager approval)
+    const initialStatus = isPhapc ? "dang_review" : "cho_quan_ly";
+
     const { data: insertedReq, error } = await supabase.from("review_requests").insert({
       requester_id: user.id,
-      requester_name: profile.full_name || user.email || "",
+      requester_name: employeeName || profile.full_name || user.email || "",
       department: form.department,
       priority: form.priority as any,
       contract_title: form.contract_title,
@@ -217,8 +223,9 @@ const UserDashboard = () => {
       approved_pe_number: form.approved_pe_number.trim() || null,
       contract_type_category: form.contract_type_category,
       tax_code: form.tax_code,
-      manager_id: form.manager_id || null,
-      status: "cho_quan_ly" as any,
+      manager_id: isPhapc ? null : (form.manager_id || null),
+      status: initialStatus as any,
+      admin_notes: isPhapc ? "Yêu cầu tạo bởi Pháp chế — bỏ qua bước Quản lý, chuyển trực tiếp Kế toán & Tài chính." : null,
     } as any).select().single();
 
     if (error) {
@@ -238,7 +245,9 @@ const UserDashboard = () => {
     }
 
     setSubmitting(false);
-    toast.success("Yêu cầu review đã được tạo!");
+    toast.success(isPhapc
+      ? "Yêu cầu đã tạo và chuyển trực tiếp sang Kế toán & Tài chính!"
+      : "Yêu cầu review đã được tạo!");
     setDialogOpen(false);
     setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "" });
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
@@ -259,14 +268,18 @@ const UserDashboard = () => {
     return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Đang tải...</p></div>;
   }
 
-  const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && form.manager_id && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
+  const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isPhapc || form.manager_id) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Yêu cầu review hợp đồng</h1>
-          <p className="text-muted-foreground">Tạo và theo dõi yêu cầu review hợp đồng của bạn</p>
+          <p className="text-muted-foreground">
+            {isPhapc
+              ? "Tạo yêu cầu review (chuyển trực tiếp Kế toán & Tài chính)"
+              : "Tạo và theo dõi yêu cầu review hợp đồng của bạn"}
+          </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>

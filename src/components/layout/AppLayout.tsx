@@ -4,7 +4,7 @@ import { Outlet } from "react-router-dom";
 import { Bell, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, getEmployeeDisplayName } from "@/hooks/useAuth";
 
 export function AppLayout() {
   const { user, profile, role, signOut } = useAuth();
@@ -32,12 +32,13 @@ export function AppLayout() {
                 </div>
                 <div className="hidden sm:flex flex-col">
                   <span className="text-sm font-medium leading-tight">
-                    {profile?.full_name || user?.email}
+                    {getEmployeeDisplayName(user?.email) || profile?.full_name || user?.email}
                   </span>
                   <span className="text-xs text-muted-foreground leading-tight">
                     {role === "admin" ? "Pháp chế" : profile?.department || "Nhân viên"}
                   </span>
                 </div>
+
                 <Button variant="ghost" size="icon" onClick={signOut} className="ml-1">
                   <LogOut className="h-4 w-4" />
                 </Button>
@@ -47,8 +48,8 @@ export function AppLayout() {
           <main className="flex-1 overflow-auto p-4 md:p-6">
             <Outlet />
           </main>
-        </div>
-      </div>
-    </SidebarProvider>
+        </div >
+      </div >
+    </SidebarProvider >
   );
 }

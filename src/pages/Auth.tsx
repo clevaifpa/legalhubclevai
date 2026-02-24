@@ -77,9 +77,19 @@ const Auth = () => {
         });
       }
     } catch (error: any) {
+      let description = error.message;
+      // Handle re-registration after deletion
+      if (!isLogin && (
+        error.message?.includes("already been registered") ||
+        error.message?.includes("already exists") ||
+        error.message?.includes("User already registered")
+      )) {
+        description = "Email này đã được đăng ký trước đó. Nếu tài khoản đã bị xóa, vui lòng liên hệ Admin để được hỗ trợ đăng ký lại.";
+      }
       toast.error(isLogin ? "Đăng nhập thất bại" : "Đăng ký thất bại", {
-        description: error.message,
+        description,
       });
+
     } finally {
       setLoading(false);
     }

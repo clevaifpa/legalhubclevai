@@ -30,6 +30,7 @@ const sanitizeFileName = (name: string): string => {
 const STATUS_LABELS: Record<string, string> = {
   da_ky: "Đã ký",
   het_hieu_luc: "Đã hết hạn",
+  het_hieu_luc_chua_hoan_thanh: "Hết hiệu lực - Chưa hoàn thành nghĩa vụ",
   da_thanh_ly: "Đã thanh lý",
 };
 
@@ -158,6 +159,15 @@ const ContractCategories = () => {
 
   const handleUploadContract = async () => {
     if (!form.title.trim() || !selectedCategory || !form.expiry_date) return;
+
+    // Mandatory file attachment validation
+    if (!docFile && !signedPdfFile) {
+      toast.error("Bắt buộc phải đính kèm file hợp đồng.", {
+        description: "Vui lòng tải lên file .doc/.docx hoặc file PDF đã ký.",
+      });
+      return;
+    }
+
     setUploading(true);
 
     try {
@@ -302,8 +312,10 @@ const ContractCategories = () => {
                       <SelectContent>
                         <SelectItem value="da_ky">Đã ký</SelectItem>
                         <SelectItem value="het_hieu_luc">Đã hết hạn</SelectItem>
+                        <SelectItem value="het_hieu_luc_chua_hoan_thanh">Hết hiệu lực - Chưa hoàn thành nghĩa vụ</SelectItem>
                         <SelectItem value="da_thanh_ly">Đã thanh lý</SelectItem>
                       </SelectContent>
+
                     </Select>
                   </div>
                 </div>
