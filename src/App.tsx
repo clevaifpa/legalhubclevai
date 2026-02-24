@@ -12,7 +12,6 @@ import ClauseLibrary from "@/pages/ClauseLibrary";
 import ContractCategories from "@/pages/ContractCategories";
 import AdminReviewRequests from "@/pages/AdminReviewRequests";
 import AIReview from "@/pages/AIReview";
-import RoleManagement from "@/pages/RoleManagement";
 import EmployeeManagement from "@/pages/EmployeeManagement";
 import UserDashboard from "@/pages/UserDashboard";
 import NotFound from "@/pages/NotFound";
@@ -41,7 +40,6 @@ function ProtectedRoutes() {
           <Route path="/tong-hop-dong" element={<ContractCategories />} />
           <Route path="/yeu-cau-review" element={<AdminReviewRequests />} />
           <Route path="/ai-kiem-tra" element={<AIReview />} />
-          <Route path="/quan-ly-nguoi-duyet" element={<RoleManagement />} />
           <Route path="/quan-ly-nhan-vien" element={<EmployeeManagement />} />
         </Route>
         <Route path="*" element={<NotFound />} />
@@ -63,7 +61,7 @@ function ProtectedRoutes() {
     );
   }
 
-  // Manager → view-only Dashboard + ContractCategories + review
+  // Manager → view-only Dashboard + ContractCategories + review (read-only)
   if (role === "manager") {
     return (
       <Routes>

@@ -48,19 +48,25 @@ const EmployeeManagement = () => {
 
   const getUserRoles = (userId: string) => roles.filter((r) => r.user_id === userId);
 
+  // Get display name: use full_name from profile, fallback to email-derived name
+  const getDisplayName = (p: any) => {
+    return p.full_name || "—";
+  };
+
+  // Get email from auth metadata - we'll show it if available
+  const getEmail = (p: any) => {
+    // We don't have email in profiles, but we can show user_id hint
+    return null;
+  };
+
   const handleChangeRole = async (userId: string, currentRoleId: string, newRoleValue: string) => {
-    // Block changing admin's role
-    const currentRole = roles.find((r) => r.id === currentRoleId);
-    if (currentRole?.role === "admin") {
-      toast.error("Không được thay đổi vai trò Admin");
-      return;
-    }
     const { error } = await supabase.from("user_roles").update({ role: newRoleValue as any }).eq("id", currentRoleId);
     if (error) toast.error("Lỗi cập nhật vai trò", { description: error.message });
     else { toast.success("Đã cập nhật vai trò"); fetchData(); }
   };
 
   const handleDeleteUser = async (userId: string) => {
+    // Delete roles and profile (cascade will handle related data)
     await supabase.from("user_roles").delete().eq("user_id", userId);
     await supabase.from("profiles").delete().eq("user_id", userId);
     toast.success("Đã xóa tài khoản");
@@ -70,8 +76,9 @@ const EmployeeManagement = () => {
   const filteredProfiles = profiles.filter((p) => {
     if (!search) return true;
     const term = search.toLowerCase();
+    const displayName = getDisplayName(p).toLowerCase();
     return (
-      p.full_name?.toLowerCase().includes(term) ||
+      displayName.includes(term) ||
       p.department?.toLowerCase().includes(term)
     );
   });
@@ -118,18 +125,18 @@ const EmployeeManagement = () => {
                 {filteredProfiles.map((p) => {
                   const userRoles = getUserRoles(p.user_id);
                   const primaryRole = userRoles[0];
-                  const isAdminUser = userRoles.some((r) => r.role === "admin");
                   const isSelf = p.user_id === user?.id;
+                  const displayName = getDisplayName(p);
                   return (
                     <TableRow key={p.user_id}>
-                      <TableCell className="font-medium">{p.full_name || "—"}</TableCell>
+                      <TableCell className="font-medium">{displayName}</TableCell>
                       <TableCell className="text-muted-foreground">{p.department || "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {formatDate(p.created_at)}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2 items-center">
-                          {primaryRole && !isSelf && !isAdminUser ? (
+                          {primaryRole && !isSelf ? (
                             <Select
                               value={primaryRole.role}
                               onValueChange={(v) => handleChangeRole(p.user_id, primaryRole.id, v)}
@@ -146,11 +153,10 @@ const EmployeeManagement = () => {
                           ) : (
                             <span className="text-sm font-medium text-muted-foreground">
                               {ROLE_LABELS[primaryRole?.role] || "Nhân viên"}
-                              {isAdminUser && !isSelf && " (khóa)"}
                               {isSelf && " (bạn)"}
                             </span>
                           )}
-                          {!isSelf && !isAdminUser && (
+                          {!isSelf && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive">
@@ -161,7 +167,7 @@ const EmployeeManagement = () => {
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Xác nhận xóa tài khoản?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Tài khoản "{p.full_name}" sẽ bị xóa. Hành động này không thể hoàn tác.
+                                    Tài khoản "{displayName}" sẽ bị xóa. Hành động này không thể hoàn tác.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
