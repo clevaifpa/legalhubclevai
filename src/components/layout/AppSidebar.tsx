@@ -22,14 +22,17 @@ const adminMenuItems = [
 const advancedMenuItems = [
   { title: "AI Kiểm tra", url: "/ai-kiem-tra" },
   { title: "Quản lý người duyệt", url: "/quan-ly-nguoi-duyet" },
+  { title: "Quản lý nhân viên", url: "/quan-ly-nhan-vien" },
+];
+
+const reviewerMenuItems = [
+  { title: "Tổng quan", url: "/" },
+  { title: "Tổng hợp đồng", url: "/tong-hop-dong" },
+  { title: "Yêu cầu review", url: "/yeu-cau-review" },
 ];
 
 const userMenuItems = [
   { title: "Yêu cầu của tôi", url: "/" },
-];
-
-const reviewerMenuItems = [
-  { title: "Yêu cầu review", url: "/" },
 ];
 
 export function AppSidebar() {
@@ -41,6 +44,14 @@ export function AppSidebar() {
     if (isAdmin) return adminMenuItems;
     if (isReviewer) return reviewerMenuItems;
     return userMenuItems;
+  };
+
+  const getRoleLabel = () => {
+    if (isAdmin) return "Admin";
+    if (role === "manager") return "Người quản lý";
+    if (role === "accountant") return "Kế toán";
+    if (role === "finance") return "Tài chính";
+    return "Nhân viên";
   };
 
   return (
@@ -55,7 +66,7 @@ export function AppSidebar() {
               LegalHub
             </span>
             <span className="text-[11px] text-sidebar-foreground/60 leading-tight truncate">
-              {isAdmin ? "Pháp chế" : isReviewer ? role === "manager" ? "Quản lý" : role === "accountant" ? "Kế toán" : "Tài chính" : "Nhân viên"}
+              {getRoleLabel()}
             </span>
           </div>
         </div>

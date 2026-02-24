@@ -12,7 +12,6 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [department, setDepartment] = useState("");
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,16 +106,10 @@ const Auth = () => {
             <>
               <form onSubmit={handleSubmit} className="space-y-4">
                 {!isLogin && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Họ và tên</Label>
-                      <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nguyễn Văn A" required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Bộ phận</Label>
-                      <Input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="VD: Phòng Kinh doanh" required />
-                    </div>
-                  </>
+                  <div className="space-y-2">
+                    <Label>Họ và tên (tùy chọn)</Label>
+                    <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nguyễn Văn A" />
+                  </div>
                 )}
                 <div className="space-y-2">
                   <Label>Email</Label>
