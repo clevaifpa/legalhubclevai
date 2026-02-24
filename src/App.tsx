@@ -13,6 +13,7 @@ import ContractCategories from "@/pages/ContractCategories";
 import AdminReviewRequests from "@/pages/AdminReviewRequests";
 import AIReview from "@/pages/AIReview";
 import RoleManagement from "@/pages/RoleManagement";
+import EmployeeManagement from "@/pages/EmployeeManagement";
 import UserDashboard from "@/pages/UserDashboard";
 import NotFound from "@/pages/NotFound";
 
@@ -41,18 +42,35 @@ function ProtectedRoutes() {
           <Route path="/yeu-cau-review" element={<AdminReviewRequests />} />
           <Route path="/ai-kiem-tra" element={<AIReview />} />
           <Route path="/quan-ly-nguoi-duyet" element={<RoleManagement />} />
+          <Route path="/quan-ly-nhan-vien" element={<EmployeeManagement />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
     );
   }
 
-  // Manager, Accountant, Finance → see review requests relevant to their step
-  if (role === "manager" || role === "accountant" || role === "finance") {
+  // Accountant, Finance → can access Dashboard + ContractCategories + review
+  if (role === "accountant" || role === "finance") {
     return (
       <Routes>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<AdminReviewRequests />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/tong-hop-dong" element={<ContractCategories />} />
+          <Route path="/yeu-cau-review" element={<AdminReviewRequests />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
+
+  // Manager → view-only Dashboard + ContractCategories + review
+  if (role === "manager") {
+    return (
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/tong-hop-dong" element={<ContractCategories />} />
+          <Route path="/yeu-cau-review" element={<AdminReviewRequests />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

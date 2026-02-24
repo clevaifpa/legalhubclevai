@@ -40,8 +40,10 @@ interface PaymentPhase {
 }
 
 const ContractCategories = () => {
-  const { user, role } = useAuth();
+  const { user, role, profile } = useAuth();
   const isAdmin = role === "admin";
+  const canEdit = role === "admin" || role === "accountant" || role === "finance";
+  const isViewOnly = role === "manager";
   const [categories, setCategories] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
   const [contractPayments, setContractPayments] = useState<Record<string, any[]>>({});
@@ -267,7 +269,7 @@ const ContractCategories = () => {
             <h1 className="text-2xl font-bold tracking-tight">{selectedCategory.name}</h1>
             <p className="text-muted-foreground">{selectedCategory.description || "Danh sách hợp đồng"}</p>
           </div>
-          <Dialog open={uploadDialogOpen} onOpenChange={(o) => { setUploadDialogOpen(o); if (!o) resetForm(); }}>
+          {canEdit && <Dialog open={uploadDialogOpen} onOpenChange={(o) => { setUploadDialogOpen(o); if (!o) resetForm(); }}>
             <DialogTrigger asChild>
               <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">Upload hợp đồng</Button>
             </DialogTrigger>
@@ -382,7 +384,7 @@ const ContractCategories = () => {
                 </Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
+          </Dialog>}
         </div>
 
         {/* Search */}
@@ -402,7 +404,7 @@ const ContractCategories = () => {
                   <TableHead>Đơn vị</TableHead>
                   <TableHead>Số PE</TableHead>
                   <TableHead>Files</TableHead>
-                  {isAdmin && <TableHead>Thao tác</TableHead>}
+                  {canEdit && <TableHead>Thao tác</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -423,7 +425,7 @@ const ContractCategories = () => {
                           <div>
                             <p className="font-medium text-xs">{nearestObl.phase_name}</p>
                             <p className="text-xs text-muted-foreground">{formatDate(nearestObl.payment_due_date)} — {formatCurrency(nearestObl.payment_amount)}</p>
-                            {isAdmin && (
+                            {canEdit && (
                               <Button size="sm" variant="outline" className="text-xs mt-1 h-6" onClick={() => handleMarkPaid(nearestObl.id, c.id)}>
                                 Đã thanh toán
                               </Button>
@@ -446,7 +448,7 @@ const ContractCategories = () => {
                           {c.liquidation_file_url && (
                             <Button variant="ghost" size="sm" className="h-7 text-xs text-info" onClick={() => openFile(c.liquidation_file_url)}>TL</Button>
                           )}
-                          {(c.status === "het_hieu_luc" || c.status === "da_ky") && !c.liquidation_file_url && isAdmin && (
+                          {(c.status === "het_hieu_luc" || c.status === "da_ky") && !c.liquidation_file_url && canEdit && (
                             <label className="cursor-pointer">
                               <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={(e) => {
                                 const file = e.target.files?.[0];
@@ -457,7 +459,7 @@ const ContractCategories = () => {
                           )}
                         </div>
                       </TableCell>
-                      {isAdmin && (
+                      {canEdit && (
                         <TableCell>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>

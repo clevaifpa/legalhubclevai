@@ -189,6 +189,36 @@ export type Database = {
           },
         ]
       }
+      edit_logs: {
+        Row: {
+          changes: Json
+          created_at: string
+          editor_id: string
+          editor_name: string
+          id: string
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          changes?: Json
+          created_at?: string
+          editor_id: string
+          editor_name: string
+          id?: string
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          changes?: Json
+          created_at?: string
+          editor_id?: string
+          editor_name?: string
+          id?: string
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       payment_schedules: {
         Row: {
           created_at: string
