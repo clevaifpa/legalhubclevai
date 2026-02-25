@@ -48,15 +48,13 @@ const EmployeeManagement = () => {
 
   const getUserRoles = (userId: string) => roles.filter((r) => r.user_id === userId);
 
-  // Get display name: use full_name from profile, fallback to email-derived name
   const getDisplayName = (p: any) => {
+    if (p.email) {
+      const localPart = p.email.split("@")[0];
+      const name = localPart.charAt(0).toUpperCase() + localPart.slice(1);
+      return `${name} (${p.email})`;
+    }
     return p.full_name || "—";
-  };
-
-  // Get email from auth metadata - we'll show it if available
-  const getEmail = (p: any) => {
-    // We don't have email in profiles, but we can show user_id hint
-    return null;
   };
 
   const handleChangeRole = async (userId: string, currentRoleId: string, newRoleValue: string) => {
@@ -76,10 +74,10 @@ const EmployeeManagement = () => {
   const filteredProfiles = profiles.filter((p) => {
     if (!search) return true;
     const term = search.toLowerCase();
-    const displayName = getDisplayName(p).toLowerCase();
     return (
-      displayName.includes(term) ||
-      p.department?.toLowerCase().includes(term)
+      getDisplayName(p).toLowerCase().includes(term) ||
+      p.department?.toLowerCase().includes(term) ||
+      (p.email || "").toLowerCase().includes(term)
     );
   });
 
@@ -104,7 +102,7 @@ const EmployeeManagement = () => {
             <CardTitle className="text-base">Tất cả nhân viên ({profiles.length})</CardTitle>
           </div>
           <Input
-            placeholder="Tìm theo tên hoặc phòng ban..."
+            placeholder="Tìm theo tên, email hoặc phòng ban..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="mt-2"
