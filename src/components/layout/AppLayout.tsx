@@ -1,9 +1,9 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Outlet } from "react-router-dom";
-import { Bell, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth, getEmployeeDisplayName } from "@/hooks/useAuth";
 
 export function AppLayout() {
@@ -23,9 +23,7 @@ export function AppLayout() {
               <SidebarTrigger />
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-4 w-4" />
-              </Button>
+              <NotificationBell />
               <div className="flex items-center gap-2 pl-3 border-l">
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold">
                   {initials}
