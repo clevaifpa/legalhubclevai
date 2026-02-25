@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
+import { createWorkflowNotifications } from "@/lib/notifications";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -221,20 +222,15 @@ const AdminReviewRequests = () => {
       });
     }
 
-    // Send email notification
-    try {
-      await supabase.functions.invoke("send-notification-email", {
-        body: {
-          requestId: selectedReq.id,
-          contractTitle: selectedReq.contract_title,
-          newStatus: STATUS_LABELS[nextStatus] || nextStatus,
-          updatedBy: getEmployeeName(user.email) || user.email,
-          requesterId: selectedReq.requester_id,
-        },
-      });
-    } catch (e) {
-      console.warn("Email notification failed:", e);
-    }
+    // Send notifications (in-app + email)
+    await createWorkflowNotifications({
+      reviewRequestId: selectedReq.id,
+      contractTitle: selectedReq.contract_title,
+      oldStatus: currentStatus,
+      newStatus: nextStatus,
+      actorName: getEmployeeName(user.email) || user.email || "",
+      requesterId: selectedReq.requester_id,
+    });
 
     setSaving(false);
     setSelectedReq(null);
@@ -288,17 +284,15 @@ const AdminReviewRequests = () => {
       });
     }
 
-    try {
-      await supabase.functions.invoke("send-notification-email", {
-        body: {
-          requestId: selectedReq.id,
-          contractTitle: selectedReq.contract_title,
-          newStatus: "Từ chối",
-          updatedBy: getEmployeeName(user.email) || user.email,
-          requesterId: selectedReq.requester_id,
-        },
-      });
-    } catch (e) { console.warn(e); }
+    // Send notifications (in-app + email)
+    await createWorkflowNotifications({
+      reviewRequestId: selectedReq.id,
+      contractTitle: selectedReq.contract_title,
+      oldStatus: currentStatus,
+      newStatus: "tu_choi",
+      actorName: getEmployeeName(user.email) || user.email || "",
+      requesterId: selectedReq.requester_id,
+    });
 
     setSaving(false);
     setSelectedReq(null);

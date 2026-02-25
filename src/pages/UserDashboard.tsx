@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
+import { createWorkflowNotifications } from "@/lib/notifications";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -242,6 +243,18 @@ const UserDashboard = () => {
         payment_due_date: p.payment_due_date,
       }));
       await supabase.from("payment_schedules").insert(schedules as any);
+    }
+
+    // Send notifications for new request
+    if (insertedReq) {
+      await createWorkflowNotifications({
+        reviewRequestId: insertedReq.id,
+        contractTitle: form.contract_title,
+        oldStatus: "moi_tao",
+        newStatus: initialStatus,
+        actorName: getEmployeeName(user.email) || profile.full_name || "",
+        requesterId: user.id,
+      });
     }
 
     setSubmitting(false);
