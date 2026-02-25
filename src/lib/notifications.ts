@@ -20,6 +20,7 @@ interface NotifyParams {
   newStatus: string;
   actorName: string;
   requesterId: string;
+  managerId?: string | null;
 }
 
 /**
@@ -28,7 +29,7 @@ interface NotifyParams {
  * Also triggers email notification via edge function.
  */
 export async function createWorkflowNotifications(params: NotifyParams) {
-  const { reviewRequestId, contractTitle, oldStatus, newStatus, actorName, requesterId } = params;
+  const { reviewRequestId, contractTitle, oldStatus, newStatus, actorName, requesterId, managerId } = params;
 
   const title = `Cập nhật: ${contractTitle}`;
   const content = `${actorName} đã chuyển trạng thái từ "${STATUS_LABELS[oldStatus] || oldStatus}" sang "${STATUS_LABELS[newStatus] || newStatus}"`;
@@ -38,6 +39,9 @@ export async function createWorkflowNotifications(params: NotifyParams) {
 
   // Always notify requester
   recipientIds.add(requesterId);
+
+  // Always notify the assigned manager if provided
+  if (managerId) recipientIds.add(managerId);
 
   // Notify relevant roles based on new status
   const rolesToNotify: string[] = ["admin"]; // admins always get notified

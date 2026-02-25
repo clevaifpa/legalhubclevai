@@ -254,6 +254,7 @@ const UserDashboard = () => {
         newStatus: initialStatus,
         actorName: getEmployeeName(user.email) || profile.full_name || "",
         requesterId: user.id,
+        managerId: form.manager_id || null,
       });
     }
 
