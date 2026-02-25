@@ -230,6 +230,7 @@ const AdminReviewRequests = () => {
       newStatus: nextStatus,
       actorName: getEmployeeName(user.email) || user.email || "",
       requesterId: selectedReq.requester_id,
+      managerId: selectedReq.manager_id,
     });
 
     setSaving(false);
@@ -292,6 +293,7 @@ const AdminReviewRequests = () => {
       newStatus: "tu_choi",
       actorName: getEmployeeName(user.email) || user.email || "",
       requesterId: selectedReq.requester_id,
+      managerId: selectedReq.manager_id,
     });
 
     setSaving(false);
