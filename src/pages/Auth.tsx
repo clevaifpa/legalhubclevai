@@ -134,7 +134,7 @@ const Auth = () => {
                   <>
                     <div className="space-y-2">
                       <Label>Tên nhân viên *</Label>
-                      <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="VD: Nguyễn Văn A" required />
+                      <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="linhnt2" required />
                     </div>
                     <div className="space-y-2">
                       <Label>Phòng ban *</Label>
