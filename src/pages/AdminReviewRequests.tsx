@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -63,9 +64,29 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const isValidGoogleDocUrl = (url: string): boolean => {
-  if (!url) return false;
+  if (!url) return true;
   return /^https:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\/d\//.test(url);
 };
+
+const DEPARTMENT_OPTIONS = [
+  "Phòng Kinh doanh", "Phòng Marketing", "Phòng Nhân sự", "Phòng Kế toán",
+  "Phòng Tài chính", "Phòng IT", "Phòng Hành chính", "Phòng Pháp chế",
+  "Phòng Sản xuất", "Phòng R&D", "Ban Giám đốc", "Khác",
+];
+
+const CONTRACT_TYPE_CATEGORIES = [
+  "Hợp đồng nguyên tắc",
+  "Hợp đồng sử dụng 1 lần",
+  "Hợp đồng sử dụng dài hạn",
+  "Hợp đồng/phụ lục gia hạn",
+];
+
+interface PaymentPhase {
+  phase_name: string;
+  payment_amount: string;
+  payment_due_date: string;
+  is_na: boolean;
+}
 
 const AdminReviewRequests = () => {
   const { user, profile, role, roles, managerDepartment } = useAuth();
@@ -94,6 +115,58 @@ const AdminReviewRequests = () => {
   const [adminNotes, setAdminNotes] = useState("");
   const [legalReviewDocLink, setLegalReviewDocLink] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // New state for creating requests
+  const [managers, setManagers] = useState<any[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    priority: "trung_binh",
+    contract_title: "",
+    partner_name: "",
+    contract_value: "",
+    contract_value_na: false,
+    request_deadline: "",
+    contract_start_date: "",
+    contract_end_date: "",
+    review_deadline: "",
+    description: "",
+    google_doc_url: "",
+    approved_pe_number: "",
+    department: "",
+    contract_type_category: "",
+    tax_code: "",
+    manager_id: "",
+  });
+
+  const [paymentPhases, setPaymentPhases] = useState<PaymentPhase[]>([
+    { phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false },
+  ]);
+
+  const addPaymentPhase = () => {
+    const num = paymentPhases.length + 1;
+    setPaymentPhases([...paymentPhases, { phase_name: `Đợt ${String(num).padStart(2, "0")}`, payment_amount: "", payment_due_date: "", is_na: false }]);
+  };
+
+  const removePaymentPhase = (idx: number) => {
+    if (paymentPhases.length <= 1) return;
+    setPaymentPhases(paymentPhases.filter((_, i) => i !== idx));
+  };
+
+  const updatePaymentPhase = (idx: number, field: keyof PaymentPhase, value: any) => {
+    setPaymentPhases(paymentPhases.map((p, i) => i === idx ? { ...p, [field]: value } : p));
+  };
+
+  // Fetch managers filtered by department
+  const fetchManagers = async (dept: string) => {
+    if (!dept) { setManagers([]); return; }
+    const { data } = await supabase.rpc("get_managers_by_department", { _department: dept } as any);
+    setManagers(data || []);
+  };
+
+  useEffect(() => {
+    if (form.department) fetchManagers(form.department);
+  }, [form.department]);
 
   const fetchRequests = async () => {
     let query = supabase
@@ -161,6 +234,91 @@ const AdminReviewRequests = () => {
     setAdminNotes(req.admin_notes || "");
     setLegalReviewDocLink(req.legal_review_doc_link || "");
     setNewNote("");
+  };
+
+  const handleSubmitNewRequest = async () => {
+    if (!user || !profile) return;
+
+    if (form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url)) {
+      toast.error("Link không hợp lệ", { description: "Vui lòng nhập đúng link Google Docs" });
+      return;
+    }
+
+    const invalidPhases = paymentPhases.some(p => !p.is_na && (!p.payment_amount || parseInt(p.payment_amount) <= 0));
+    if (invalidPhases) {
+      toast.error("Vui lòng nhập giá trị thanh toán hoặc chọn N/A cho tất cả các đợt");
+      return;
+    }
+
+    const missingDates = paymentPhases.some(p => !p.payment_due_date);
+    if (missingDates) {
+      toast.error("Vui lòng nhập ngày thanh toán cho tất cả các đợt");
+      return;
+    }
+
+    setSubmitting(true);
+
+    const employeeName = getEmployeeName(user.email);
+    const initialStatus = isAdmin ? "dang_review" : "cho_quan_ly";
+
+    const { data: insertedReq, error } = await supabase.from("review_requests").insert({
+      requester_id: user.id,
+      requester_name: employeeName || profile.full_name || user.email || "",
+      department: form.department,
+      priority: form.priority as any,
+      contract_title: form.contract_title,
+      partner_name: form.partner_name,
+      contract_value: form.contract_value_na ? 0 : (parseInt(form.contract_value) || 0),
+      request_deadline: form.request_deadline,
+      contract_start_date: form.contract_start_date || null,
+      contract_end_date: form.contract_end_date || null,
+      review_deadline: form.review_deadline || null,
+      description: form.description,
+      file_url: form.google_doc_url || null,
+      approved_pe_number: form.approved_pe_number.trim() || null,
+      contract_type_category: form.contract_type_category,
+      tax_code: form.tax_code,
+      manager_id: isAdmin ? null : (form.manager_id || null),
+      status: initialStatus as any,
+      admin_notes: isAdmin ? "Yêu cầu tạo bởi Pháp chế — bỏ qua bước Quản lý, chuyển trực tiếp Kế toán & Tài chính." : null,
+    } as any).select().single();
+
+    if (error) {
+      toast.error("Lỗi tạo yêu cầu", { description: error.message });
+      setSubmitting(false);
+      return;
+    }
+
+    if (insertedReq) {
+      const schedules = paymentPhases.map(p => ({
+        review_request_id: insertedReq.id,
+        phase_name: p.phase_name,
+        payment_amount: p.is_na ? 0 : (parseInt(p.payment_amount) || 0),
+        payment_due_date: p.payment_due_date,
+      }));
+      await supabase.from("payment_schedules").insert(schedules as any);
+    }
+
+    if (insertedReq) {
+      await createWorkflowNotifications({
+        reviewRequestId: insertedReq.id,
+        contractTitle: form.contract_title,
+        oldStatus: "moi_tao",
+        newStatus: initialStatus,
+        actorName: employeeName || profile.full_name || "",
+        requesterId: user.id,
+        managerId: form.manager_id || null,
+      });
+    }
+
+    setSubmitting(false);
+    toast.success(isAdmin
+      ? "Yêu cầu đã tạo và chuyển trực tiếp sang Kế toán & Tài chính!"
+      : "Yêu cầu review đã được tạo!");
+    setDialogOpen(false);
+    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "" });
+    setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
+    fetchRequests();
   };
 
   // Approve current step and advance workflow
@@ -326,16 +484,214 @@ const AdminReviewRequests = () => {
   }
 
   const roleLabel = isAdmin ? "Pháp chế" : isManager ? "Quản lý" : isAccountant ? "Kế toán" : isFinance ? "Tài chính" : "";
+  const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isAdmin || form.manager_id) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {isAdmin ? "Quản lý yêu cầu review" : `Yêu cầu review — ${roleLabel}`}
-        </h1>
-        <p className="text-muted-foreground">
-          {isAdmin ? "Xem và xử lý các yêu cầu review hợp đồng" : `Duyệt các yêu cầu ở bước ${roleLabel}`}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {isAdmin ? "Quản lý yêu cầu review" : `Yêu cầu review — ${roleLabel}`}
+          </h1>
+          <p className="text-muted-foreground">
+            {isAdmin ? "Xem và xử lý các yêu cầu review hợp đồng" : `Duyệt các yêu cầu ở bước ${roleLabel}`}
+          </p>
+        </div>
+        
+        {isAdmin && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">
+                Tạo yêu cầu mới
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Tạo yêu cầu review hợp đồng (Admin)</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Phòng ban *</Label>
+                    <Select value={form.department} onValueChange={(v) => setForm({ ...form, department: v, manager_id: "" })}>
+                      <SelectTrigger><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
+                      <SelectContent>
+                        {DEPARTMENT_OPTIONS.map((dept) => (
+                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {!isAdmin && (
+                    <div className="space-y-2">
+                      <Label>Người quản lý *</Label>
+                      <Select value={form.manager_id} onValueChange={(v) => setForm({ ...form, manager_id: v })}>
+                        <SelectTrigger><SelectValue placeholder={managers.length === 0 ? "Chọn phòng ban trước" : "Chọn quản lý"} /></SelectTrigger>
+                        <SelectContent>
+                          {managers.map((m) => (
+                            <SelectItem key={m.user_id} value={m.user_id}>{m.full_name || "Chưa đặt tên"}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Loại hợp đồng *</Label>
+                    <Select value={form.contract_type_category} onValueChange={(v) => setForm({ ...form, contract_type_category: v })}>
+                      <SelectTrigger><SelectValue placeholder="Chọn loại" /></SelectTrigger>
+                      <SelectContent>
+                        {CONTRACT_TYPE_CATEGORIES.map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Mức độ ưu tiên *</Label>
+                    <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cao">Cao</SelectItem>
+                        <SelectItem value="trung_binh">Trung bình</SelectItem>
+                        <SelectItem value="thap">Thấp</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Tên hợp đồng *</Label>
+                  <Input value={form.contract_title} onChange={(e) => setForm({ ...form, contract_title: e.target.value })} placeholder="VD: Hợp đồng mua bán thiết bị" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Tên đối tác *</Label>
+                    <Input value={form.partner_name} onChange={(e) => setForm({ ...form, partner_name: e.target.value })} placeholder="Tên công ty đối tác" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Mã số thuế đối tác *</Label>
+                    <Input value={form.tax_code} onChange={(e) => setForm({ ...form, tax_code: e.target.value })} placeholder="VD: 0123456789" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <Label>Giá trị hợp đồng (VNĐ) *</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Checkbox checked={form.contract_value_na} onCheckedChange={(v) => setForm({ ...form, contract_value_na: !!v, contract_value: "" })} id="value-na" />
+                      <label htmlFor="value-na" className="text-xs text-muted-foreground cursor-pointer">N/A</label>
+                    </div>
+                  </div>
+                  {!form.contract_value_na && (
+                    <Input type="number" value={form.contract_value} onChange={(e) => setForm({ ...form, contract_value: e.target.value })} placeholder="0" />
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Thời hạn yêu cầu *</Label>
+                    <Input type="date" value={form.request_deadline} onChange={(e) => setForm({ ...form, request_deadline: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Hạn review *</Label>
+                    <Input type="date" value={form.review_deadline} onChange={(e) => setForm({ ...form, review_deadline: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Ngày bắt đầu HĐ *</Label>
+                    <Input type="date" value={form.contract_start_date} onChange={(e) => setForm({ ...form, contract_start_date: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ngày kết thúc HĐ *</Label>
+                    <Input type="date" value={form.contract_end_date} onChange={(e) => setForm({ ...form, contract_end_date: e.target.value })} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Link Google Doc</Label>
+                  <Input
+                    type="url"
+                    value={form.google_doc_url}
+                    onChange={(e) => setForm({ ...form, google_doc_url: e.target.value })}
+                    placeholder="https://docs.google.com/document/d/..."
+                    className={form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url) ? "border-destructive focus-visible:ring-destructive" : ""}
+                  />
+                  {form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url) && (
+                    <p className="text-xs text-destructive">Link không hợp lệ</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>Số PE đã duyệt *</Label>
+                  <Input value={form.approved_pe_number} onChange={(e) => setForm({ ...form, approved_pe_number: e.target.value })} placeholder="VD: PE-2026-001" />
+                </div>
+
+                {/* Payment Schedule Section */}
+                <div className="space-y-3 p-4 rounded-lg border bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-semibold">Đợt thanh toán *</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addPaymentPhase}>
+                      Thêm đợt
+                    </Button>
+                  </div>
+                  {paymentPhases.map((phase, idx) => (
+                    <div key={idx} className="space-y-2 p-3 rounded border bg-background">
+                      <div className="flex items-center justify-between">
+                        <Input
+                          value={phase.phase_name}
+                          onChange={(e) => updatePaymentPhase(idx, "phase_name", e.target.value)}
+                          className="w-28"
+                          placeholder="Tên đợt"
+                        />
+                        {paymentPhases.length > 1 && (
+                          <Button type="button" variant="ghost" size="sm" className="text-destructive text-xs" onClick={() => removePaymentPhase(idx)}>
+                            Xóa
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs text-muted-foreground">Giá trị (VNĐ)</span>
+                            <div className="flex items-center gap-1">
+                              <Checkbox checked={phase.is_na} onCheckedChange={(v) => updatePaymentPhase(idx, "is_na", !!v)} />
+                              <span className="text-xs text-muted-foreground">N/A</span>
+                            </div>
+                          </div>
+                          {!phase.is_na && (
+                            <Input
+                              type="number"
+                              value={phase.payment_amount}
+                              onChange={(e) => updatePaymentPhase(idx, "payment_amount", e.target.value)}
+                              placeholder="0"
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-xs text-muted-foreground">Ngày thanh toán *</span>
+                          <Input
+                            type="date"
+                            value={phase.payment_due_date}
+                            onChange={(e) => updatePaymentPhase(idx, "payment_due_date", e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Mô tả chi tiết *</Label>
+                  <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả thêm về hợp đồng cần review..." rows={3} />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
+                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSubmitNewRequest} disabled={submitting || !isFormValid}>
+                  {submitting ? "Đang gửi..." : "Gửi yêu cầu"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {/* Workflow Status Summary */}
