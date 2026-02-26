@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -500,11 +500,12 @@ const AdminReviewRequests = () => {
         
         {isAdmin && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">
-                Tạo yêu cầu mới
-              </Button>
-            </DialogTrigger>
+            <Button
+              className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0"
+              onClick={() => setDialogOpen(true)}
+            >
+              Tạo yêu cầu mới
+            </Button>
             <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Tạo yêu cầu review hợp đồng (Admin)</DialogTitle>
