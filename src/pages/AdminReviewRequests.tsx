@@ -757,7 +757,9 @@ const AdminReviewRequests = () => {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!req.manager_id} />
+                    {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
+                      <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!req.manager_id} />
+                    )}
                     <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
                   </div>
                 </div>
@@ -797,7 +799,9 @@ const AdminReviewRequests = () => {
                   </div>
                 )}
 
-                <DepartmentReviewTracker deptReviews={deptReviews} skipManagerStep={!req.manager_id} />
+                {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
+                  <DepartmentReviewTracker deptReviews={deptReviews} skipManagerStep={!req.manager_id} />
+                )}
 
                 {/* File links */}
                 <div className="space-y-1">
