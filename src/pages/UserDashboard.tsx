@@ -26,7 +26,7 @@ import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTra
 import { extractDeptReviews, decodeDeptReview, WORKFLOW_STATUSES } from "@/types/reviewDepartments";
 
 const isValidGoogleDocUrl = (url: string): boolean => {
-  if (!url) return true;
+  if (!url) return false;
   return /^https:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\/d\//.test(url);
 };
 
@@ -183,8 +183,8 @@ const UserDashboard = () => {
   const handleSubmit = async () => {
     if (!user || !profile) return;
 
-    if (form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url)) {
-      toast.error("Link không hợp lệ", { description: "Vui lòng nhập đúng link Google Docs" });
+    if (!form.google_doc_url || !isValidGoogleDocUrl(form.google_doc_url)) {
+      toast.error("Link Google Doc bắt buộc", { description: "Vui lòng nhập đúng link Google Docs (docs.google.com/document/d/...)" });
       return;
     }
 
@@ -282,7 +282,7 @@ const UserDashboard = () => {
     return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Đang tải...</p></div>;
   }
 
-  const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isPhapc || form.manager_id) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
+  const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isPhapc || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -401,7 +401,7 @@ const UserDashboard = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Link Google Doc</Label>
+                <Label>Link Google Doc *</Label>
                 <Input
                   type="url"
                   value={form.google_doc_url}
@@ -410,8 +410,11 @@ const UserDashboard = () => {
                   className={form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url) ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
                 {form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url) && (
-                  <p className="text-xs text-destructive">Link không hợp lệ</p>
+                  <p className="text-xs text-destructive">Link không hợp lệ. Vui lòng nhập link Google Docs đúng định dạng.</p>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  ⚠️ Vui lòng cấp quyền <strong>Comment</strong> cho tất cả reviewer trước khi gửi.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>Số PE đã duyệt *</Label>
