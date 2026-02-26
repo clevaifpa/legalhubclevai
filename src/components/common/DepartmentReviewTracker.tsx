@@ -14,6 +14,7 @@ import { formatDate } from "@/lib/format";
 interface DepartmentReviewTrackerProps {
     deptReviews: Record<ReviewDepartment, DepartmentReviewStatus>;
     compact?: boolean;
+    skipManagerStep?: boolean;
 }
 
 const StatusText = ({ status }: { status: DepartmentReviewStatus["status"] }) => {
@@ -25,10 +26,14 @@ const StatusText = ({ status }: { status: DepartmentReviewStatus["status"] }) =>
     }
 };
 
-export function DepartmentReviewTracker({ deptReviews, compact = false }: DepartmentReviewTrackerProps) {
-    const progress = getReviewProgress(deptReviews);
+export function DepartmentReviewTracker({ deptReviews, compact = false, skipManagerStep = false }: DepartmentReviewTrackerProps) {
     const departments = (Object.keys(REVIEW_DEPARTMENTS) as ReviewDepartment[])
+        .filter(dept => !(skipManagerStep && dept === "quan_ly"))
         .sort((a, b) => REVIEW_DEPARTMENTS[a].stepOrder - REVIEW_DEPARTMENTS[b].stepOrder);
+
+    const total = departments.length;
+    const completed = departments.filter((dept) => deptReviews[dept]?.status && deptReviews[dept].status !== "pending").length;
+    const customProgress = { completed, total, percentage: Math.round((completed / total) * 100) || 0 };
 
     if (compact) {
         return (
@@ -41,12 +46,12 @@ export function DepartmentReviewTracker({ deptReviews, compact = false }: Depart
                             <TooltipTrigger asChild>
                                 <div
                                     className={`flex items-center justify-center w-7 h-7 rounded-full border-2 transition-all ${review.status === "approved"
-                                            ? "border-green-400 bg-green-50"
-                                            : review.status === "rejected"
-                                                ? "border-red-400 bg-red-50"
-                                                : review.status === "needs_revision"
-                                                    ? "border-yellow-400 bg-yellow-50"
-                                                    : "border-gray-200 bg-gray-50"
+                                        ? "border-green-400 bg-green-50"
+                                        : review.status === "rejected"
+                                            ? "border-red-400 bg-red-50"
+                                            : review.status === "needs_revision"
+                                                ? "border-yellow-400 bg-yellow-50"
+                                                : "border-gray-200 bg-gray-50"
                                         }`}
                                 >
                                     <span className="text-[10px] font-bold">{config.label.charAt(0)}</span>
@@ -63,7 +68,7 @@ export function DepartmentReviewTracker({ deptReviews, compact = false }: Depart
                     );
                 })}
                 <span className="text-xs text-muted-foreground ml-1">
-                    {progress.completed}/{progress.total}
+                    {customProgress.completed}/{customProgress.total}
                 </span>
             </div>
         );
@@ -74,9 +79,9 @@ export function DepartmentReviewTracker({ deptReviews, compact = false }: Depart
             <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                     <span className="font-medium text-muted-foreground">Tiến trình duyệt</span>
-                    <span className="font-semibold">{progress.completed}/{progress.total} bước</span>
+                    <span className="font-semibold">{customProgress.completed}/{customProgress.total} bước</span>
                 </div>
-                <Progress value={progress.percentage} className="h-2" />
+                <Progress value={customProgress.percentage} className="h-2" />
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -87,12 +92,12 @@ export function DepartmentReviewTracker({ deptReviews, compact = false }: Depart
                         <div
                             key={dept}
                             className={`p-3 rounded-lg border transition-all ${review.status === "pending"
-                                    ? "bg-muted/30 border-muted"
-                                    : review.status === "approved"
-                                        ? "bg-green-50/50 border-green-200"
-                                        : review.status === "rejected"
-                                            ? "bg-red-50/50 border-red-200"
-                                            : "bg-yellow-50/50 border-yellow-200"
+                                ? "bg-muted/30 border-muted"
+                                : review.status === "approved"
+                                    ? "bg-green-50/50 border-green-200"
+                                    : review.status === "rejected"
+                                        ? "bg-red-50/50 border-red-200"
+                                        : "bg-yellow-50/50 border-yellow-200"
                                 }`}
                         >
                             <div className="flex items-center justify-between mb-1.5">
