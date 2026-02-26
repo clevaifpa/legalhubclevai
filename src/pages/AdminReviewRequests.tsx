@@ -882,18 +882,20 @@ const AdminReviewRequests = () => {
                       </AlertDialogContent>
                     </AlertDialog>
                   )}
-                  <div className="flex gap-2 ml-auto">
-                    {canAct && (
-                      <Button size="sm" className="text-xs bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => openDetail(req)}>
-                        Duyệt
-                      </Button>
-                    )}
-                    {!canAct && (
-                      <Button size="sm" className="text-xs" variant="outline" onClick={() => openDetail(req)}>
-                        Xem chi tiết
-                      </Button>
-                    )}
-                  </div>
+                  {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
+                    <div className="flex gap-2 ml-auto">
+                      {canAct && (
+                        <Button size="sm" className="text-xs bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => openDetail(req)}>
+                          Duyệt
+                        </Button>
+                      )}
+                      {!canAct && (
+                        <Button size="sm" className="text-xs" variant="outline" onClick={() => openDetail(req)}>
+                          Xem chi tiết
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
