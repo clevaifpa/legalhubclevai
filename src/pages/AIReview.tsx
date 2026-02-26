@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Brain, Upload, FileText, Sparkles, ShieldCheck, ShieldAlert, Shield, AlertTriangle, CheckCircle, Loader2, Lightbulb, History, Clock, ChevronRight } from "lucide-react";
+import { Brain, Upload, FileText, Sparkles, ShieldCheck, ShieldAlert, Shield, AlertTriangle, CheckCircle, Loader2, Lightbulb, History } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 interface AnalysisResult {
@@ -16,11 +17,15 @@ interface AnalysisResult {
   recommendations: string[];
 }
 
-interface HistoryItem {
+interface AIReviewHistoryItem {
   id: string;
-  timestamp: number;
-  contractText: string;
-  result: AnalysisResult;
+  contract_text: string;
+  summary: string;
+  risk_level: string;
+  issues: { clause: string; riskLevel: string; reason: string; suggestion: string }[];
+  missing_clauses: string[];
+  recommendations: string[];
+  created_at: string;
 }
 
 const RISK_LABELS: Record<string, string> = { thap: "Thấp", trung_binh: "Trung bình", cao: "Cao" };
@@ -35,18 +40,48 @@ const AIReview = () => {
   const [contractText, setContractText] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [history, setHistory] = useState<AIReviewHistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+
+  const loadHistory = async () => {
+    try {
+      setLoadingHistory(true);
+      const { data, error } = await supabase
+        .from("ai_review_history")
+        .select("id, contract_text, summary, risk_level, issues, missing_clauses, recommendations, created_at")
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      setHistory((data || []) as unknown as AIReviewHistoryItem[]);
+    } catch (e: any) {
+      toast.error("Không tải được lịch sử AI kiểm tra", { description: e.message });
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   useEffect(() => {
-    const saved = localStorage.getItem("aiReviewHistory");
-    if (saved) {
-      try {
-        setHistory(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse AI review history", e);
-      }
-    }
+    loadHistory();
   }, []);
+
+  const saveHistory = async (payload: AnalysisResult, text: string) => {
+    const { data: authData } = await supabase.auth.getUser();
+    const user = authData?.user;
+    if (!user) return;
+
+    const { error } = await supabase.from("ai_review_history").insert({
+      user_id: user.id,
+      contract_text: text,
+      summary: payload.summary,
+      risk_level: payload.riskLevel,
+      issues: payload.issues as any,
+      missing_clauses: payload.missingClauses,
+      recommendations: payload.recommendations,
+    });
+
+    if (error) throw error;
+  };
 
   const handleAnalyze = async () => {
     if (!contractText.trim()) {
@@ -57,7 +92,6 @@ const AIReview = () => {
     setResult(null);
 
     try {
-      // Fetch clauses for comparison
       const { data: clauses } = await supabase.from("clauses").select("name, content, risk_level");
 
       const { data, error } = await supabase.functions.invoke("analyze-contract", {
@@ -69,20 +103,16 @@ const AIReview = () => {
         toast.error(data.error);
         return;
       }
-      setResult(data);
 
-      const newHistoryItem: HistoryItem = {
-        id: crypto.randomUUID(),
-        timestamp: Date.now(),
-        contractText: contractText.trim(),
-        result: data
-      };
+      const analysisResult = data as AnalysisResult;
+      setResult(analysisResult);
 
-      setHistory(prev => {
-        const newHistory = [newHistoryItem, ...prev];
-        localStorage.setItem("aiReviewHistory", JSON.stringify(newHistory));
-        return newHistory;
-      });
+      try {
+        await saveHistory(analysisResult, contractText.trim());
+        await loadHistory();
+      } catch (saveError: any) {
+        toast.error("Phân tích xong nhưng lưu lịch sử thất bại", { description: saveError.message });
+      }
 
       toast.success("Phân tích hoàn tất!");
     } catch (e: any) {
@@ -103,231 +133,223 @@ const AIReview = () => {
         </p>
       </div>
 
-      {/* Input Area */}
-      <Card className="border-2 border-dashed border-accent/30 bg-accent/5 shadow-none">
-        <CardContent className="p-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-full bg-accent/10">
-              <Upload className="h-6 w-6 text-accent" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold">Nhập nội dung hợp đồng</h3>
-              <p className="text-sm text-muted-foreground">Dán nội dung hợp đồng cần kiểm tra vào ô bên dưới</p>
-            </div>
-          </div>
-          <Textarea
-            value={contractText}
-            onChange={(e) => setContractText(e.target.value)}
-            placeholder="Dán toàn bộ nội dung hợp đồng tại đây...&#10;&#10;VD: ĐIỀU 1: ĐỐI TƯỢNG HỢP ĐỒNG&#10;Bên A đồng ý cung cấp cho Bên B..."
-            rows={10}
-            className="resize-y"
-          />
-          <Button
-            className="bg-accent hover:bg-accent/90 text-accent-foreground w-full sm:w-auto"
-            onClick={handleAnalyze}
-            disabled={analyzing || !contractText.trim()}
-          >
-            {analyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-            {analyzing ? "Đang phân tích..." : "Phân tích hợp đồng"}
-          </Button>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="analyze" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="analyze">Kiểm tra hợp đồng</TabsTrigger>
+          <TabsTrigger value="history">Lịch sử AI kiểm tra</TabsTrigger>
+        </TabsList>
 
-      {/* Results */}
-      {result && (
-        <div className="space-y-4 animate-fade-in">
-          {/* Summary */}
-          <Card className="border-none shadow-sm">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <Brain className="h-5 w-5 text-accent" />
-                  Kết quả phân tích
-                </CardTitle>
-                <Badge className={RISK_COLORS[result.riskLevel] || ""}>
-                  <RiskIcon className="h-3 w-3 mr-1" />
-                  Rủi ro: {RISK_LABELS[result.riskLevel] || result.riskLevel}
-                </Badge>
+        <TabsContent value="analyze" className="space-y-6">
+          <Card className="border-2 border-dashed border-accent/30 bg-accent/5 shadow-none">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-accent/10">
+                  <Upload className="h-6 w-6 text-accent" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Nhập nội dung hợp đồng</h3>
+                  <p className="text-sm text-muted-foreground">Dán nội dung hợp đồng cần kiểm tra vào ô bên dưới</p>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm leading-relaxed">{result.summary}</p>
+              <Textarea
+                value={contractText}
+                onChange={(e) => setContractText(e.target.value)}
+                placeholder="Dán toàn bộ nội dung hợp đồng tại đây...&#10;&#10;VD: ĐIỀU 1: ĐỐI TƯỢNG HỢP ĐỒNG&#10;Bên A đồng ý cung cấp cho Bên B..."
+                rows={10}
+                className="resize-y"
+              />
+              <Button
+                className="bg-accent hover:bg-accent/90 text-accent-foreground w-full sm:w-auto"
+                onClick={handleAnalyze}
+                disabled={analyzing || !contractText.trim()}
+              >
+                {analyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                {analyzing ? "Đang phân tích..." : "Phân tích hợp đồng"}
+              </Button>
             </CardContent>
           </Card>
 
-          {/* Issues */}
-          {result.issues.length > 0 && (
-            <Card className="border-none shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-warning" />
-                  Điều khoản có rủi ro ({result.issues.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {result.issues.map((issue, i) => {
-                  const IssueIcon = RISK_ICONS[issue.riskLevel] || Shield;
-                  return (
-                    <div key={i} className="p-4 rounded-lg border bg-card space-y-2">
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="font-medium text-sm flex-1">{issue.clause}</p>
-                        <Badge variant="outline" className={`shrink-0 ${RISK_COLORS[issue.riskLevel] || ""}`}>
-                          <IssueIcon className="h-3 w-3 mr-1" />
-                          {RISK_LABELS[issue.riskLevel]}
-                        </Badge>
-                      </div>
-                      <div className="p-3 rounded bg-destructive/5 border border-destructive/10">
-                        <p className="text-xs font-medium text-destructive mb-1">⚠️ Lý do rủi ro</p>
-                        <p className="text-sm text-muted-foreground">{issue.reason}</p>
-                      </div>
-                      <div className="p-3 rounded bg-success/5 border border-success/10">
-                        <p className="text-xs font-medium text-success mb-1">✏️ Gợi ý chỉnh sửa</p>
-                        <p className="text-sm text-muted-foreground">{issue.suggestion}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          )}
+          {result && (
+            <div className="space-y-4 animate-fade-in">
+              <Card className="border-none shadow-sm">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                      <Brain className="h-5 w-5 text-accent" />
+                      Kết quả phân tích
+                    </CardTitle>
+                    <Badge className={RISK_COLORS[result.riskLevel] || ""}>
+                      <RiskIcon className="h-3 w-3 mr-1" />
+                      Rủi ro: {RISK_LABELS[result.riskLevel] || result.riskLevel}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm leading-relaxed">{result.summary}</p>
+                </CardContent>
+              </Card>
 
-          {/* Missing Clauses */}
-          {result.missingClauses.length > 0 && (
-            <Card className="border-none shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-info" />
-                  Điều khoản bắt buộc bị thiếu ({result.missingClauses.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {result.missingClauses.map((clause, i) => (
-                    <li key={i} className="flex items-start gap-2 p-3 rounded-lg bg-info/5 border border-info/10">
-                      <AlertTriangle className="h-4 w-4 text-info shrink-0 mt-0.5" />
-                      <span className="text-sm">{clause}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Recommendations */}
-          {result.recommendations.length > 0 && (
-            <Card className="border-none shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <Lightbulb className="h-5 w-5 text-accent" />
-                  Khuyến nghị
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {result.recommendations.map((rec, i) => (
-                    <li key={i} className="flex items-start gap-2 p-3 rounded-lg bg-accent/5 border border-accent/10">
-                      <CheckCircle className="h-4 w-4 text-accent shrink-0 mt-0.5" />
-                      <span className="text-sm">{rec}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-
-      {/* How it works (shown when no result) */}
-      {!result && !analyzing && (
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Cách hoạt động</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="border-none shadow-sm">
-              <CardContent className="p-5 flex flex-col items-center text-center">
-                <div className="p-3 rounded-xl bg-info/10 mb-3">
-                  <FileText className="h-6 w-6 text-info" />
-                </div>
-                <h3 className="font-semibold text-sm mb-1">1. Nhập nội dung</h3>
-                <p className="text-xs text-muted-foreground">Dán nội dung hợp đồng cần kiểm tra</p>
-              </CardContent>
-            </Card>
-            <Card className="border-none shadow-sm">
-              <CardContent className="p-5 flex flex-col items-center text-center">
-                <div className="p-3 rounded-xl bg-accent/10 mb-3">
-                  <Sparkles className="h-6 w-6 text-accent" />
-                </div>
-                <h3 className="font-semibold text-sm mb-1">2. AI phân tích</h3>
-                <p className="text-xs text-muted-foreground">So sánh với kho điều khoản chuẩn, phát hiện rủi ro</p>
-              </CardContent>
-            </Card>
-            <Card className="border-none shadow-sm">
-              <CardContent className="p-5 flex flex-col items-center text-center">
-                <div className="p-3 rounded-xl bg-success/10 mb-3">
-                  <ShieldCheck className="h-6 w-6 text-success" />
-                </div>
-                <h3 className="font-semibold text-sm mb-1">3. Nhận kết quả</h3>
-                <p className="text-xs text-muted-foreground">Báo cáo chi tiết với gợi ý chỉnh sửa</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {/* History Section */}
-      {history.length > 0 && (
-        <div className="pt-8 border-t border-border mt-8 space-y-4 animate-fade-in">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <History className="h-5 w-5 text-muted-foreground" />
-            Lịch sử phân tích gần đây
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {history.map((item) => {
-              const ItemRiskIcon = RISK_ICONS[item.result.riskLevel] || Shield;
-              return (
-                <Card
-                  key={item.id}
-                  className="cursor-pointer hover:border-accent/50 transition-colors group"
-                  onClick={() => {
-                    setContractText(item.contractText);
-                    setResult(item.result);
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
-                >
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        {new Date(item.timestamp).toLocaleString("vi-VN", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric"
-                        })}
-                      </div>
-                      <Badge variant="outline" className={`text-[10px] h-5 ${RISK_COLORS[item.result.riskLevel] || ""}`}>
-                        <ItemRiskIcon className="h-3 w-3 mr-1" />
-                        {RISK_LABELS[item.result.riskLevel]}
-                      </Badge>
-                    </div>
-                    <p className="text-sm line-clamp-2 font-medium">
-                      {item.result.summary.length > 60
-                        ? item.result.summary.substring(0, 60) + "..."
-                        : item.result.summary}
-                    </p>
-                    <div className="flex justify-between items-center pt-2">
-                      <span className="text-xs text-muted-foreground">
-                        {item.result.issues.length} rủi ro phát hiện
-                      </span>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors" />
-                    </div>
+              {result.issues.length > 0 && (
+                <Card className="border-none shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-warning" />
+                      Điều khoản có rủi ro ({result.issues.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {result.issues.map((issue, i) => {
+                      const IssueIcon = RISK_ICONS[issue.riskLevel] || Shield;
+                      return (
+                        <div key={i} className="p-4 rounded-lg border bg-card space-y-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="font-medium text-sm flex-1">{issue.clause}</p>
+                            <Badge variant="outline" className={`shrink-0 ${RISK_COLORS[issue.riskLevel] || ""}`}>
+                              <IssueIcon className="h-3 w-3 mr-1" />
+                              {RISK_LABELS[issue.riskLevel]}
+                            </Badge>
+                          </div>
+                          <div className="p-3 rounded bg-destructive/5 border border-destructive/10">
+                            <p className="text-xs font-medium text-destructive mb-1">⚠️ Lý do rủi ro</p>
+                            <p className="text-sm text-muted-foreground">{issue.reason}</p>
+                          </div>
+                          <div className="p-3 rounded bg-success/5 border border-success/10">
+                            <p className="text-xs font-medium text-success mb-1">✏️ Gợi ý chỉnh sửa</p>
+                            <p className="text-sm text-muted-foreground">{issue.suggestion}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </CardContent>
                 </Card>
-              );
-            })}
-          </div>
-        </div>
-      )}
+              )}
+
+              {result.missingClauses.length > 0 && (
+                <Card className="border-none shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-info" />
+                      Điều khoản bắt buộc bị thiếu ({result.missingClauses.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {result.missingClauses.map((clause, i) => (
+                        <li key={i} className="flex items-start gap-2 p-3 rounded-lg bg-info/5 border border-info/10">
+                          <AlertTriangle className="h-4 w-4 text-info shrink-0 mt-0.5" />
+                          <span className="text-sm">{clause}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {result.recommendations.length > 0 && (
+                <Card className="border-none shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                      <Lightbulb className="h-5 w-5 text-accent" />
+                      Khuyến nghị
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {result.recommendations.map((rec, i) => (
+                        <li key={i} className="flex items-start gap-2 p-3 rounded-lg bg-accent/5 border border-accent/10">
+                          <CheckCircle className="h-4 w-4 text-accent shrink-0 mt-0.5" />
+                          <span className="text-sm">{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {!result && !analyzing && (
+            <div>
+              <h2 className="text-lg font-semibold mb-4">Cách hoạt động</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="border-none shadow-sm">
+                  <CardContent className="p-5 flex flex-col items-center text-center">
+                    <div className="p-3 rounded-xl bg-info/10 mb-3">
+                      <FileText className="h-6 w-6 text-info" />
+                    </div>
+                    <h3 className="font-semibold text-sm mb-1">1. Nhập nội dung</h3>
+                    <p className="text-xs text-muted-foreground">Dán nội dung hợp đồng cần kiểm tra</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-none shadow-sm">
+                  <CardContent className="p-5 flex flex-col items-center text-center">
+                    <div className="p-3 rounded-xl bg-accent/10 mb-3">
+                      <Sparkles className="h-6 w-6 text-accent" />
+                    </div>
+                    <h3 className="font-semibold text-sm mb-1">2. AI phân tích</h3>
+                    <p className="text-xs text-muted-foreground">So sánh với kho điều khoản chuẩn, phát hiện rủi ro</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-none shadow-sm">
+                  <CardContent className="p-5 flex flex-col items-center text-center">
+                    <div className="p-3 rounded-xl bg-success/10 mb-3">
+                      <ShieldCheck className="h-6 w-6 text-success" />
+                    </div>
+                    <h3 className="font-semibold text-sm mb-1">3. Nhận kết quả</h3>
+                    <p className="text-xs text-muted-foreground">Báo cáo chi tiết với gợi ý chỉnh sửa</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="history">
+          <Card className="border-none shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <History className="h-5 w-5 text-accent" />
+                Lịch sử AI kiểm tra (20 bản ghi gần nhất)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingHistory ? (
+                <div className="text-sm text-muted-foreground">Đang tải lịch sử...</div>
+              ) : history.length === 0 ? (
+                <div className="text-sm text-muted-foreground">Chưa có dữ liệu lịch sử.</div>
+              ) : (
+                <div className="space-y-4">
+                  {history.map((item) => {
+                    const ItemIcon = RISK_ICONS[item.risk_level] || Shield;
+                    return (
+                      <div key={item.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(item.created_at).toLocaleString("vi-VN")}
+                          </div>
+                          <Badge className={RISK_COLORS[item.risk_level] || ""}>
+                            <ItemIcon className="h-3 w-3 mr-1" />
+                            {RISK_LABELS[item.risk_level] || item.risk_level}
+                          </Badge>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Nội dung hợp đồng</p>
+                          <p className="text-sm line-clamp-4 whitespace-pre-wrap">{item.contract_text}</p>
+                        </div>
+                        <Separator />
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Kết luận AI</p>
+                          <p className="text-sm">{item.summary}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
