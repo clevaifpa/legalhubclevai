@@ -259,7 +259,7 @@ const AdminReviewRequests = () => {
     setSubmitting(true);
 
     const employeeName = getEmployeeName(user.email);
-    const initialStatus = isAdmin ? "dang_review" : "cho_quan_ly";
+    const initialStatus = isAdmin ? "cho_phap_che" : "cho_quan_ly";
 
     const { data: insertedReq, error } = await supabase.from("review_requests").insert({
       requester_id: user.id,
@@ -280,7 +280,7 @@ const AdminReviewRequests = () => {
       tax_code: form.tax_code,
       manager_id: isAdmin ? null : (form.manager_id || null),
       status: initialStatus as any,
-      admin_notes: isAdmin ? "Yêu cầu tạo bởi Pháp chế — bỏ qua bước Quản lý, chuyển trực tiếp Kế toán & Tài chính." : null,
+      admin_notes: isAdmin ? "Yêu cầu tạo bởi Pháp chế — bỏ qua bước Quản lý, đang chờ Pháp chế review." : null,
     } as any).select().single();
 
     if (error) {
@@ -504,7 +504,7 @@ const AdminReviewRequests = () => {
             {isAdmin ? "Xem và xử lý các yêu cầu review hợp đồng" : `Duyệt các yêu cầu ở bước ${roleLabel}`}
           </p>
         </div>
-        
+
         {isAdmin && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <Button
