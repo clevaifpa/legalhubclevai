@@ -47,7 +47,7 @@ const Dashboard = () => {
       .limit(10)
       .then(({ data }) => { if (data) setUpcomingPayments(data); });
 
-    supabase.rpc("auto_expire_contracts" as any).then(() => {});
+    supabase.rpc("auto_expire_contracts" as any).then(() => { });
   }, []);
 
   const today = new Date();
@@ -154,7 +154,11 @@ const Dashboard = () => {
             <div className="space-y-2">
               {overdueReviews.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Không có yêu cầu review quá hạn</p>}
               {overdueReviews.map((r) => {
-                const daysOverdue = Math.ceil((today.getTime() - new Date(r.request_deadline).getTime()) / (1000 * 60 * 60 * 24));
+                const todayDate = new Date();
+                todayDate.setHours(0, 0, 0, 0);
+                const deadlineDate = new Date(r.request_deadline);
+                deadlineDate.setHours(0, 0, 0, 0);
+                const daysOverdue = Math.floor((todayDate.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60 * 24));
                 return (
                   <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 hover:bg-destructive/10 transition-colors">
                     <div className="flex-1 min-w-0">
