@@ -94,6 +94,7 @@ const AdminReviewRequests = () => {
   const isManager = role === "manager";
   const isAccountant = role === "accountant";
   const isFinance = role === "finance";
+  const isDirectSubmit = isAdmin || isAccountant;
 
   // Determine which status this role can act on
   const getMyActionableStatus = (): string | null => {
@@ -259,7 +260,7 @@ const AdminReviewRequests = () => {
     setSubmitting(true);
 
     const employeeName = getEmployeeName(user.email);
-    const initialStatus = isAdmin ? "cho_phap_che" : "cho_quan_ly";
+    const initialStatus = isDirectSubmit ? "cho_phap_che" : "cho_quan_ly";
 
     const { data: insertedReq, error } = await supabase.from("review_requests").insert({
       requester_id: user.id,
@@ -278,9 +279,9 @@ const AdminReviewRequests = () => {
       approved_pe_number: form.approved_pe_number.trim() || null,
       contract_type_category: form.contract_type_category,
       tax_code: form.tax_code,
-      manager_id: isAdmin ? null : (form.manager_id || null),
+      manager_id: isDirectSubmit ? null : (form.manager_id || null),
       status: initialStatus as any,
-      admin_notes: isAdmin ? "Yêu cầu tạo bởi Pháp chế — bỏ qua bước Quản lý, đang chờ Pháp chế review." : null,
+      admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán — bỏ qua bước Quản lý, đang chờ Pháp chế review." : null,
     } as any).select().single();
 
     if (error) {
@@ -312,8 +313,8 @@ const AdminReviewRequests = () => {
     }
 
     setSubmitting(false);
-    toast.success(isAdmin
-      ? "Yêu cầu đã tạo và chuyển trực tiếp sang Kế toán & Tài chính!"
+    toast.success(isDirectSubmit
+      ? "Yêu cầu đã tạo, chuyển tiếp cho Pháp chế review!"
       : "Yêu cầu review đã được tạo!");
     setDialogOpen(false);
     setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "" });
@@ -491,7 +492,7 @@ const AdminReviewRequests = () => {
   }
 
   const roleLabel = isAdmin ? "Pháp chế" : isManager ? "Quản lý" : isAccountant ? "Kế toán" : isFinance ? "Tài chính" : "";
-  const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isAdmin || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
+  const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -505,7 +506,7 @@ const AdminReviewRequests = () => {
           </p>
         </div>
 
-        {isAdmin && (
+        {isDirectSubmit && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <Button
               className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0"
@@ -515,7 +516,7 @@ const AdminReviewRequests = () => {
             </Button>
             <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Tạo yêu cầu review hợp đồng (Admin)</DialogTitle>
+                <DialogTitle>Tạo yêu cầu review hợp đồng ({isAdmin ? "Pháp chế" : "Kế toán"})</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -530,7 +531,7 @@ const AdminReviewRequests = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  {!isAdmin && (
+                  {!isDirectSubmit && (
                     <div className="space-y-2">
                       <Label>Người quản lý *</Label>
                       <Select value={form.manager_id} onValueChange={(v) => setForm({ ...form, manager_id: v })}>
