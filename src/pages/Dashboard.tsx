@@ -126,7 +126,11 @@ const Dashboard = () => {
             <div className="space-y-2">
               {expiringContracts.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Không có hợp đồng nào sắp hết hạn</p>}
               {expiringContracts.slice(0, 6).map((contract) => {
-                const daysLeft = Math.ceil((new Date(contract.expiry_date!).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                const todayDate = new Date();
+                todayDate.setHours(0, 0, 0, 0);
+                const expiryDate = new Date(contract.expiry_date!.replace(/-/g, '/'));
+                expiryDate.setHours(0, 0, 0, 0);
+                const daysLeft = Math.round((expiryDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
                 return (
                   <div key={contract.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
                     <div className="flex-1 min-w-0">
@@ -156,9 +160,9 @@ const Dashboard = () => {
               {overdueReviews.map((r) => {
                 const todayDate = new Date();
                 todayDate.setHours(0, 0, 0, 0);
-                const deadlineDate = new Date(r.request_deadline);
+                const deadlineDate = new Date(r.request_deadline.replace(/-/g, '/'));
                 deadlineDate.setHours(0, 0, 0, 0);
-                const daysOverdue = Math.floor((todayDate.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60 * 24));
+                const daysOverdue = Math.round((todayDate.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60 * 24));
                 return (
                   <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 hover:bg-destructive/10 transition-colors">
                     <div className="flex-1 min-w-0">
@@ -179,7 +183,11 @@ const Dashboard = () => {
             <div className="space-y-2">
               {upcomingPayments.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Không có nghĩa vụ thanh toán nào sắp đến hạn</p>}
               {upcomingPayments.map((p) => {
-                const daysLeft = Math.ceil((new Date(p.payment_due_date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                const todayDate = new Date();
+                todayDate.setHours(0, 0, 0, 0);
+                const dueDate = new Date(p.payment_due_date.replace(/-/g, '/'));
+                dueDate.setHours(0, 0, 0, 0);
+                const daysLeft = Math.round((dueDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
                 return (
                   <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
                     <div className="flex-1 min-w-0">
