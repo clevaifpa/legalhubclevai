@@ -87,6 +87,8 @@ const UserDashboard = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const [editingReqId, setEditingReqId] = useState<string | null>(null);
+
   const [form, setForm] = useState({
     priority: "trung_binh",
     contract_title: "",
@@ -204,40 +206,85 @@ const UserDashboard = () => {
 
     const employeeName = getEmployeeName(user.email);
 
-    // For Pháp chế: set status directly to dang_review (skip manager approval)
-    const initialStatus = isPhapc ? "dang_review" : "cho_quan_ly";
+    let submitError = null;
+    let finalReqId = editingReqId;
 
-    const { data: insertedReq, error } = await supabase.from("review_requests").insert({
-      requester_id: user.id,
-      requester_name: employeeName || profile.full_name || user.email || "",
-      department: form.department,
-      priority: form.priority as any,
-      contract_title: form.contract_title,
-      partner_name: form.partner_name,
-      contract_value: form.contract_value_na ? 0 : (parseInt(form.contract_value) || 0),
-      request_deadline: form.request_deadline,
-      contract_start_date: form.contract_start_date || null,
-      contract_end_date: form.contract_end_date || null,
-      review_deadline: form.review_deadline || null,
-      description: form.description,
-      file_url: form.google_doc_url || null,
-      approved_pe_number: form.approved_pe_number.trim() || null,
-      contract_type_category: form.contract_type_category,
-      tax_code: form.tax_code,
-      manager_id: isPhapc ? null : (form.manager_id || null),
-      status: initialStatus as any,
-      admin_notes: isPhapc ? "Yêu cầu tạo bởi Pháp chế — bỏ qua bước Quản lý, chuyển trực tiếp Kế toán & Tài chính." : null,
-    } as any).select().single();
+    if (editingReqId) {
+      // Logic cập nhật (Update)
+      const { error } = await supabase.from("review_requests").update({
+        department: form.department,
+        priority: form.priority as any,
+        contract_title: form.contract_title,
+        partner_name: form.partner_name,
+        contract_value: form.contract_value_na ? 0 : (parseInt(form.contract_value) || 0),
+        request_deadline: form.request_deadline,
+        contract_start_date: form.contract_start_date || null,
+        contract_end_date: form.contract_end_date || null,
+        review_deadline: form.review_deadline || null,
+        description: form.description,
+        file_url: form.google_doc_url || null,
+        approved_pe_number: form.approved_pe_number.trim() || null,
+        contract_type_category: form.contract_type_category,
+        tax_code: form.tax_code,
+        manager_id: isPhapc ? null : (form.manager_id || null),
+      }).eq("id", editingReqId);
+      submitError = error;
 
-    if (error) {
-      toast.error("Lỗi tạo yêu cầu", { description: error.message });
+      if (!error) {
+        // Xoá lịch thanh toán cũ
+        await supabase.from("payment_schedules").delete().eq("review_request_id", editingReqId);
+      }
+    } else {
+      // Logic tạo mới (Create)
+      const initialStatus = isPhapc ? "dang_review" : "cho_quan_ly";
+      const { data, error } = await supabase.from("review_requests").insert({
+        requester_id: user.id,
+        requester_name: employeeName || profile.full_name || user.email || "",
+        department: form.department,
+        priority: form.priority as any,
+        contract_title: form.contract_title,
+        partner_name: form.partner_name,
+        contract_value: form.contract_value_na ? 0 : (parseInt(form.contract_value) || 0),
+        request_deadline: form.request_deadline,
+        contract_start_date: form.contract_start_date || null,
+        contract_end_date: form.contract_end_date || null,
+        review_deadline: form.review_deadline || null,
+        description: form.description,
+        file_url: form.google_doc_url || null,
+        approved_pe_number: form.approved_pe_number.trim() || null,
+        contract_type_category: form.contract_type_category,
+        tax_code: form.tax_code,
+        manager_id: isPhapc ? null : (form.manager_id || null),
+        status: initialStatus as any,
+        admin_notes: isPhapc ? "Yêu cầu tạo bởi Pháp chế — bỏ qua bước Quản lý, chuyển trực tiếp Kế toán & Tài chính." : null,
+      }).select().single();
+
+      submitError = error;
+      if (data) finalReqId = data.id;
+
+      // Send notifications for new request
+      if (data) {
+        await createWorkflowNotifications({
+          reviewRequestId: data.id,
+          contractTitle: form.contract_title,
+          oldStatus: "moi_tao",
+          newStatus: initialStatus,
+          actorName: getEmployeeName(user.email) || profile.full_name || "",
+          requesterId: user.id,
+          managerId: form.manager_id || null,
+        });
+      }
+    }
+
+    if (submitError) {
+      toast.error(editingReqId ? "Lỗi cập nhật yêu cầu" : "Lỗi tạo yêu cầu", { description: submitError.message });
       setSubmitting(false);
       return;
     }
 
-    if (insertedReq) {
+    if (finalReqId) {
       const schedules = paymentPhases.map(p => ({
-        review_request_id: insertedReq.id,
+        review_request_id: finalReqId!,
         phase_name: p.phase_name,
         payment_amount: p.is_na ? 0 : (parseInt(p.payment_amount) || 0),
         payment_due_date: p.payment_due_date,
@@ -245,27 +292,54 @@ const UserDashboard = () => {
       await supabase.from("payment_schedules").insert(schedules as any);
     }
 
-    // Send notifications for new request
-    if (insertedReq) {
-      await createWorkflowNotifications({
-        reviewRequestId: insertedReq.id,
-        contractTitle: form.contract_title,
-        oldStatus: "moi_tao",
-        newStatus: initialStatus,
-        actorName: getEmployeeName(user.email) || profile.full_name || "",
-        requesterId: user.id,
-        managerId: form.manager_id || null,
-      });
-    }
-
     setSubmitting(false);
-    toast.success(isPhapc
-      ? "Yêu cầu đã tạo và chuyển trực tiếp sang Kế toán & Tài chính!"
-      : "Yêu cầu review đã được tạo!");
+    toast.success(editingReqId ? "Cập nhật thành công!" : (isPhapc ? "Yêu cầu đã tạo!" : "Yêu cầu review đã được tạo!"));
+    handleResetForm();
+    fetchRequests();
+  };
+
+  const handleResetForm = () => {
     setDialogOpen(false);
+    setEditingReqId(null);
     setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "" });
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
-    fetchRequests();
+  };
+
+  const handleEdit = (req: any) => {
+    setEditingReqId(req.id);
+    let schedules = paymentSchedules[req.id] || [];
+
+    setForm({
+      priority: req.priority || "trung_binh",
+      contract_title: req.contract_title || "",
+      partner_name: req.partner_name || "",
+      contract_value: req.contract_value ? String(req.contract_value) : "",
+      contract_value_na: req.contract_value === 0,
+      request_deadline: req.request_deadline || "",
+      contract_start_date: req.contract_start_date || "",
+      contract_end_date: req.contract_end_date || "",
+      review_deadline: req.review_deadline || "",
+      description: req.description || "",
+      google_doc_url: req.file_url || "",
+      approved_pe_number: req.approved_pe_number || "",
+      department: req.department || "",
+      contract_type_category: req.contract_type_category || "",
+      tax_code: req.tax_code || "",
+      manager_id: req.manager_id || "",
+    });
+
+    if (schedules.length > 0) {
+      setPaymentPhases(schedules.map((s: any) => ({
+        phase_name: s.phase_name,
+        payment_amount: s.payment_amount ? String(s.payment_amount) : "",
+        payment_due_date: s.payment_due_date || "",
+        is_na: s.payment_amount === 0
+      })));
+    } else {
+      setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
+    }
+
+    setDialogOpen(true);
   };
 
   const handleDelete = async (reqId: string) => {
@@ -295,15 +369,18 @@ const UserDashboard = () => {
               : "Tạo và theo dõi yêu cầu review hợp đồng của bạn"}
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          if (!open) handleResetForm();
+          else setDialogOpen(true);
+        }}>
           <DialogTrigger asChild>
-            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">
+            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0" onClick={handleResetForm}>
               Tạo yêu cầu mới
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Tạo yêu cầu review hợp đồng</DialogTitle>
+              <DialogTitle>{editingReqId ? "Chỉnh sửa yêu cầu review hợp đồng" : "Tạo yêu cầu review hợp đồng"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
@@ -481,9 +558,9 @@ const UserDashboard = () => {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
+              <Button variant="outline" onClick={handleResetForm}>Hủy</Button>
               <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSubmit} disabled={submitting || !isFormValid}>
-                {submitting ? "Đang gửi..." : "Gửi yêu cầu"}
+                {submitting ? "Đang xử lý..." : (editingReqId ? "Cập nhật yêu cầu" : "Gửi yêu cầu")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -618,13 +695,16 @@ const UserDashboard = () => {
                 </div>
               )}
 
-              {req.status === "cho_quan_ly" && (
+              {["cho_xu_ly", "cho_quan_ly"].includes(req.status) && (
                 <>
                   <Separator />
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" className="text-xs" onClick={() => handleEdit(req)}>
+                      Chỉnh sửa
+                    </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-xs text-destructive hover:text-destructive">
+                        <Button variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10">
                           Xóa yêu cầu
                         </Button>
                       </AlertDialogTrigger>
