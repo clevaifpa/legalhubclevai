@@ -129,7 +129,7 @@ const AIReview = () => {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">AI Kiểm tra hợp đồng</h1>
         <p className="text-muted-foreground">
-          Sử dụng AI để phân tích, phát hiện rủi ro và gợi ý chỉnh sửa hợp đồng
+          Sử dụng AI để phân tích, phát hiện rủi ro, đối chiếu điều khoản với pháp luật Việt Nam hiện hành và gợi ý chỉnh sửa hợp đồng
         </p>
       </div>
 

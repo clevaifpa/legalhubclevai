@@ -49,8 +49,8 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = `Bạn là chuyên gia pháp chế Việt Nam, chuyên phân tích và kiểm tra hợp đồng. 
-Nhiệm vụ: Phân tích nội dung hợp đồng, phát hiện rủi ro, so sánh với điều khoản chuẩn. Bạn phải luôn đối chiếu với các quy định pháp luật Việt Nam hiện hành mới nhất.
+    const systemPrompt = `Bạn là chuyên gia pháp chế Việt Nam, chuyên phân tích và kiểm tra hợp đồng.
+Nhiệm vụ: Phân tích nội dung hợp đồng, phát hiện rủi ro, so sánh với điều khoản chuẩn và BẮT BUỘC đối chiếu từng điều khoản với quy định pháp luật Việt Nam hiện hành mới nhất.
 
 Trả về kết quả theo format JSON với cấu trúc:
 {
@@ -68,9 +68,14 @@ Trả về kết quả theo format JSON với cấu trúc:
   "recommendations": ["Các khuyến nghị chung nhằm đảm bảo quyền lợi và tính chặt chẽ pháp lý"]
 }
 
+Yêu cầu bắt buộc khi phân tích:
+- Mỗi vấn đề rủi ro phải nêu rõ căn cứ pháp lý cụ thể: tên văn bản + số hiệu (nếu có) + Điều/Khoản/Điểm.
+- Nếu thiếu căn cứ rõ ràng thì không được kết luận dứt khoát, phải ghi "cần xác minh thêm".
+- Ưu tiên văn bản còn hiệu lực tại thời điểm hiện tại và tránh viện dẫn văn bản đã hết hiệu lực.
+
 Hãy phân tích kỹ lưỡng, chính xác tuyệt đối theo hệ thống văn bản pháp luật Việt Nam hiện hành mới nhất.`;
 
-    let userContent = `Phân tích hợp đồng sau:\n\n${contractText}`;
+    let userContent = `Phân tích hợp đồng sau và đối chiếu từng điều khoản với quy định pháp luật Việt Nam hiện hành:\n\n${contractText}`;
 
     if (clauses && clauses.length > 0) {
       userContent += `\n\nSo sánh với các điều khoản chuẩn sau:\n`;
