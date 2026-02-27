@@ -14,28 +14,28 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const systemPrompt = `Bạn là chuyên gia pháp chế Việt Nam, chuyên phân tích và kiểm tra hợp đồng. 
-Nhiệm vụ: Phân tích nội dung hợp đồng, phát hiện rủi ro, so sánh với điều khoản chuẩn.
+Nhiệm vụ: Phân tích nội dung hợp đồng, phát hiện rủi ro, so sánh với điều khoản chuẩn. Bạn phải luôn đối chiếu với các quy định pháp luật Việt Nam hiện hành mới nhất.
 
 Trả về kết quả theo format JSON với cấu trúc:
 {
-  "summary": "Tóm tắt tổng quan hợp đồng",
+  "summary": "Tóm tắt tổng quan hợp đồng, có đề cập định hướng pháp lý chính",
   "riskLevel": "thap" | "trung_binh" | "cao",
   "issues": [
     {
       "clause": "Tên/nội dung điều khoản có vấn đề",
       "riskLevel": "thap" | "trung_binh" | "cao",
-      "reason": "Giải thích vì sao rủi ro",
-      "suggestion": "Gợi ý nội dung chỉnh sửa"
+      "reason": "Giải thích vì sao rủi ro. BẮT BUỘC chỉ rõ cơ sở pháp lý (trích dẫn Điều, Khoản, Luật, Nghị định hoặc Thông tư Việt Nam hiện hành liên quan)",
+      "suggestion": "Gợi ý nội dung chỉnh sửa để tuân thủ pháp luật quy định"
     }
   ],
-  "missingClauses": ["Danh sách điều khoản bắt buộc bị thiếu"],
-  "recommendations": ["Các khuyến nghị chung"]
+  "missingClauses": ["Danh sách điều khoản bắt buộc bị thiếu theo luật định"],
+  "recommendations": ["Các khuyến nghị chung nhằm đảm bảo quyền lợi và tính chặt chẽ pháp lý"]
 }
 
-Hãy phân tích kỹ lưỡng, chính xác theo luật pháp Việt Nam.`;
+Hãy phân tích kỹ lưỡng, chính xác tuyệt đối theo hệ thống văn bản pháp luật Việt Nam hiện hành mới nhất.`;
 
     let userContent = `Phân tích hợp đồng sau:\n\n${contractText}`;
-    
+
     if (clauses && clauses.length > 0) {
       userContent += `\n\nSo sánh với các điều khoản chuẩn sau:\n`;
       clauses.forEach((c: any, i: number) => {
@@ -73,8 +73,8 @@ Hãy phân tích kỹ lưỡng, chính xác theo luật pháp Việt Nam.`;
                       properties: {
                         clause: { type: "string" },
                         riskLevel: { type: "string", enum: ["thap", "trung_binh", "cao"] },
-                        reason: { type: "string" },
-                        suggestion: { type: "string" },
+                        reason: { type: "string", description: "Lý do rủi ro, kèm theo trích dẫn cụ thể luật Việt Nam hiện hành" },
+                        suggestion: { type: "string", description: "Gợi ý chỉnh sửa hợp lệ theo pháp luật" },
                       },
                       required: ["clause", "riskLevel", "reason", "suggestion"],
                       additionalProperties: false,
@@ -112,7 +112,7 @@ Hãy phân tích kỹ lưỡng, chính xác theo luật pháp Việt Nam.`;
     }
 
     const data = await response.json();
-    
+
     let result;
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall?.function?.arguments) {

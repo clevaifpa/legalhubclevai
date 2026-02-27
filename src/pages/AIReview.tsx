@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Brain, Upload, FileText, Sparkles, ShieldCheck, ShieldAlert, Shield, AlertTriangle, CheckCircle, Loader2, Lightbulb } from "lucide-react";
+import { Brain, Upload, FileText, Sparkles, ShieldCheck, ShieldAlert, Shield, AlertTriangle, CheckCircle, Loader2, Lightbulb, History, Clock, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +16,13 @@ interface AnalysisResult {
   recommendations: string[];
 }
 
+interface HistoryItem {
+  id: string;
+  timestamp: number;
+  contractText: string;
+  result: AnalysisResult;
+}
+
 const RISK_LABELS: Record<string, string> = { thap: "Thấp", trung_binh: "Trung bình", cao: "Cao" };
 const RISK_COLORS: Record<string, string> = {
   thap: "bg-success/10 text-success border-success/20",
@@ -28,6 +35,18 @@ const AIReview = () => {
   const [contractText, setContractText] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("aiReviewHistory");
+    if (saved) {
+      try {
+        setHistory(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse AI review history", e);
+      }
+    }
+  }, []);
 
   const handleAnalyze = async () => {
     if (!contractText.trim()) {
@@ -51,6 +70,20 @@ const AIReview = () => {
         return;
       }
       setResult(data);
+
+      const newHistoryItem: HistoryItem = {
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        contractText: contractText.trim(),
+        result: data
+      };
+
+      setHistory(prev => {
+        const newHistory = [newHistoryItem, ...prev].slice(0, 50); // Giữ tối đa 50 lượt kiểm tra gần nhất
+        localStorage.setItem("aiReviewHistory", JSON.stringify(newHistory));
+        return newHistory;
+      });
+
       toast.success("Phân tích hoàn tất!");
     } catch (e: any) {
       toast.error("Lỗi phân tích", { description: e.message });
@@ -236,6 +269,62 @@ const AIReview = () => {
                 <p className="text-xs text-muted-foreground">Báo cáo chi tiết với gợi ý chỉnh sửa</p>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      )}
+
+      {/* History Section */}
+      {history.length > 0 && (
+        <div className="pt-8 border-t border-border mt-8 space-y-4 animate-fade-in">
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <History className="h-5 w-5 text-muted-foreground" />
+            Lịch sử phân tích gần đây
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {history.map((item) => {
+              const ItemRiskIcon = RISK_ICONS[item.result.riskLevel] || Shield;
+              return (
+                <Card
+                  key={item.id}
+                  className="cursor-pointer hover:border-accent/50 transition-colors group"
+                  onClick={() => {
+                    setContractText(item.contractText);
+                    setResult(item.result);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                >
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {new Date(item.timestamp).toLocaleString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric"
+                        })}
+                      </div>
+                      <Badge variant="outline" className={`text-[10px] h-5 ${RISK_COLORS[item.result.riskLevel] || ""}`}>
+                        <ItemRiskIcon className="h-3 w-3 mr-1" />
+                        {RISK_LABELS[item.result.riskLevel]}
+                      </Badge>
+                    </div>
+                    <p className="text-sm line-clamp-2 font-medium">
+                      {item.result.summary.length > 60
+                        ? item.result.summary.substring(0, 60) + "..."
+                        : item.result.summary}
+                    </p>
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="text-xs text-muted-foreground">
+                        {item.result.issues.length} rủi ro phát hiện
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors" />
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
       )}
