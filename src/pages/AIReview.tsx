@@ -79,7 +79,7 @@ const AIReview = () => {
       };
 
       setHistory(prev => {
-        const newHistory = [newHistoryItem, ...prev].slice(0, 50); // Giữ tối đa 50 lượt kiểm tra gần nhất
+        const newHistory = [newHistoryItem, ...prev];
         localStorage.setItem("aiReviewHistory", JSON.stringify(newHistory));
         return newHistory;
       });
