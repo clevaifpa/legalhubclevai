@@ -25,8 +25,7 @@ export function useNotifications() {
       .from("notifications")
       .select("*")
       .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(50);
+      .order("created_at", { ascending: false });
     if (data) setNotifications(data as any);
     setLoading(false);
   }, [user]);
@@ -41,7 +40,7 @@ export function useNotifications() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
         (payload) => {
-          setNotifications((prev) => [payload.new as Notification, ...prev].slice(0, 50));
+          setNotifications((prev) => [payload.new as Notification, ...prev]);
         }
       )
       .subscribe();

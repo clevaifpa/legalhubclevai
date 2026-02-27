@@ -31,8 +31,13 @@ interface NotifyParams {
 export async function createWorkflowNotifications(params: NotifyParams) {
   const { reviewRequestId, contractTitle, oldStatus, newStatus, actorName, requesterId, managerId } = params;
 
-  const title = `Cập nhật: ${contractTitle}`;
-  const content = `${actorName} đã chuyển trạng thái từ "${STATUS_LABELS[oldStatus] || oldStatus}" sang "${STATUS_LABELS[newStatus] || newStatus}"`;
+  const title = `Hợp đồng: ${contractTitle}`;
+  let content = "";
+  if (oldStatus === "moi_tao") {
+    content = `Yêu cầu review mới được tạo bởi ${actorName}. Trạng thái: ${STATUS_LABELS[newStatus] || newStatus}`;
+  } else {
+    content = `Cập nhật bởi ${actorName}. Trạng thái mới: ${STATUS_LABELS[newStatus] || newStatus}`;
+  }
 
   // Gather recipient user IDs (deduplicated)
   const recipientIds = new Set<string>();
