@@ -33,6 +33,19 @@ serve(async (req) => {
     }
 
     const { contractText, clauses } = await req.json();
+
+    // Input validation
+    if (!contractText || typeof contractText !== "string" || contractText.length < 1 || contractText.length > 100000) {
+      return new Response(JSON.stringify({ error: "contractText phải từ 1-100000 ký tự" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (clauses && (!Array.isArray(clauses) || clauses.length > 100)) {
+      return new Response(JSON.stringify({ error: "clauses tối đa 100 điều khoản" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
