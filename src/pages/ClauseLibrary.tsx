@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { mockClauses } from "@/data/mockData";
+import { AddClauseDialog } from "@/components/AddClauseDialog";
 import { CONTRACT_TYPE_LABELS, RISK_LEVEL_LABELS } from "@/types";
 import type { ContractType, RiskLevel } from "@/types";
 import { RiskBadge } from "@/components/common/RiskBadge";
@@ -18,12 +19,13 @@ import { ContractTypeBadge } from "@/components/common/ContractTypeBadge";
 import { toast } from "sonner";
 
 const ClauseLibrary = () => {
+  const [clauses, setClauses] = useState<Clause[]>(mockClauses);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [riskFilter, setRiskFilter] = useState<string>("all");
 
   const filteredClauses = useMemo(() => {
-    return mockClauses.filter((clause) => {
+    return clauses.filter((clause) => {
       const matchesSearch =
         search === "" ||
         clause.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -50,10 +52,7 @@ const ClauseLibrary = () => {
             Quản lý và sử dụng các điều khoản hợp đồng mẫu
           </p>
         </div>
-        <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">
-          <Plus className="h-4 w-4 mr-2" />
-          Thêm điều khoản
-        </Button>
+        <AddClauseDialog onAdd={(newClause) => setClauses([newClause, ...clauses])} />
       </div>
 
       {/* Filters */}
@@ -102,7 +101,7 @@ const ClauseLibrary = () => {
 
       {/* Results count */}
       <p className="text-sm text-muted-foreground">
-        Hiển thị {filteredClauses.length} / {mockClauses.length} điều khoản
+        Hiển thị {filteredClauses.length} / {clauses.length} điều khoản
       </p>
 
       {/* Clauses Grid */}
