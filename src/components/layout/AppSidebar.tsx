@@ -2,6 +2,15 @@ import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationBell } from "@/components/NotificationBell";
 import {
+  LayoutDashboard,
+  BookOpen,
+  Files,
+  FileCheck,
+  Bot,
+  Users,
+  FileText
+} from "lucide-react";
+import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
@@ -14,25 +23,25 @@ import {
 } from "@/components/ui/sidebar";
 
 const adminMenuItems = [
-  { title: "Tổng quan", url: "/" },
-  { title: "Kho điều khoản", url: "/dieu-khoan" },
-  { title: "Tổng hợp đồng", url: "/tong-hop-dong" },
-  { title: "Yêu cầu review", url: "/yeu-cau-review" },
+  { title: "Tổng quan", url: "/", icon: LayoutDashboard },
+  { title: "Kho điều khoản", url: "/dieu-khoan", icon: BookOpen },
+  { title: "Tổng hợp đồng", url: "/tong-hop-dong", icon: Files },
+  { title: "Yêu cầu review", url: "/yeu-cau-review", icon: FileCheck },
 ];
 
 const advancedMenuItems = [
-  { title: "AI Kiểm tra", url: "/ai-kiem-tra" },
-  { title: "Quản lý nhân viên", url: "/quan-ly-nhan-vien" },
+  { title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Bot },
+  { title: "Quản lý nhân viên", url: "/quan-ly-nhan-vien", icon: Users },
 ];
 
 const reviewerMenuItems = [
-  { title: "Tổng quan", url: "/" },
-  { title: "Tổng hợp đồng", url: "/tong-hop-dong" },
-  { title: "Yêu cầu review", url: "/yeu-cau-review" },
+  { title: "Tổng quan", url: "/", icon: LayoutDashboard },
+  { title: "Tổng hợp đồng", url: "/tong-hop-dong", icon: Files },
+  { title: "Yêu cầu review", url: "/yeu-cau-review", icon: FileCheck },
 ];
 
 const userMenuItems = [
-  { title: "Yêu cầu của tôi", url: "/" },
+  { title: "Yêu cầu của tôi", url: "/", icon: FileText },
 ];
 
 export function AppSidebar() {
@@ -79,7 +88,7 @@ export function AppSidebar() {
 
       <SidebarContent className="pt-2">
         <SidebarGroup>
-          <SidebarGroupLabel>{isAdmin ? "Điều hướng" : "Menu"}</SidebarGroupLabel>
+          <SidebarGroupLabel className="uppercase text-xs font-semibold tracking-wider text-muted-foreground">{isAdmin ? "ĐIỀU HƯỚNG" : "MENU"}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {getMenuItems().map((item) => (
@@ -90,6 +99,7 @@ export function AppSidebar() {
                       end={item.url === "/"}
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
+                      <item.icon className="w-4 h-4 mr-2" />
                       <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
@@ -101,7 +111,7 @@ export function AppSidebar() {
 
         {isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel>Nâng cao</SidebarGroupLabel>
+            <SidebarGroupLabel className="uppercase text-xs font-semibold tracking-wider text-muted-foreground">NÂNG CAO</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {advancedMenuItems.map((item) => (
@@ -111,6 +121,7 @@ export function AppSidebar() {
                         to={item.url}
                         activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                       >
+                        <item.icon className="w-4 h-4 mr-2" />
                         <span>{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>
