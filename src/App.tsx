@@ -14,6 +14,7 @@ import AdminReviewRequests from "@/pages/AdminReviewRequests";
 import AIReview from "@/pages/AIReview";
 import EmployeeManagement from "@/pages/EmployeeManagement";
 import UserDashboard from "@/pages/UserDashboard";
+import Notifications from "@/pages/Notifications";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ function ProtectedRoutes() {
           <Route path="/yeu-cau-review" element={<AdminReviewRequests />} />
           <Route path="/ai-kiem-tra" element={<AIReview />} />
           <Route path="/quan-ly-nhan-vien" element={<EmployeeManagement />} />
+          <Route path="/thong-bao" element={<Notifications />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -55,6 +57,7 @@ function ProtectedRoutes() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/tong-hop-dong" element={<ContractCategories />} />
           <Route path="/yeu-cau-review" element={<AdminReviewRequests />} />
+          <Route path="/thong-bao" element={<Notifications />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -69,6 +72,7 @@ function ProtectedRoutes() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/tong-hop-dong" element={<ContractCategories />} />
           <Route path="/yeu-cau-review" element={<AdminReviewRequests />} />
+          <Route path="/thong-bao" element={<Notifications />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -80,6 +84,7 @@ function ProtectedRoutes() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/" element={<UserDashboard />} />
+        <Route path="/thong-bao" element={<Notifications />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
