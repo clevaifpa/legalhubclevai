@@ -23,15 +23,12 @@ export function NotificationBell() {
 
   const formatTime = (date: string) => {
     const d = new Date(date);
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "Vừa xong";
-    if (mins < 60) return `${mins} phút trước`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs} giờ trước`;
-    const days = Math.floor(hrs / 24);
-    return `${days} ngày trước`;
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes} - ${day}/${month}/${year}`;
   };
 
   return (
@@ -53,7 +50,7 @@ export function NotificationBell() {
         </div>
       )}
 
-      <PopoverContent className="w-80 sm:w-96 p-0" align="start" sideOffset={8}>
+      <PopoverContent className="w-80 sm:w-96 p-0" side="right" align="start" sideOffset={16}>
         <div className="flex items-center justify-between p-3 border-b">
           <span className="font-semibold text-sm">Thông báo</span>
           {unreadCount > 0 && (
