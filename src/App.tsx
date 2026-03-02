@@ -58,6 +58,7 @@ function ProtectedRoutes() {
           <Route path="/tong-hop-dong" element={<ContractCategories />} />
           <Route path="/yeu-cau-review" element={<AdminReviewRequests />} />
           <Route path="/thong-bao" element={<Notifications />} />
+          <Route path="/ai-kiem-tra" element={<AIReview />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -73,6 +74,7 @@ function ProtectedRoutes() {
           <Route path="/tong-hop-dong" element={<ContractCategories />} />
           <Route path="/yeu-cau-review" element={<AdminReviewRequests />} />
           <Route path="/thong-bao" element={<Notifications />} />
+          <Route path="/ai-kiem-tra" element={<AIReview />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -85,6 +87,7 @@ function ProtectedRoutes() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<UserDashboard />} />
         <Route path="/thong-bao" element={<Notifications />} />
+        <Route path="/ai-kiem-tra" element={<AIReview />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
