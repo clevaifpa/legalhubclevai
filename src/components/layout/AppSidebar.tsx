@@ -1,3 +1,4 @@
+import React from "react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -80,9 +81,6 @@ export function AppSidebar() {
               </span>
             </div>
           </div>
-          <div className="group-data-[collapsible=icon]:hidden shrink-0">
-            <NotificationBell />
-          </div>
         </div>
       </SidebarHeader>
 
@@ -91,19 +89,26 @@ export function AppSidebar() {
           <SidebarGroupLabel className="uppercase text-xs font-semibold tracking-wider text-muted-foreground">{isAdmin ? "ĐIỀU HƯỚNG" : "MENU"}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {getMenuItems().map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild tooltip={item.title}>
-                    <NavLink
-                      to={item.url}
-                      end={item.url === "/"}
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    >
-                      <item.icon className="w-4 h-4 mr-2" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+              {getMenuItems().map((item, index) => (
+                <React.Fragment key={item.title}>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip={item.title}>
+                      <NavLink
+                        to={item.url}
+                        end={item.url === "/"}
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      >
+                        <item.icon className="w-4 h-4 mr-2" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  {index === 0 && (
+                    <SidebarMenuItem>
+                      <NotificationBell />
+                    </SidebarMenuItem>
+                  )}
+                </React.Fragment>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>

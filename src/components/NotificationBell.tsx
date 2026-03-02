@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { SidebarMenuButton, SidebarMenuBadge } from "@/components/ui/sidebar";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNavigate } from "react-router-dom";
 
@@ -36,15 +37,21 @@ export function NotificationBell() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-4 w-4" />
-          {unreadCount > 0 && (
-            <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px]">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </Badge>
-          )}
-        </Button>
+        <SidebarMenuButton tooltip="Thông báo">
+          <Bell className="w-4 h-4 mr-2" />
+          <span>Thông báo</span>
+        </SidebarMenuButton>
       </PopoverTrigger>
+      {unreadCount > 0 && (
+        <SidebarMenuBadge className="bg-destructive text-destructive-foreground flex h-5 min-w-5 items-center justify-center rounded-full p-0 px-1 text-[10px]">
+          {unreadCount > 9 ? "9+" : unreadCount}
+        </SidebarMenuBadge>
+      )}
+      {unreadCount > 0 && (
+        <div className="pointer-events-none absolute left-3 top-1 flex h-3 min-w-3 items-center justify-center rounded-full bg-destructive text-[8px] font-medium text-destructive-foreground opacity-0 group-data-[collapsible=icon]:opacity-100">
+          {unreadCount > 9 ? "9+" : unreadCount}
+        </div>
+      )}
 
       <PopoverContent className="w-80 sm:w-96 p-0" align="start" sideOffset={8}>
         <div className="flex items-center justify-between p-3 border-b">
