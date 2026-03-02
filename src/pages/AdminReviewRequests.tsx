@@ -94,7 +94,7 @@ const AdminReviewRequests = () => {
   const isManager = role === "manager";
   const isAccountant = role === "accountant";
   const isFinance = role === "finance";
-  const isDirectSubmit = isAdmin || isAccountant;
+  const isDirectSubmit = isAdmin || isAccountant || isFinance;
 
   // Determine which status this role can act on
   const getMyActionableStatus = (): string | null => {
@@ -232,7 +232,8 @@ const AdminReviewRequests = () => {
 
   const openDetail = (req: any) => {
     setSelectedReq(req);
-    setAdminNotes(req.admin_notes || "");
+    // Xóa nội dung nhận xét trước đó khi mở form duyệt
+    setAdminNotes("");
     setLegalReviewDocLink(req.legal_review_doc_link || "");
     setNewNote("");
   };
@@ -927,7 +928,7 @@ const AdminReviewRequests = () => {
             </div>
 
             {selectedReq && (
-              <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[selectedReq.id] || [])} />
+              <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[selectedReq.id] || [])} skipManagerStep={!selectedReq.manager_id} />
             )}
 
             <Separator />

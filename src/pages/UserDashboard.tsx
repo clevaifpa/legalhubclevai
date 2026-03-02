@@ -79,6 +79,9 @@ interface PaymentPhase {
 const UserDashboard = () => {
   const { user, profile, role } = useAuth();
   const isPhapc = role === "admin"; // Pháp chế = admin role
+  const isAccountant = role === "accountant";
+  const isFinance = role === "finance";
+  const isDirectSubmit = isPhapc || isAccountant || isFinance;
   const [requests, setRequests] = useState<any[]>([]);
   const [notes, setNotes] = useState<Record<string, any[]>>({});
   const [paymentSchedules, setPaymentSchedules] = useState<Record<string, any[]>>({});
@@ -226,7 +229,7 @@ const UserDashboard = () => {
         approved_pe_number: form.approved_pe_number.trim() || null,
         contract_type_category: form.contract_type_category,
         tax_code: form.tax_code,
-        manager_id: isPhapc ? null : (form.manager_id || null),
+        manager_id: isDirectSubmit ? null : (form.manager_id || null),
       }).eq("id", editingReqId);
       submitError = error;
 
@@ -236,7 +239,7 @@ const UserDashboard = () => {
       }
     } else {
       // Logic tạo mới (Create)
-      const initialStatus = isPhapc ? "dang_review" : "cho_quan_ly";
+      const initialStatus = isDirectSubmit ? "dang_review" : "cho_quan_ly";
       const { data, error } = await supabase.from("review_requests").insert({
         requester_id: user.id,
         requester_name: employeeName || profile.full_name || user.email || "",
@@ -254,9 +257,9 @@ const UserDashboard = () => {
         approved_pe_number: form.approved_pe_number.trim() || null,
         contract_type_category: form.contract_type_category,
         tax_code: form.tax_code,
-        manager_id: isPhapc ? null : (form.manager_id || null),
+        manager_id: isDirectSubmit ? null : (form.manager_id || null),
         status: initialStatus as any,
-        admin_notes: isPhapc ? "Yêu cầu tạo bởi Pháp chế — bỏ qua bước Quản lý, chuyển trực tiếp Kế toán & Tài chính." : null,
+        admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Tài chính — bỏ qua bước Quản lý." : null,
       }).select().single();
 
       submitError = error;
@@ -293,7 +296,7 @@ const UserDashboard = () => {
     }
 
     setSubmitting(false);
-    toast.success(editingReqId ? "Cập nhật thành công!" : (isPhapc ? "Yêu cầu đã tạo!" : "Yêu cầu review đã được tạo!"));
+    toast.success(editingReqId ? "Cập nhật thành công!" : (isDirectSubmit ? "Yêu cầu đã tạo!" : "Yêu cầu review đã được tạo!"));
     handleResetForm();
     fetchRequests();
   };
@@ -356,7 +359,7 @@ const UserDashboard = () => {
     return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Đang tải...</p></div>;
   }
 
-  const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isPhapc || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
+  const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -638,7 +641,7 @@ const UserDashboard = () => {
 
               {/* Department Review Progress */}
               {notes[req.id] && notes[req.id].length > 0 && (
-                <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[req.id])} />
+                <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[req.id])} skipManagerStep={!req.manager_id} />
               )}
 
               {/* File links */}
