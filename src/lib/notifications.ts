@@ -53,7 +53,7 @@ export async function createWorkflowNotifications(params: NotifyParams) {
     if (reqProfile) dept = (reqProfile as any).department || "";
   }
 
-  const title = `Hợp đồng: ${contractTitle}`;
+  const title = `Yêu cầu review: ${contractTitle}`;
   const timeStr = formatVNTime();
   let content = "";
 
@@ -167,7 +167,7 @@ export async function notifyAdminsOnContractUpload(
   department?: string,
 ) {
   const timeStr = formatVNTime();
-  const title = "📤 Hợp đồng mới được Upload";
+  const title = "Hợp đồng mới";
   const content = [
     `• Tên hợp đồng: ${contractTitle}`,
     `• Người upload: ${actorName}`,
