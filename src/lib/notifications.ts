@@ -67,7 +67,7 @@ export async function createWorkflowNotifications(params: NotifyParams) {
     ].join("\n");
   } else {
     content = [
-      `🔄 Thay đổi trạng thái hợp đồng`,
+      `Thay đổi trạng thái hợp đồng`,
       `• Tên hợp đồng: ${contractTitle}`,
       `• Trạng thái: ${STATUS_LABELS[oldStatus] || oldStatus} → ${STATUS_LABELS[newStatus] || newStatus}`,
       `• Người thực hiện: ${actorName}`,
