@@ -13,7 +13,7 @@ import {
 import { mockClauses } from "@/data/mockData";
 import { AddClauseDialog } from "@/components/AddClauseDialog";
 import { CONTRACT_TYPE_LABELS, RISK_LEVEL_LABELS } from "@/types";
-import type { ContractType, RiskLevel } from "@/types";
+import type { ContractType, RiskLevel, Clause } from "@/types";
 import { RiskBadge } from "@/components/common/RiskBadge";
 import { ContractTypeBadge } from "@/components/common/ContractTypeBadge";
 import { toast } from "sonner";
