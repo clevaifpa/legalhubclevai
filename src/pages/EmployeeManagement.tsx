@@ -74,12 +74,16 @@ const EmployeeManagement = () => {
   };
 
   const handleChangeDepartment = async (userId: string, newDept: string) => {
-    const { error } = await supabase.from("profiles").update({ department: newDept }).eq("user_id", userId);
-    // Also try updating user_roles for managers
-    await supabase.from("user_roles").update({ department: newDept } as any).eq("user_id", userId);
+    const { error } = await supabase.functions.invoke("admin-user-management", {
+      body: { action: "update_department", target_user_id: userId, department: newDept }
+    });
 
-    if (error) toast.error("Lỗi cập nhật phòng ban", { description: error.message });
-    else { toast.success("Đã cập nhật phòng ban"); fetchData(); }
+    if (error) {
+      toast.error("Lỗi cập nhật phòng ban", { description: error.message || "Không thể cập nhật quyền" });
+    } else {
+      toast.success("Đã cập nhật phòng ban");
+      fetchData();
+    }
   };
 
   const handleDeleteUser = async (userId: string) => {
