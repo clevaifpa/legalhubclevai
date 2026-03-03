@@ -11,7 +11,18 @@ const STATUS_LABELS: Record<string, string> = {
   da_hoan_thanh: "Đã hoàn thành",
   yeu_cau_chinh_sua: "Yêu cầu chỉnh sửa",
   tu_choi: "Từ chối",
+  moi_tao: "Mới tạo",
 };
+
+function formatVNTime(date?: Date | string): string {
+  const d = date ? new Date(date) : new Date();
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
 
 interface NotifyParams {
   reviewRequestId: string;
@@ -21,22 +32,49 @@ interface NotifyParams {
   actorName: string;
   requesterId: string;
   managerId?: string | null;
+  department?: string;
 }
 
 /**
  * Create in-app notifications for all relevant users when a review request status changes.
- * Recipients: requester + role-based users (manager of dept, admins, accountants, finance).
- * Also triggers email notification via edge function.
+ * Standardized format: Tên HĐ, Người thực hiện, Phòng ban, Thời gian, Trạng thái.
  */
 export async function createWorkflowNotifications(params: NotifyParams) {
-  const { reviewRequestId, contractTitle, oldStatus, newStatus, actorName, requesterId, managerId } = params;
+  const { reviewRequestId, contractTitle, oldStatus, newStatus, actorName, requesterId, managerId, department } = params;
+
+  // Fetch requester department if not provided
+  let dept = department || "";
+  if (!dept) {
+    const { data: reqProfile } = await supabase
+      .from("profiles")
+      .select("department")
+      .eq("user_id", requesterId)
+      .single();
+    if (reqProfile) dept = (reqProfile as any).department || "";
+  }
 
   const title = `Hợp đồng: ${contractTitle}`;
+  const timeStr = formatVNTime();
   let content = "";
+
   if (oldStatus === "moi_tao") {
-    content = `Yêu cầu review mới được tạo bởi ${actorName}. Trạng thái: ${STATUS_LABELS[newStatus] || newStatus}`;
+    content = [
+      `📋 Yêu cầu review mới`,
+      `• Tên hợp đồng: ${contractTitle}`,
+      `• Người yêu cầu: ${actorName}`,
+      `• Phòng ban: ${dept}`,
+      `• Thời gian gửi: ${timeStr}`,
+      `• Trạng thái: ${STATUS_LABELS[newStatus] || newStatus}`,
+    ].join("\n");
   } else {
-    content = `Cập nhật bởi ${actorName}. Trạng thái mới: ${STATUS_LABELS[newStatus] || newStatus}`;
+    content = [
+      `🔄 Thay đổi trạng thái hợp đồng`,
+      `• Tên hợp đồng: ${contractTitle}`,
+      `• Trạng thái: ${STATUS_LABELS[oldStatus] || oldStatus} → ${STATUS_LABELS[newStatus] || newStatus}`,
+      `• Người thực hiện: ${actorName}`,
+      `• Phòng ban: ${dept}`,
+      `• Thời gian: ${timeStr}`,
+    ].join("\n");
   }
 
   // Gather recipient user IDs (deduplicated)
@@ -52,16 +90,17 @@ export async function createWorkflowNotifications(params: NotifyParams) {
   const rolesToNotify: string[] = ["admin"]; // admins always get notified
 
   if (newStatus === "cho_quan_ly") rolesToNotify.push("manager");
-  if (newStatus === "cho_phap_che") { /* admin already included */ }
   if (newStatus === "cho_ke_toan") rolesToNotify.push("accountant");
   if (newStatus === "cho_tai_chinh") rolesToNotify.push("finance");
   if (newStatus === "hoan_tat" || newStatus === "tu_choi") {
     rolesToNotify.push("manager", "accountant", "finance");
   }
 
-  // Fetch user IDs for these roles using RPC to bypass RLS
-  const { data: roleUsers, error: rpcError } = await supabase
-    .rpc("get_users_by_roles", { _roles: rolesToNotify } as any);
+  // Fetch user IDs for these roles using RPC
+  const { data: roleUsers, error: rpcError } = await (supabase.rpc as any)(
+    "get_users_by_roles",
+    { _roles: rolesToNotify }
+  );
 
   if (rpcError) {
     console.warn("Lỗi khi lấy danh sách roles qua RPC:", rpcError);
@@ -119,15 +158,28 @@ export async function createWorkflowNotifications(params: NotifyParams) {
 }
 
 /**
- * Notifies all users with role 'admin' that a new contract has been uploaded to 'Tổng hợp đồng'.
+ * Notifies all users with role 'admin' that a new contract has been uploaded.
+ * Standardized format: Tên HĐ, Người upload, Phòng ban, Thời gian.
  */
-export async function notifyAdminsOnContractUpload(contractTitle: string, actorName: string, categoryId?: string) {
-  const title = "Hợp đồng mới được Upload";
-  const content = `Hợp đồng "${contractTitle}" vừa được tải lên bởi ${actorName}.`;
+export async function notifyAdminsOnContractUpload(
+  contractTitle: string,
+  actorName: string,
+  department?: string,
+) {
+  const timeStr = formatVNTime();
+  const title = "📤 Hợp đồng mới được Upload";
+  const content = [
+    `• Tên hợp đồng: ${contractTitle}`,
+    `• Người upload: ${actorName}`,
+    `• Phòng ban: ${department || "—"}`,
+    `• Thời gian upload: ${timeStr}`,
+  ].join("\n");
 
   // Fetch admin user IDs bypass RLS
-  const { data: adminUsers, error: rpcError } = await supabase
-    .rpc("get_users_by_roles", { _roles: ["admin"] } as any);
+  const { data: adminUsers, error: rpcError } = await (supabase.rpc as any)(
+    "get_users_by_roles",
+    { _roles: ["admin"] }
+  );
 
   if (rpcError) {
     console.warn("Lỗi khi lấy danh sách admin:", rpcError);
@@ -149,7 +201,6 @@ export async function notifyAdminsOnContractUpload(contractTitle: string, actorN
     title,
     content,
     is_read: false,
-    // (Optional) link to category/contract if supported by your notification schema, but review_request_id is not applicable here
   }));
 
   await supabase.from("notifications").insert(notifications as any);
