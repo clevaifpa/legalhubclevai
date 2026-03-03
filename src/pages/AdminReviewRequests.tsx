@@ -310,6 +310,7 @@ const AdminReviewRequests = () => {
         actorName: employeeName || profile.full_name || "",
         requesterId: user.id,
         managerId: form.manager_id || null,
+        department: profile?.department || form.department || "",
       });
     }
 
@@ -398,6 +399,7 @@ const AdminReviewRequests = () => {
       actorName: getEmployeeName(user.email) || user.email || "",
       requesterId: selectedReq.requester_id,
       managerId: selectedReq.manager_id,
+      department: selectedReq.department || "",
     });
 
     setSaving(false);
@@ -461,6 +463,7 @@ const AdminReviewRequests = () => {
       actorName: getEmployeeName(user.email) || user.email || "",
       requesterId: selectedReq.requester_id,
       managerId: selectedReq.manager_id,
+      department: selectedReq.department || "",
     });
 
     setSaving(false);

@@ -275,6 +275,7 @@ const UserDashboard = () => {
           actorName: getEmployeeName(user.email) || profile.full_name || "",
           requesterId: user.id,
           managerId: form.manager_id || null,
+          department: profile?.department || form.department || "",
         });
       }
     }

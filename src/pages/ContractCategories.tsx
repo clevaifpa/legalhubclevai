@@ -215,7 +215,7 @@ const ContractCategories = () => {
 
         // Notify Admins
         const uploaderName = user?.email ? getEmployeeName(user.email) || profile?.full_name || user.email : "Người dùng";
-        await notifyAdminsOnContractUpload(form.title.trim(), uploaderName);
+        await notifyAdminsOnContractUpload(form.title.trim(), uploaderName, profile?.department || "");
       }
 
       toast.success("Đã thêm hợp đồng thành công");
