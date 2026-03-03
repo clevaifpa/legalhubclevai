@@ -74,15 +74,18 @@ const EmployeeManagement = () => {
   };
 
   const handleChangeDepartment = async (userId: string, newDept: string) => {
-    const { error } = await supabase.functions.invoke("admin-user-management", {
-      body: { action: "update_department", target_user_id: userId, department: newDept }
-    });
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-update-user", {
+        body: { userId, department: newDept },
+      });
 
-    if (error) {
-      toast.error("Lỗi cập nhật phòng ban", { description: error.message || "Không thể cập nhật quyền" });
-    } else {
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+
       toast.success("Đã cập nhật phòng ban");
       fetchData();
+    } catch (err: any) {
+      toast.error("Lỗi cập nhật phòng ban", { description: err.message || "Không có quyền thực hiện hoặc lỗi máy chủ." });
     }
   };
 
