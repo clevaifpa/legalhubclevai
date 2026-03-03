@@ -59,12 +59,11 @@ export async function createWorkflowNotifications(params: NotifyParams) {
 
   if (oldStatus === "moi_tao") {
     content = [
-      `📋 Yêu cầu review mới`,
       `• Tên hợp đồng: ${contractTitle}`,
       `• Người yêu cầu: ${actorName}`,
       `• Phòng ban: ${dept}`,
-      `• Thời gian gửi: ${timeStr}`,
       `• Trạng thái: ${STATUS_LABELS[newStatus] || newStatus}`,
+      `• Hạn review: ${timeStr}`,
     ].join("\n");
   } else {
     content = [
@@ -172,7 +171,6 @@ export async function notifyAdminsOnContractUpload(
     `• Tên hợp đồng: ${contractTitle}`,
     `• Người upload: ${actorName}`,
     `• Phòng ban: ${department || "—"}`,
-    `• Thời gian upload: ${timeStr}`,
   ].join("\n");
 
   // Fetch admin user IDs bypass RLS

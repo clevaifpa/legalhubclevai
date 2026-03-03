@@ -1,4 +1,4 @@
-import { Bell, CheckCheck } from "lucide-react";
+import { Bell, Mail, MailOpen, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -94,7 +94,13 @@ export default function Notifications() {
                                 }`}
                             onClick={() => handleClick(n)}
                         >
-
+                            <div className="mt-0.5 shrink-0">
+                                {!n.is_read ? (
+                                    <Mail className="w-6 h-6 text-primary" />
+                                ) : (
+                                    <MailOpen className="w-6 h-6 text-muted-foreground" />
+                                )}
+                            </div>
 
                             <div className="flex-1 min-w-0">
                                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4 mb-2">
