@@ -115,3 +115,49 @@ export async function createWorkflowNotifications(params: NotifyParams) {
     console.warn("Email notification failed:", e);
   }
 }
+
+/**
+ * Notifies all users with role 'admin' that a new contract has been uploaded to 'Tổng hợp đồng'.
+ */
+export async function notifyAdminsOnContractUpload(contractTitle: string, actorName: string, categoryId?: string) {
+  const title = "Hợp đồng mới được Upload";
+  const content = `Hợp đồng "${contractTitle}" vừa được tải lên bởi ${actorName}.`;
+
+  // Fetch admin user IDs
+  const { data: adminUsers } = await supabase
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "admin");
+
+  if (!adminUsers || adminUsers.length === 0) return;
+
+  const recipientIds = new Set(adminUsers.map((u: any) => u.user_id));
+
+  // Remove the actor (current user) from recipients
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  if (currentUser) recipientIds.delete(currentUser.id);
+
+  if (recipientIds.size === 0) return;
+
+  // Insert notifications
+  const notifications = Array.from(recipientIds).map((userId) => ({
+    user_id: userId,
+    title,
+    content,
+    is_read: false,
+    // (Optional) link to category/contract if supported by your notification schema, but review_request_id is not applicable here
+  }));
+
+  await supabase.from("notifications").insert(notifications as any);
+
+  // Log notifications for audit
+  const logs = Array.from(recipientIds).map((userId) => ({
+    notification_type: "in_app",
+    recipient_user_id: userId,
+    title,
+    content,
+    status: "sent",
+  }));
+
+  await supabase.from("notification_logs").insert(logs as any);
+}

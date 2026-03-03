@@ -20,7 +20,9 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { formatDate, formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
+import { notifyAdminsOnContractUpload } from "@/lib/notifications";
+import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTracker";
 import { toast } from "sonner";
 
 const sanitizeFileName = (name: string): string => {
@@ -210,6 +212,10 @@ const ContractCategories = () => {
           }));
           await supabase.from("contract_payment_schedules").insert(schedules as any);
         }
+
+        // Notify Admins
+        const uploaderName = user?.email ? getEmployeeName(user.email) || profile?.full_name || user.email : "Người dùng";
+        await notifyAdminsOnContractUpload(form.title.trim(), uploaderName);
       }
 
       toast.success("Đã thêm hợp đồng thành công");
