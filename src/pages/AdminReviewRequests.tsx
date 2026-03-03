@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { createWorkflowNotifications } from "@/lib/notifications";
@@ -92,6 +93,8 @@ interface PaymentPhase {
 }
 
 const AdminReviewRequests = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const reqIdParam = searchParams.get('id');
   const { user, profile, role, roles, managerDepartment } = useAuth();
   const isAdmin = role === "admin";
   const isManager = role === "manager";
@@ -223,6 +226,7 @@ const AdminReviewRequests = () => {
   }, []);
 
   const filtered = requests.filter((req) => {
+    if (reqIdParam && req.id !== reqIdParam) return false;
     const matchSearch = search === "" ||
       req.contract_title.toLowerCase().includes(search.toLowerCase()) ||
       req.partner_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -743,6 +747,12 @@ const AdminReviewRequests = () => {
                 ))}
               </SelectContent>
             </Select>
+            {reqIdParam && (
+              <Button variant="outline" className="shrink-0" onClick={() => {
+                searchParams.delete('id');
+                setSearchParams(searchParams);
+              }}>Bỏ lọc thông báo</Button>
+            )}
           </div>
         </CardContent>
       </Card>

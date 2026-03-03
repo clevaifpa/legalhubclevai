@@ -55,7 +55,7 @@ export async function createWorkflowNotifications(params: NotifyParams) {
 
   const title = `Yêu cầu review: ${contractTitle}`;
   const timeStr = formatVNTime();
-  let content = "";
+  let content = ``;
 
   if (oldStatus === "moi_tao") {
     content = [
@@ -64,6 +64,7 @@ export async function createWorkflowNotifications(params: NotifyParams) {
       `• Phòng ban: ${dept}`,
       `• Trạng thái: ${STATUS_LABELS[newStatus] || newStatus}`,
       `• Hạn review: ${timeStr}`,
+      `\n<!--REQUEST_ID:${reviewRequestId}-->`
     ].join("\n");
   } else {
     content = [
@@ -73,6 +74,7 @@ export async function createWorkflowNotifications(params: NotifyParams) {
       `• Người thực hiện: ${actorName}`,
       `• Phòng ban: ${dept}`,
       `• Thời gian: ${timeStr}`,
+      `\n<!--REQUEST_ID:${reviewRequestId}-->`
     ].join("\n");
   }
 
@@ -164,6 +166,8 @@ export async function notifyAdminsOnContractUpload(
   contractTitle: string,
   actorName: string,
   department?: string,
+  contractId?: string,
+  categoryId?: string,
 ) {
   const timeStr = formatVNTime();
   const title = "Hợp đồng mới";
@@ -171,7 +175,10 @@ export async function notifyAdminsOnContractUpload(
     `• Tên hợp đồng: ${contractTitle}`,
     `• Người upload: ${actorName}`,
     `• Phòng ban: ${department || "—"}`,
-  ].join("\n");
+  ];
+  if (contractId) content.push(`\n<!--CONTRACT_ID:${contractId}-->`);
+  if (categoryId) content.push(`\n<!--CATEGORY_ID:${categoryId}-->`);
+  const finalContent = content.join("\n");
 
   // Fetch admin user IDs bypass RLS
   const { data: adminUsers, error: rpcError } = await (supabase.rpc as any)(
@@ -197,7 +204,7 @@ export async function notifyAdminsOnContractUpload(
   const notifications = Array.from(recipientIds).map((userId) => ({
     user_id: userId,
     title,
-    content,
+    content: finalContent,
     is_read: false,
   }));
 
@@ -208,7 +215,7 @@ export async function notifyAdminsOnContractUpload(
     notification_type: "in_app",
     recipient_user_id: userId,
     title,
-    content,
+    content: finalContent,
     status: "sent",
   }));
 

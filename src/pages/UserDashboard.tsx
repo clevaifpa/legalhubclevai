@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { createWorkflowNotifications } from "@/lib/notifications";
@@ -80,6 +81,8 @@ interface PaymentPhase {
 }
 
 const UserDashboard = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const reqIdParam = searchParams.get('id');
   const { user, profile, role } = useAuth();
   const isPhapc = role === "admin"; // Pháp chế = admin role
   const isAccountant = role === "accountant";
@@ -593,7 +596,15 @@ const UserDashboard = () => {
 
       {/* Request List */}
       <div className="space-y-4">
-        {requests.map((req, i) => {
+        {reqIdParam && (
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => {
+              searchParams.delete('id');
+              setSearchParams(searchParams);
+            }}>Bỏ lọc thông báo</Button>
+          </div>
+        )}
+        {requests.filter(r => !reqIdParam || r.id === reqIdParam).map((req, i) => {
           const deptReviews = extractDeptReviews(notes[req.id] || []);
 
           return (
@@ -746,7 +757,7 @@ const UserDashboard = () => {
         })}
       </div>
 
-      {requests.length === 0 && (
+      {requests.filter(r => !reqIdParam || r.id === reqIdParam).length === 0 && (
         <div className="text-center py-12">
           <p className="text-muted-foreground font-medium">Chưa có yêu cầu review nào</p>
           <p className="text-sm text-muted-foreground/70 mt-1">Nhấn "Tạo yêu cầu mới" để bắt đầu</p>

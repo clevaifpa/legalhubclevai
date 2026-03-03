@@ -3,15 +3,40 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Notifications() {
     const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+    const { role } = useAuth();
     const navigate = useNavigate();
 
     const handleClick = (n: any) => {
         markAsRead(n.id);
-        if (n.review_request_id) {
-            navigate("/yeu-cau-review");
+
+        // Find embedded REQUEST_ID
+        const reqMatch = n.content.match(/<!--REQUEST_ID:(.*?)-->/);
+        let targetId = n.review_request_id || (reqMatch ? reqMatch[1] : null);
+
+        if (targetId) {
+            // Normal users go to Dashboard, others go to AdminReviewRequests
+            if (!role || role === "user") {
+                navigate(`/?id=${targetId}`);
+            } else {
+                navigate(`/yeu-cau-review?id=${targetId}`);
+            }
+            return;
+        }
+
+        // Find embedded CONTRACT_ID
+        const contractMatch = n.content.match(/<!--CONTRACT_ID:(.*?)-->/);
+        const categoryMatch = n.content.match(/<!--CATEGORY_ID:(.*?)-->/);
+
+        if (contractMatch) {
+            let url = `/tong-hop-dong?contractId=${contractMatch[1]}`;
+            if (categoryMatch) {
+                url += `&categoryId=${categoryMatch[1]}`;
+            }
+            navigate(url);
         }
     };
 
@@ -53,12 +78,13 @@ export default function Notifications() {
         return null;
     };
 
-    /** Render content with line breaks preserved */
+    /** Render content with line breaks preserved, strip hidden markers */
     const renderContent = (content: string) => {
-        return content.split("\n").map((line, i) => (
+        const cleanContent = content.replace(/\n?<!--.*?-->/g, '');
+        return cleanContent.split("\n").map((line, i) => (
             <span key={i}>
                 {line}
-                {i < content.split("\n").length - 1 && <br />}
+                {i < cleanContent.split("\n").length - 1 && <br />}
             </span>
         ));
     };

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +45,9 @@ interface PaymentPhase {
 
 const ContractCategories = () => {
   const { user, role, profile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const categoryIdParam = searchParams.get('categoryId');
+  const contractIdParam = searchParams.get('contractId');
   const isAdmin = role === "admin";
   const canEdit = role === "admin" || role === "accountant" || role === "finance";
   const canEditContract = (c: any) => isAdmin || ((role === "accountant" || role === "finance") && c.created_by === user?.id);
@@ -118,6 +122,15 @@ const ContractCategories = () => {
 
   useEffect(() => { fetchCategories(); }, []);
   useEffect(() => { if (selectedCategory) fetchContracts(selectedCategory.id); }, [selectedCategory]);
+
+  useEffect(() => {
+    if (categoryIdParam && categories.length > 0) {
+      const cat = categories.find(c => c.id === categoryIdParam);
+      if (cat && (!selectedCategory || selectedCategory.id !== cat.id)) {
+        setSelectedCategory(cat);
+      }
+    }
+  }, [categoryIdParam, categories, selectedCategory]);
 
   const handleAddCategory = async () => {
     if (!newCatName.trim()) return;
@@ -215,7 +228,7 @@ const ContractCategories = () => {
 
         // Notify Admins
         const uploaderName = user?.email ? getEmployeeName(user.email) || profile?.full_name || user.email : "Người dùng";
-        await notifyAdminsOnContractUpload(form.title.trim(), uploaderName, profile?.department || "");
+        await notifyAdminsOnContractUpload(form.title.trim(), uploaderName, profile?.department || "", insertedContract.id, selectedCategory.id);
       }
 
       toast.success("Đã thêm hợp đồng thành công");
@@ -256,6 +269,7 @@ const ContractCategories = () => {
   }
 
   const filteredContracts = contracts.filter((c) => {
+    if (contractIdParam && c.id !== contractIdParam) return false;
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (
@@ -407,7 +421,16 @@ const ContractCategories = () => {
         </div>
 
         {/* Search */}
-        <Input placeholder="Tìm theo tên hợp đồng, phòng ban, trạng thái, đối tác, MST..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        <div className="flex items-center gap-2">
+          <Input placeholder="Tìm theo tên hợp đồng, phòng ban, trạng thái, đối tác, MST..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          {contractIdParam && (
+            <Button variant="outline" className="shrink-0" onClick={() => {
+              searchParams.delete('contractId');
+              searchParams.delete('categoryId');
+              setSearchParams(searchParams);
+            }}>Bỏ lọc thông báo</Button>
+          )}
+        </div>
 
         <Card className="border-none shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
