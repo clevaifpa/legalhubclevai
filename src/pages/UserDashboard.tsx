@@ -636,6 +636,12 @@ const UserDashboard = () => {
                   </div>
                 </div>
 
+                {/* Mô tả chi tiết */}
+                <div className="p-3 rounded-lg bg-muted/20 border space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Mô tả chi tiết</p>
+                  <p className="text-sm whitespace-pre-wrap">{req.description || "Không có mô tả"}</p>
+                </div>
+
                 {/* Payment Schedule */}
                 {paymentSchedules[req.id] && paymentSchedules[req.id].length > 0 && (
                   <div className="p-3 rounded-lg bg-muted/30 space-y-2">
