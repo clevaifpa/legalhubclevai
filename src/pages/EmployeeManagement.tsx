@@ -80,7 +80,7 @@ const EmployeeManagement = () => {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    const { error } = await supabase.rpc("admin_delete_user", { _user_id: userId } as any);
+    const { error } = await (supabase.rpc as any)("admin_delete_user", { _user_id: userId });
     if (error) {
       toast.error("Lỗi xóa tài khoản", { description: error.message });
     } else {

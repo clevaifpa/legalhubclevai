@@ -135,7 +135,7 @@ const ContractCategories = () => {
   };
 
   const handleDeleteContract = async (contractId: string) => {
-    const { error } = await supabase.from("contracts").delete().eq("id", contractId);
+    const { error } = await (supabase.rpc as any)("delete_contract", { _contract_id: contractId });
     if (error) toast.error("Lỗi xóa", { description: error.message });
     else { toast.success("Đã xóa hợp đồng"); if (selectedCategory) fetchContracts(selectedCategory.id); }
   };

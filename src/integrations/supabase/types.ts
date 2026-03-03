@@ -511,7 +511,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_user: { Args: { _user_id: string }; Returns: undefined }
       auto_expire_contracts: { Args: never; Returns: undefined }
+      delete_contract: { Args: { _contract_id: string }; Returns: undefined }
+      delete_review_request: { Args: { _req_id: string }; Returns: undefined }
       get_managers_by_department: {
         Args: { _department: string }
         Returns: {
