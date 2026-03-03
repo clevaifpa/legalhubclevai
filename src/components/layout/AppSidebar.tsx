@@ -28,10 +28,10 @@ const adminMenuItems = [
   { title: "Kho điều khoản", url: "/dieu-khoan", icon: BookOpen },
   { title: "Tổng hợp đồng", url: "/tong-hop-dong", icon: Files },
   { title: "Yêu cầu review", url: "/yeu-cau-review", icon: FileCheck },
+  { title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Bot },
 ];
 
 const advancedMenuItems = [
-  { title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Bot },
   { title: "Quản lý nhân viên", url: "/quan-ly-nhan-vien", icon: Users },
 ];
 
@@ -39,10 +39,12 @@ const reviewerMenuItems = [
   { title: "Tổng quan", url: "/", icon: LayoutDashboard },
   { title: "Tổng hợp đồng", url: "/tong-hop-dong", icon: Files },
   { title: "Yêu cầu review", url: "/yeu-cau-review", icon: FileCheck },
+  { title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Bot },
 ];
 
 const userMenuItems = [
   { title: "Yêu cầu của tôi", url: "/", icon: FileText },
+  { title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Bot },
 ];
 
 export function AppSidebar() {

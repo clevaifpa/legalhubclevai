@@ -552,7 +552,7 @@ const ContractCategories = () => {
           <h1 className="text-2xl font-bold tracking-tight">Tổng hợp đồng</h1>
           <p className="text-muted-foreground">Kho lưu trữ hợp đồng tập trung theo loại</p>
         </div>
-        {isAdmin && (
+        {canEdit && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">Tạo loại hợp đồng</Button>
@@ -594,7 +594,7 @@ const ContractCategories = () => {
                 <p className="text-sm text-muted-foreground truncate">{categoryCounts[cat.id] || 0} hợp đồng</p>
               </div>
               <div className="flex items-center gap-1">
-                {isAdmin && (
+                {canEdit && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive text-xs" onClick={(e) => e.stopPropagation()}>
@@ -623,7 +623,7 @@ const ContractCategories = () => {
       {categories.length === 0 && (
         <div className="text-center py-12">
           <p className="text-muted-foreground font-medium">Chưa có loại hợp đồng nào</p>
-          <p className="text-sm text-muted-foreground/70 mt-1">{isAdmin ? 'Nhấn "Tạo loại hợp đồng" để bắt đầu' : "Liên hệ admin để tạo danh mục"}</p>
+          <p className="text-sm text-muted-foreground/70 mt-1">{canEdit ? 'Nhấn "Tạo loại hợp đồng" để bắt đầu' : "Liên hệ admin để tạo danh mục"}</p>
         </div>
       )}
     </div>

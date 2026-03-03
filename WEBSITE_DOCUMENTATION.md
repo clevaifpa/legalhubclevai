@@ -29,7 +29,7 @@
 | Vai trò | Quyền hạn |
 |---|---|
 | **Admin (Pháp chế)** | Toàn quyền: Dashboard, Kho điều khoản, Tổng hợp đồng, Yêu cầu review (đa phòng ban), AI Kiểm tra |
-| **User (Người dùng)** | Chỉ truy cập: UserDashboard (xem/tạo/xóa yêu cầu review của mình, xem tiến trình review đa phòng ban) |
+| **User (Người dùng)** | Chỉ truy cập: UserDashboard (xem/tạo/xóa yêu cầu review của mình, xem tiến trình review đa phòng ban), AI Kiểm tra |
 
 ### Hệ thống review đa phòng ban:
 
