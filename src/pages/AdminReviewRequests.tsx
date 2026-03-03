@@ -473,7 +473,7 @@ const AdminReviewRequests = () => {
   };
 
   const handleDelete = async (reqId: string) => {
-    const { error } = await supabase.rpc("delete_review_request", { _req_id: reqId } as any);
+    const { error } = await (supabase.rpc as any)("delete_review_request", { _req_id: reqId });
     if (error) {
       toast.error("Lỗi xóa", { description: error.message });
     } else {
