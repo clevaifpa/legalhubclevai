@@ -59,14 +59,16 @@ export async function createWorkflowNotifications(params: NotifyParams) {
     rolesToNotify.push("manager", "accountant", "finance");
   }
 
-  // Fetch user IDs for these roles
-  const { data: roleUsers } = await supabase
-    .from("user_roles")
-    .select("user_id, role")
-    .in("role", rolesToNotify as any);
+  // Fetch user IDs for these roles using RPC to bypass RLS
+  const { data: roleUsers, error: rpcError } = await supabase
+    .rpc("get_users_by_roles", { _roles: rolesToNotify } as any);
+
+  if (rpcError) {
+    console.warn("Lỗi khi lấy danh sách roles qua RPC:", rpcError);
+  }
 
   if (roleUsers) {
-    roleUsers.forEach((ru: any) => recipientIds.add(ru.user_id));
+    (roleUsers as any[]).forEach((ru: any) => recipientIds.add(ru.user_id));
   }
 
   // Remove the actor (current user) from recipients to avoid self-notification
@@ -123,15 +125,17 @@ export async function notifyAdminsOnContractUpload(contractTitle: string, actorN
   const title = "Hợp đồng mới được Upload";
   const content = `Hợp đồng "${contractTitle}" vừa được tải lên bởi ${actorName}.`;
 
-  // Fetch admin user IDs
-  const { data: adminUsers } = await supabase
-    .from("user_roles")
-    .select("user_id")
-    .eq("role", "admin");
+  // Fetch admin user IDs bypass RLS
+  const { data: adminUsers, error: rpcError } = await supabase
+    .rpc("get_users_by_roles", { _roles: ["admin"] } as any);
 
-  if (!adminUsers || adminUsers.length === 0) return;
+  if (rpcError) {
+    console.warn("Lỗi khi lấy danh sách admin:", rpcError);
+  }
 
-  const recipientIds = new Set(adminUsers.map((u: any) => u.user_id));
+  if (!adminUsers || (adminUsers as any[]).length === 0) return;
+
+  const recipientIds = new Set((adminUsers as any[]).map((u: any) => u.user_id));
 
   // Remove the actor (current user) from recipients
   const { data: { user: currentUser } } = await supabase.auth.getUser();
