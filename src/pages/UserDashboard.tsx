@@ -30,10 +30,13 @@ const isValidGoogleDocUrl = (url: string): boolean => {
   return /^https:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\/d\//.test(url);
 };
 
-const DEPARTMENT_OPTIONS = [
-  "Phòng Kinh doanh", "Phòng Marketing", "Phòng Nhân sự", "Phòng Kế toán",
-  "Phòng Tài chính", "Phòng IT", "Phòng Hành chính", "Phòng Pháp chế",
-  "Phòng Sản xuất", "Phòng R&D", "Ban Giám đốc", "Khác",
+const DEPARTMENTS = [
+  { id: "LVO", name: "Khối Vận hành" },
+  { id: "LVS", name: "Khối Kinh doanh" },
+  { id: "LVH", name: "Khối Nhân sự" },
+  { id: "LVD", name: "Khối Phát triển mới" },
+  { id: "LVB", name: "Khối Back-office" },
+  { id: "LVI", name: "Khối Kỹ thuật" },
 ];
 
 const CONTRACT_TYPE_CATEGORIES = [
@@ -393,8 +396,8 @@ const UserDashboard = () => {
                   <Select value={form.department} onValueChange={(v) => setForm({ ...form, department: v, manager_id: "" })}>
                     <SelectTrigger><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
                     <SelectContent>
-                      {DEPARTMENT_OPTIONS.map((dept) => (
-                        <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                      {DEPARTMENTS.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.id}>{dept.id} - {dept.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

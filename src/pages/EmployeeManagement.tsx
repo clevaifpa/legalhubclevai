@@ -18,10 +18,13 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 
-const DEPARTMENT_OPTIONS = [
-  "Phòng Kinh doanh", "Phòng Marketing", "Phòng Nhân sự", "Phòng Kế toán",
-  "Phòng Tài chính", "Phòng IT", "Phòng Hành chính", "Phòng Pháp chế",
-  "Phòng Sản xuất", "Phòng R&D", "Ban Giám đốc", "Khác",
+const DEPARTMENTS = [
+  { id: "LVO", name: "Khối Vận hành" },
+  { id: "LVS", name: "Khối Kinh doanh" },
+  { id: "LVH", name: "Khối Nhân sự" },
+  { id: "LVD", name: "Khối Phát triển mới" },
+  { id: "LVB", name: "Khối Back-office" },
+  { id: "LVI", name: "Khối Kỹ thuật" },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
@@ -159,8 +162,8 @@ const EmployeeManagement = () => {
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            {DEPARTMENT_OPTIONS.map((d) => (
-                              <SelectItem key={d} value={d}>{d}</SelectItem>
+                            {DEPARTMENTS.map((d) => (
+                              <SelectItem key={d.id} value={d.id}>{d.id} - {d.name}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
