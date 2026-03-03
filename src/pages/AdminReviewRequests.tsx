@@ -473,9 +473,13 @@ const AdminReviewRequests = () => {
   };
 
   const handleDelete = async (reqId: string) => {
-    const { error } = await supabase.from("review_requests").delete().eq("id", reqId);
-    if (error) toast.error("Lỗi xóa", { description: error.message });
-    else { toast.success("Đã xóa yêu cầu"); fetchRequests(); }
+    const { error } = await supabase.rpc("delete_review_request", { _req_id: reqId } as any);
+    if (error) {
+      toast.error("Lỗi xóa", { description: error.message });
+    } else {
+      toast.success("Đã xóa yêu cầu");
+      fetchRequests();
+    }
   };
 
   // Can this user act on this request?
