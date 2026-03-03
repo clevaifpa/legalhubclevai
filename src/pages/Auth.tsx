@@ -56,7 +56,7 @@ const Auth = () => {
         toast.success("Đăng nhập thành công!");
       } else {
         if (!fullName.trim()) {
-          toast.error("Vui lòng nhập tên nhân viên");
+          toast.error("Vui lòng nhập mã nhân viên");
           setLoading(false);
           return;
         }
@@ -135,7 +135,7 @@ const Auth = () => {
                 {!isLogin && (
                   <>
                     <div className="space-y-2">
-                      <Label>Tên nhân viên *</Label>
+                      <Label>Mã nhân viên *</Label>
                       <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="linhnt2" required />
                     </div>
                     <div className="space-y-2">
