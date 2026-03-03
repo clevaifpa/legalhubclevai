@@ -94,7 +94,7 @@ const AdminReviewRequests = () => {
   const isManager = role === "manager";
   const isAccountant = role === "accountant";
   const isFinance = role === "finance";
-  const isDirectSubmit = isAdmin || isAccountant || isFinance;
+  const isDirectSubmit = isAdmin || isAccountant || isFinance || isManager;
 
   // Determine which status this role can act on
   const getMyActionableStatus = (): string | null => {
@@ -282,7 +282,7 @@ const AdminReviewRequests = () => {
       tax_code: form.tax_code,
       manager_id: isDirectSubmit ? null : (form.manager_id || null),
       status: initialStatus as any,
-      admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán — bỏ qua bước Quản lý, đang chờ Pháp chế review." : null,
+      admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Quản lý — bỏ qua bước duyệt của Quản lý, đang chờ Pháp chế review." : null,
     } as any).select().single();
 
     if (error) {
@@ -524,7 +524,7 @@ const AdminReviewRequests = () => {
             </Button>
             <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Tạo yêu cầu review hợp đồng ({isAdmin ? "Pháp chế" : "Kế toán"})</DialogTitle>
+                <DialogTitle>Tạo yêu cầu review hợp đồng ({isAdmin ? "Pháp chế" : isManager ? "Quản lý" : "Kế toán/Tài chính"})</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
