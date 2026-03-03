@@ -593,145 +593,151 @@ const UserDashboard = () => {
 
       {/* Request List */}
       <div className="space-y-4">
-        {requests.map((req, i) => (
-          <Card key={req.id} className="border shadow-sm hover:shadow-md transition-all animate-slide-up" style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}>
-            <CardHeader className="pb-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <CardTitle className="text-base font-semibold">{req.contract_title}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    {req.department && <>Phòng ban: <span className="font-medium">{req.department}</span> — </>}
-                    {req.contract_type_category && <>{req.contract_type_category} — </>}
-                    MST: {req.tax_code || "—"}
-                  </p>
-                </div>
-                <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3 rounded-lg bg-muted/40">
-                <div>
-                  <p className="text-xs text-muted-foreground">Đối tác</p>
-                  <p className="text-sm font-medium">{req.partner_name || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Giá trị</p>
-                  <p className="text-sm font-medium">{req.contract_value > 0 ? formatCurrency(req.contract_value) : "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Hạn yêu cầu</p>
-                  <p className="text-sm font-medium">{formatDate(req.request_deadline)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Ngày gửi</p>
-                  <p className="text-sm font-medium">{formatDate(req.created_at)}</p>
-                </div>
-              </div>
+        {requests.map((req, i) => {
+          const deptReviews = extractDeptReviews(notes[req.id] || []);
 
-              {/* Payment Schedule */}
-              {paymentSchedules[req.id] && paymentSchedules[req.id].length > 0 && (
-                <div className="p-3 rounded-lg bg-muted/30 space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">Đợt thanh toán</p>
-                  <div className="space-y-1">
-                    {paymentSchedules[req.id].map((ps: any) => (
-                      <div key={ps.id} className="flex items-center justify-between text-sm">
-                        <span className="font-medium">{ps.phase_name}</span>
-                        <span>{ps.payment_amount > 0 ? formatCurrency(ps.payment_amount) : "N/A"} — {ps.payment_due_date ? formatDate(ps.payment_due_date) : "—"}</span>
-                      </div>
-                    ))}
+          return (
+            <Card key={req.id} className="border shadow-sm hover:shadow-md transition-all animate-slide-up" style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}>
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base font-semibold">{req.contract_title}</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      Yêu cầu bởi <span className="font-medium text-foreground">{req.requester_name}</span> — {req.department}
+                      {req.contract_type_category && <> — {req.contract_type_category}</>}
+                      {req.tax_code && <> — MST: {req.tax_code}</>}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
+                      <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!req.manager_id} />
+                    )}
+                    <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
                   </div>
                 </div>
-              )}
-
-              {/* Department Review Progress */}
-              {notes[req.id] && notes[req.id].length > 0 && (
-                <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[req.id])} skipManagerStep={!req.manager_id} />
-              )}
-
-              {/* File links */}
-              {(req.legal_review_doc_link || req.file_url) && (
-                <div className="space-y-1">
-                  {req.legal_review_doc_link && (
-                    <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
-                      Xem tài liệu đã review (Pháp chế)
-                    </a>
-                  )}
-                  {req.file_url && (
-                    <button
-                      onClick={async () => {
-                        const url = req.file_url as string;
-                        if (url.includes("/storage/v1/object/public/contracts/")) {
-                          const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
-                          const { data } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
-                          if (data) window.open(data.signedUrl, "_blank");
-                          else toast.error("Không thể mở file");
-                        } else {
-                          window.open(url, "_blank");
-                        }
-                      }}
-                      className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
-                    >
-                      Xem tài liệu ban đầu
-                    </button>
-                  )}
+              </CardHeader>
+              <CardContent className="pt-0 space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3 rounded-lg bg-muted/40">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Đối tác</p>
+                    <p className="text-sm font-medium">{req.partner_name || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Giá trị</p>
+                    <p className="text-sm font-medium">{req.contract_value > 0 ? formatCurrency(req.contract_value) : "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Thời hạn HĐ</p>
+                    <p className="text-sm font-medium">{req.contract_start_date && req.contract_end_date ? `${formatDate(req.contract_start_date)} - ${formatDate(req.contract_end_date)}` : "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Hạn review</p>
+                    <p className="text-sm font-medium">{req.review_deadline ? formatDate(req.review_deadline) : "—"}</p>
+                  </div>
                 </div>
-              )}
 
-              {req.admin_notes && (
-                <div className="p-3 rounded-lg bg-accent/5 border border-accent/20">
-                  <p className="text-xs font-medium text-accent mb-1">Nhận xét pháp chế</p>
-                  <p className="text-sm">{req.admin_notes}</p>
-                </div>
-              )}
-
-              {notes[req.id] && notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Lịch sử xử lý ({notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length})</p>
-                  <div className="space-y-2 pl-6 border-l-2 border-muted ml-2">
-                    {notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).map((note: any) => (
-                      <div key={note.id} className="p-3 rounded-lg bg-card border text-sm relative">
-                        <div className="absolute -left-[1.65rem] top-3 w-3 h-3 rounded-full bg-accent border-2 border-background" />
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-medium text-xs">{note.author_name}</span>
-                          <span className="text-xs text-muted-foreground">{formatDate(note.created_at)}</span>
+                {/* Payment Schedule */}
+                {paymentSchedules[req.id] && paymentSchedules[req.id].length > 0 && (
+                  <div className="p-3 rounded-lg bg-muted/30 space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Đợt thanh toán</p>
+                    <div className="space-y-1">
+                      {paymentSchedules[req.id].map((ps: any) => (
+                        <div key={ps.id} className="flex items-center justify-between text-sm">
+                          <span className="font-medium">{ps.phase_name}</span>
+                          <span>{ps.payment_amount > 0 ? formatCurrency(ps.payment_amount) : "N/A"} — {ps.payment_due_date ? formatDate(ps.payment_due_date) : "—"}</span>
                         </div>
-                        <p className="text-muted-foreground">{note.content}</p>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {["cho_xu_ly", "cho_quan_ly"].includes(req.status) && (
-                <>
-                  <Separator />
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" className="text-xs" onClick={() => handleEdit(req)}>
-                      Chỉnh sửa
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10">
-                          Xóa yêu cầu
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
-                          <AlertDialogDescription>Yêu cầu review "{req.contract_title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Hủy</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(req.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                {/* Link rendering kept the same */}
+
+                {/* File links */}
+                {(req.legal_review_doc_link || req.file_url) && (
+                  <div className="space-y-1">
+                    {req.legal_review_doc_link && (
+                      <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
+                        Xem tài liệu đã review (Pháp chế)
+                      </a>
+                    )}
+                    {req.file_url && (
+                      <button
+                        onClick={async () => {
+                          const url = req.file_url as string;
+                          if (url.includes("/storage/v1/object/public/contracts/")) {
+                            const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
+                            const { data } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
+                            if (data) window.open(data.signedUrl, "_blank");
+                            else toast.error("Không thể mở file");
+                          } else {
+                            window.open(url, "_blank");
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
+                      >
+                        Xem tài liệu ban đầu
+                      </button>
+                    )}
                   </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                )}
+
+                {req.admin_notes && (
+                  <div className="p-3 rounded-lg bg-accent/5 border border-accent/20">
+                    <p className="text-xs font-medium text-accent mb-1">Nhận xét pháp chế</p>
+                    <p className="text-sm">{req.admin_notes}</p>
+                  </div>
+                )}
+
+                {notes[req.id] && notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Lịch sử xử lý ({notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length})</p>
+                    <div className="space-y-2 pl-6 border-l-2 border-muted ml-2">
+                      {notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).map((note: any) => (
+                        <div key={note.id} className="p-3 rounded-lg bg-card border text-sm relative">
+                          <div className="absolute -left-[1.65rem] top-3 w-3 h-3 rounded-full bg-accent border-2 border-background" />
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-xs">{note.author_name}</span>
+                            <span className="text-xs text-muted-foreground">{formatDate(note.created_at)}</span>
+                          </div>
+                          <p className="text-muted-foreground">{note.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {["cho_xu_ly", "cho_quan_ly"].includes(req.status) && (
+                  <>
+                    <Separator />
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" size="sm" className="text-xs" onClick={() => handleEdit(req)}>
+                        Chỉnh sửa
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10">
+                            Xóa yêu cầu
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
+                            <AlertDialogDescription>Yêu cầu review "{req.contract_title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Hủy</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(req.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {requests.length === 0 && (
