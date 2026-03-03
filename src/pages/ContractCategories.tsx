@@ -44,6 +44,7 @@ const ContractCategories = () => {
   const { user, role, profile } = useAuth();
   const isAdmin = role === "admin";
   const canEdit = role === "admin" || role === "accountant" || role === "finance";
+  const canEditContract = (c: any) => isAdmin || ((role === "accountant" || role === "finance") && c.created_by === user?.id);
   const isViewOnly = role === "manager";
   const [categories, setCategories] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
@@ -431,7 +432,7 @@ const ContractCategories = () => {
                       <TableCell className="text-muted-foreground">{c.partner_name || "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{c.tax_code || "—"}</TableCell>
                       <TableCell>
-                        {canEdit ? (
+                        {canEditContract(c) ? (
                           <Select
                             value={c.status}
                             onValueChange={async (newStatus) => {
@@ -474,7 +475,7 @@ const ContractCategories = () => {
                           <div>
                             <p className="font-medium text-xs">{nearestObl.phase_name}</p>
                             <p className="text-xs text-muted-foreground">{formatDate(nearestObl.payment_due_date)} — {formatCurrency(nearestObl.payment_amount)}</p>
-                            {canEdit && (
+                            {canEditContract(c) && (
                               <Button size="sm" variant="outline" className="text-xs mt-1 h-6" onClick={() => handleMarkPaid(nearestObl.id, c.id)}>
                                 Đã thanh toán
                               </Button>
@@ -497,7 +498,7 @@ const ContractCategories = () => {
                           {c.liquidation_file_url && (
                             <Button variant="ghost" size="sm" className="h-7 text-xs text-info" onClick={() => openFile(c.liquidation_file_url)}>TL</Button>
                           )}
-                          {(c.status === "het_hieu_luc" || c.status === "da_ky") && !c.liquidation_file_url && canEdit && (
+                          {(c.status === "het_hieu_luc" || c.status === "da_ky") && !c.liquidation_file_url && canEditContract(c) && (
                             <label className="cursor-pointer">
                               <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={(e) => {
                                 const file = e.target.files?.[0];
@@ -508,7 +509,7 @@ const ContractCategories = () => {
                           )}
                         </div>
                       </TableCell>
-                      {canEdit && (
+                      {canEditContract(c) && (
                         <TableCell>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -594,7 +595,7 @@ const ContractCategories = () => {
                 <p className="text-sm text-muted-foreground truncate">{categoryCounts[cat.id] || 0} hợp đồng</p>
               </div>
               <div className="flex items-center gap-1">
-                {canEdit && (
+                {isAdmin && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive text-xs" onClick={(e) => e.stopPropagation()}>
