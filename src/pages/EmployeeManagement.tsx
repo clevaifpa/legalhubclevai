@@ -14,8 +14,15 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
+
+const DEPARTMENT_OPTIONS = [
+  "Phòng Kinh doanh", "Phòng Marketing", "Phòng Nhân sự", "Phòng Kế toán",
+  "Phòng Tài chính", "Phòng IT", "Phòng Hành chính", "Phòng Pháp chế",
+  "Phòng Sản xuất", "Phòng R&D", "Ban Giám đốc", "Khác",
+];
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
@@ -63,12 +70,23 @@ const EmployeeManagement = () => {
     else { toast.success("Đã cập nhật vai trò"); fetchData(); }
   };
 
+  const handleChangeDepartment = async (userId: string, newDept: string) => {
+    const { error } = await supabase.from("profiles").update({ department: newDept }).eq("user_id", userId);
+    // Also try updating user_roles for managers
+    await supabase.from("user_roles").update({ department: newDept } as any).eq("user_id", userId);
+
+    if (error) toast.error("Lỗi cập nhật phòng ban", { description: error.message });
+    else { toast.success("Đã cập nhật phòng ban"); fetchData(); }
+  };
+
   const handleDeleteUser = async (userId: string) => {
-    // Delete roles and profile (cascade will handle related data)
-    await supabase.from("user_roles").delete().eq("user_id", userId);
-    await supabase.from("profiles").delete().eq("user_id", userId);
-    toast.success("Đã xóa tài khoản");
-    fetchData();
+    const { error } = await supabase.rpc("admin_delete_user", { _user_id: userId } as any);
+    if (error) {
+      toast.error("Lỗi xóa tài khoản", { description: error.message });
+    } else {
+      toast.success("Đã xóa hoàn toàn tài khoản");
+      fetchData();
+    }
   };
 
   const filteredProfiles = profiles.filter((p) => {
@@ -113,7 +131,8 @@ const EmployeeManagement = () => {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30">
-                  <TableHead>Tên hiển thị</TableHead>
+                  <TableHead>Mã nhân viên</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Phòng ban</TableHead>
                   <TableHead>Ngày tạo</TableHead>
                   <TableHead>Vai trò</TableHead>
@@ -124,11 +143,28 @@ const EmployeeManagement = () => {
                   const userRoles = getUserRoles(p.user_id);
                   const primaryRole = userRoles[0];
                   const isSelf = p.user_id === user?.id;
-                  const displayName = getDisplayName(p);
+                  const displayName = p.full_name || (p.email ? p.email.split("@")[0] : "—");
                   return (
                     <TableRow key={p.user_id}>
                       <TableCell className="font-medium">{displayName}</TableCell>
-                      <TableCell className="text-muted-foreground">{p.department || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{p.email || "—"}</TableCell>
+                      <TableCell>
+                        <Select
+                          value={p.department || ""}
+                          onValueChange={(v) => handleChangeDepartment(p.user_id, v)}
+                        >
+                          <SelectTrigger className="h-8 w-fit text-xs border-0 p-0 shadow-none bg-transparent focus:ring-0">
+                            <SelectValue>
+                              <Badge variant="outline" className="cursor-pointer bg-muted/50 hover:bg-muted font-normal text-xs">{p.department || "Chưa có"}</Badge>
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DEPARTMENT_OPTIONS.map((d) => (
+                              <SelectItem key={d} value={d}>{d}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {formatDate(p.created_at)}
                       </TableCell>
