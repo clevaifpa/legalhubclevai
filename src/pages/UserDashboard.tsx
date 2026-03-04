@@ -245,7 +245,7 @@ const UserDashboard = () => {
       }
     } else {
       // Logic tạo mới (Create)
-      const initialStatus = isDirectSubmit ? "dang_review" : "cho_quan_ly";
+      const initialStatus = isDirectSubmit ? "cho_phap_che" : "cho_quan_ly";
       const { data, error } = await supabase.from("review_requests").insert({
         requester_id: user.id,
         requester_name: employeeName || profile.full_name || user.email || "",
@@ -303,7 +303,7 @@ const UserDashboard = () => {
     }
 
     setSubmitting(false);
-    toast.success(editingReqId ? "Cập nhật thành công!" : (isDirectSubmit ? "Yêu cầu đã tạo!" : "Yêu cầu review đã được tạo!"));
+    toast.success(editingReqId ? "Cập nhật thành công!" : (isDirectSubmit ? "Yêu cầu đã tạo, chuyển tiếp cho Pháp chế review!" : "Yêu cầu review đã được tạo!"));
     handleResetForm();
     fetchRequests();
   };
@@ -716,33 +716,37 @@ const UserDashboard = () => {
                   </div>
                 )}
 
-                {["cho_xu_ly", "cho_quan_ly"].includes(req.status) && (
-                  <>
-                    <Separator />
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" className="text-xs" onClick={() => handleEdit(req)}>
-                        Chỉnh sửa
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10">
-                            Xóa yêu cầu
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
-                            <AlertDialogDescription>Yêu cầu review "{req.contract_title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Hủy</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(req.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </>
-                )}
+                {req.requester_id === user?.id && (
+                  req.manager_id
+                    ? req.status === "cho_quan_ly"
+                    : ["cho_phap_che", "dang_review"].includes(req.status)
+                ) && (
+                    <>
+                      <Separator />
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" className="text-xs" onClick={() => handleEdit(req)}>
+                          Chỉnh sửa
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10">
+                              Xóa yêu cầu
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
+                              <AlertDialogDescription>Yêu cầu review "{req.contract_title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Hủy</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(req.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </>
+                  )}
               </CardContent>
             </Card>
           );
