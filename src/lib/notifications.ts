@@ -63,7 +63,6 @@ export async function createWorkflowNotifications(params: NotifyParams) {
       `• Người yêu cầu: ${actorName}`,
       `• Phòng ban: ${dept}`,
       `• Trạng thái: ${STATUS_LABELS[newStatus] || newStatus}`,
-      `• Hạn review: ${timeStr}`,
       `\n<!--REQUEST_ID:${reviewRequestId}-->`
     ].join("\n");
   } else {
@@ -73,7 +72,6 @@ export async function createWorkflowNotifications(params: NotifyParams) {
       `• Trạng thái: ${STATUS_LABELS[oldStatus] || oldStatus} → ${STATUS_LABELS[newStatus] || newStatus}`,
       `• Người thực hiện: ${actorName}`,
       `• Phòng ban: ${dept}`,
-      `• Thời gian: ${timeStr}`,
       `\n<!--REQUEST_ID:${reviewRequestId}-->`
     ].join("\n");
   }
@@ -237,8 +235,7 @@ export async function notifyAdminsOnContractDeletion(
   const content = [
     `• Tên hợp đồng: ${contractTitle}`,
     `• Người thực hiện: ${actorName}`,
-    `• Phòng ban: ${department || "—"}`,
-    `• Thời gian: ${timeStr}`
+    `• Phòng ban: ${department || "—"}`
   ];
 
   if (contractId) content.push(`\n<!--CONTRACT_ID:${contractId}-->`);

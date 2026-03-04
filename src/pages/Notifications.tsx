@@ -1,14 +1,59 @@
+import { useState, useEffect } from "react";
 import { Bell, Mail, MailOpen, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Notifications() {
     const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
     const { role } = useAuth();
     const navigate = useNavigate();
+
+    const [deadlines, setDeadlines] = useState<Record<string, string>>({});
+    const [validRequestIds, setValidRequestIds] = useState<Set<string>>(new Set());
+    const [deadlinesLoaded, setDeadlinesLoaded] = useState(false);
+
+    useEffect(() => {
+        const fetchDeadlines = async () => {
+            const requestIds = new Set<string>();
+            notifications.forEach(n => {
+                const reqMatch = n.content.match(/<!--REQUEST_ID:(.*?)-->/);
+                const id = n.review_request_id || (reqMatch ? reqMatch[1] : null);
+                if (id) requestIds.add(id);
+            });
+
+            if (requestIds.size === 0) {
+                setDeadlinesLoaded(true);
+                return;
+            }
+
+            const { data } = await supabase
+                .from("review_requests")
+                .select("id, deadline")
+                .in("id", Array.from(requestIds));
+
+            if (data) {
+                const dMap: Record<string, string> = {};
+                const validIds = new Set<string>();
+                data.forEach((r: any) => {
+                    validIds.add(r.id);
+                    if (r.deadline) dMap[r.id] = r.deadline;
+                });
+                setDeadlines(dMap);
+                setValidRequestIds(validIds);
+            }
+            setDeadlinesLoaded(true);
+        };
+
+        if (notifications.length > 0) {
+            fetchDeadlines();
+        } else {
+            setDeadlinesLoaded(true);
+        }
+    }, [notifications]);
 
     const handleClick = (n: any) => {
         markAsRead(n.id);
@@ -86,25 +131,57 @@ export default function Notifications() {
     };
 
     /** Render content with line breaks preserved, strip hidden markers */
-    const renderContent = (content: string) => {
-        const cleanContent = content.replace(/\n?<!--.*?-->/g, '');
-        return cleanContent.split("\n").map((line, i) => (
+    const renderContent = (content: string, reqId: string | null) => {
+        // Remove legacy "Thời gian:" and "Hạn review:"
+        let cleanContent = content
+            .replace(/\n?• Thời gian:.*?(?=\n|$)/g, '')
+            .replace(/\n?• Hạn review:.*?(?=\n|$)/g, '')
+            .replace(/\n?<!--.*?-->/g, '')
+            .trim();
+
+        const lines = cleanContent.split("\n").filter(l => l.trim().length > 0);
+
+        // Dynamically inject updated deadline
+        if (reqId && deadlines[reqId]) {
+            lines.push(`• Hạn review: ${formatTime(deadlines[reqId])}`);
+        }
+
+        return lines.map((line, i) => (
             <span key={i}>
                 {line}
-                {i < cleanContent.split("\n").length - 1 && <br />}
+                {i < lines.length - 1 && <br />}
             </span>
         ));
     };
+
+    if (!deadlinesLoaded) {
+        return (
+            <div className="flex items-center justify-center p-12">
+                <p className="text-muted-foreground animate-pulse">Đang tải thông báo...</p>
+            </div>
+        );
+    }
+
+    const visibleNotifications = notifications.filter(n => {
+        const reqMatch = n.content.match(/<!--REQUEST_ID:(.*?)-->/);
+        const reqId = n.review_request_id || (reqMatch ? reqMatch[1] : null);
+        if (reqId) {
+            return validRequestIds.has(reqId);
+        }
+        return true;
+    });
+
+    const visibleUnreadCount = visibleNotifications.filter(n => !n.is_read).length;
 
     return (
         <div className="w-full max-w-5xl mx-auto py-8 px-4 animate-fade-in">
             <div className="flex items-start justify-between mb-8">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">Thông báo</h1>
-                    <p className="text-muted-foreground font-medium">{unreadCount} thông báo chưa đọc</p>
+                    <p className="text-muted-foreground font-medium">{visibleUnreadCount} thông báo chưa đọc</p>
                 </div>
 
-                {unreadCount > 0 && (
+                {visibleUnreadCount > 0 && (
                     <Button variant="outline" onClick={markAllAsRead} className="shadow-sm font-medium">
                         <CheckCheck className="w-4 h-4 mr-2" />
                         Đánh dấu tất cả đã đọc
@@ -112,7 +189,7 @@ export default function Notifications() {
                 )}
             </div>
 
-            {notifications.length === 0 ? (
+            {visibleNotifications.length === 0 ? (
                 <div className="text-center text-muted-foreground py-16 bg-card rounded-xl border shadow-sm">
                     <Bell className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
                     <p className="text-lg font-medium">Không có thông báo nào</p>
@@ -120,46 +197,51 @@ export default function Notifications() {
                 </div>
             ) : (
                 <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
-                    {notifications.map((n) => (
-                        <div
-                            key={n.id}
-                            className={`p-5 sm:p-6 flex gap-4 cursor-pointer transition-colors border-b last:border-b-0 ${!n.is_read ? "bg-accent/50 hover:bg-accent/70" : "bg-card hover:bg-accent/30"
-                                }`}
-                            onClick={() => handleClick(n)}
-                        >
-                            <div className="mt-0.5 shrink-0">
-                                {!n.is_read ? (
-                                    <Mail className="w-6 h-6 text-primary" />
-                                ) : (
-                                    <MailOpen className="w-6 h-6 text-muted-foreground" />
-                                )}
-                            </div>
+                    {visibleNotifications.map((n) => {
+                        const reqMatch = n.content.match(/<!--REQUEST_ID:(.*?)-->/);
+                        const reqId = n.review_request_id || (reqMatch ? reqMatch[1] : null);
 
-                            <div className="flex-1 min-w-0">
-                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4 mb-2">
-                                    <h3 className="font-semibold text-foreground text-base leading-tight">
-                                        {n.title}
-                                    </h3>
-                                    <div className="flex justify-between sm:flex-col items-center sm:items-end gap-1.5 shrink-0 text-right w-full sm:w-auto mt-2 sm:mt-0">
-                                        <span className="text-xs font-medium text-muted-foreground order-2 sm:order-1">
-                                            {formatTime(n.created_at)}
-                                        </span>
-                                        {!n.is_read && (
-                                            <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] px-2 py-0 h-5 font-medium border-none rounded-full shadow-sm order-1 sm:order-2">
-                                                Mới
-                                            </Badge>
-                                        )}
+                        return (
+                            <div
+                                key={n.id}
+                                className={`p-5 sm:p-6 flex gap-4 cursor-pointer transition-colors border-b last:border-b-0 ${!n.is_read ? "bg-accent/50 hover:bg-accent/70" : "bg-card hover:bg-accent/30"
+                                    }`}
+                                onClick={() => handleClick(n)}
+                            >
+                                <div className="mt-0.5 shrink-0">
+                                    {!n.is_read ? (
+                                        <Mail className="w-6 h-6 text-primary" />
+                                    ) : (
+                                        <MailOpen className="w-6 h-6 text-muted-foreground" />
+                                    )}
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4 mb-2">
+                                        <h3 className="font-semibold text-foreground text-base leading-tight">
+                                            {n.title}
+                                        </h3>
+                                        <div className="flex justify-between sm:flex-col items-center sm:items-end gap-1.5 shrink-0 text-right w-full sm:w-auto mt-2 sm:mt-0">
+                                            <span className="text-xs font-medium text-muted-foreground order-2 sm:order-1">
+                                                {formatTime(n.created_at)}
+                                            </span>
+                                            {!n.is_read && (
+                                                <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] px-2 py-0 h-5 font-medium border-none rounded-full shadow-sm order-1 sm:order-2">
+                                                    Mới
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="text-sm text-muted-foreground leading-relaxed pr-0 sm:pr-8">
-                                    {renderContent(n.content)}
-                                </div>
+                                    <div className="text-sm text-muted-foreground leading-relaxed pr-0 sm:pr-8">
+                                        {renderContent(n.content, reqId)}
+                                    </div>
 
-                                {getBadge(n.title, n.content)}
+                                    {getBadge(n.title, n.content)}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
             )}
         </div>
