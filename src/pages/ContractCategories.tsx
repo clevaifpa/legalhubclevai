@@ -22,7 +22,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { notifyAdminsOnContractUpload } from "@/lib/notifications";
+import { notifyAdminsOnContractUpload, notifyAdminsOnContractDeletion } from "@/lib/notifications";
 import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTracker";
 import { toast } from "sonner";
 
@@ -136,7 +136,13 @@ const ContractCategories = () => {
         }
 
         // Fetch just the category_id of this contract
-        const { data: contract } = await supabase.from("contracts").select("category_id").eq("id", contractIdParam).single();
+        const { data: contract, error } = await supabase.from("contracts").select("category_id").eq("id", contractIdParam).single();
+        if (error && error.code === 'PGRST116') {
+          toast.error("Hợp đồng không còn tồn tại");
+          searchParams.delete('contractId');
+          setSearchParams(searchParams);
+          return;
+        }
         if (contract && contract.category_id) {
           const cat = categories.find(c => c.id === contract.category_id);
           if (cat && (!selectedCategory || selectedCategory.id !== cat.id)) {
@@ -169,10 +175,17 @@ const ContractCategories = () => {
     else { toast.success("Đã xóa loại hợp đồng"); fetchCategories(); }
   };
 
-  const handleDeleteContract = async (contractId: string) => {
-    const { error } = await (supabase.rpc as any)("delete_contract", { _contract_id: contractId });
+  const handleDeleteContract = async (contract: any) => {
+    const { error } = await (supabase.rpc as any)("delete_contract", { _contract_id: contract.id });
     if (error) toast.error("Lỗi xóa", { description: error.message });
-    else { toast.success("Đã xóa hợp đồng"); if (selectedCategory) fetchContracts(selectedCategory.id); }
+    else {
+      toast.success("Đã xóa hợp đồng");
+      if (selectedCategory) fetchContracts(selectedCategory.id);
+      if (!isAdmin && user && profile) {
+        const uploaderName = user.email ? getEmployeeName(user.email) || profile.full_name || user.email : "Người dùng";
+        await notifyAdminsOnContractDeletion(contract.title, uploaderName, profile.department || "");
+      }
+    }
   };
 
   const uploadFile = async (file: File, path: string) => {
@@ -560,12 +573,12 @@ const ContractCategories = () => {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
+                                <AlertDialogTitle>Bạn có chắc chắn muốn xóa hợp đồng này không?</AlertDialogTitle>
                                 <AlertDialogDescription>Hợp đồng "{c.title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Hủy</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteContract(c.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
+                                <AlertDialogAction onClick={() => handleDeleteContract(c)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>

@@ -221,3 +221,57 @@ export async function notifyAdminsOnContractUpload(
 
   await supabase.from("notification_logs").insert(logs as any);
 }
+
+/**
+ * Notifies all admins that a contract has been deleted by a user.
+ */
+export async function notifyAdminsOnContractDeletion(
+  contractTitle: string,
+  actorName: string,
+  department?: string
+) {
+  const timeStr = formatVNTime();
+  const title = "Hợp đồng đã bị xóa";
+  const content = [
+    `• Tên hợp đồng: ${contractTitle}`,
+    `• Người thực hiện: ${actorName}`,
+    `• Phòng ban: ${department || "—"}`,
+    `• Thời gian: ${timeStr}`
+  ].join("\n");
+
+  const { data: adminUsers, error: rpcError } = await (supabase.rpc as any)(
+    "get_users_by_roles",
+    { _roles: ["admin"] }
+  );
+
+  if (rpcError) {
+    console.warn("Lỗi khi lấy danh sách admin:", rpcError);
+  }
+
+  if (!adminUsers || (adminUsers as any[]).length === 0) return;
+
+  const recipientIds = new Set((adminUsers as any[]).map((u: any) => u.user_id));
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  if (currentUser) recipientIds.delete(currentUser.id);
+
+  if (recipientIds.size === 0) return;
+
+  const notifications = Array.from(recipientIds).map((userId) => ({
+    user_id: userId,
+    title,
+    content: content,
+    is_read: false,
+  }));
+
+  await supabase.from("notifications").insert(notifications as any);
+
+  const logs = Array.from(recipientIds).map((userId) => ({
+    notification_type: "in_app",
+    recipient_user_id: userId,
+    title,
+    content: content,
+    status: "sent",
+  }));
+
+  await supabase.from("notification_logs").insert(logs as any);
+}
