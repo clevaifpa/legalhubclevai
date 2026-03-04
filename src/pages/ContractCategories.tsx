@@ -132,6 +132,22 @@ const ContractCategories = () => {
     }
   }, [categoryIdParam, categories, selectedCategory]);
 
+  useEffect(() => {
+    const handleContractDeepLink = async () => {
+      if (contractIdParam && categories.length > 0 && !selectedCategory) {
+        // Find the category of this contract
+        const { data: contract } = await supabase.from("contracts").select("category_id").eq("id", contractIdParam).single();
+        if (contract && contract.category_id) {
+          const cat = categories.find(c => c.id === contract.category_id);
+          if (cat) {
+            setSelectedCategory(cat);
+          }
+        }
+      }
+    };
+    handleContractDeepLink();
+  }, [contractIdParam, categories, selectedCategory]);
+
   const handleAddCategory = async () => {
     if (!newCatName.trim()) return;
     setSaving(true);
