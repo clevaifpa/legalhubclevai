@@ -124,29 +124,35 @@ const ContractCategories = () => {
   useEffect(() => { if (selectedCategory) fetchContracts(selectedCategory.id); }, [selectedCategory, contractIdParam]);
 
   useEffect(() => {
-    if (categoryIdParam && categories.length > 0) {
-      const cat = categories.find(c => c.id === categoryIdParam);
-      if (cat && (!selectedCategory || selectedCategory.id !== cat.id)) {
-        setSelectedCategory(cat);
-      }
-    }
-  }, [categoryIdParam, categories, selectedCategory]);
+    const resolveDeepLink = async () => {
+      if (categories.length === 0) return;
 
-  useEffect(() => {
-    const handleContractDeepLink = async () => {
-      if (contractIdParam && categories.length > 0 && !selectedCategory) {
-        // Find the category of this contract
+      if (contractIdParam) {
+        // If contractId is in URL, we must ensure the correct category is selected
+        // First check if it's already in the currently selected category's fetched contracts
+        const currentContract = contracts.find(c => c.id === contractIdParam);
+        if (selectedCategory && currentContract) {
+          return; // Already selected, and we have the contract data, nothing to do
+        }
+
+        // Fetch just the category_id of this contract
         const { data: contract } = await supabase.from("contracts").select("category_id").eq("id", contractIdParam).single();
         if (contract && contract.category_id) {
           const cat = categories.find(c => c.id === contract.category_id);
-          if (cat) {
+          if (cat && (!selectedCategory || selectedCategory.id !== cat.id)) {
             setSelectedCategory(cat);
           }
         }
+      } else if (categoryIdParam) {
+        // Fallback: if only categoryId is in URL
+        const cat = categories.find(c => c.id === categoryIdParam);
+        if (cat && (!selectedCategory || selectedCategory.id !== cat.id)) {
+          setSelectedCategory(cat);
+        }
       }
     };
-    handleContractDeepLink();
-  }, [contractIdParam, categories, selectedCategory]);
+    resolveDeepLink();
+  }, [categoryIdParam, contractIdParam, categories]);
 
   const handleAddCategory = async () => {
     if (!newCatName.trim()) return;
