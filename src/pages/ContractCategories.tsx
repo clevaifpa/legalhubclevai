@@ -26,6 +26,15 @@ import { notifyAdminsOnContractUpload, notifyAdminsOnContractDeletion } from "@/
 import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTracker";
 import { toast } from "sonner";
 
+const DEPARTMENTS = [
+  { id: "LVO", name: "Khối Vận hành" },
+  { id: "LVS", name: "Khối Kinh doanh" },
+  { id: "LVH", name: "Khối Nhân sự" },
+  { id: "LVD", name: "Khối Phát triển mới" },
+  { id: "LVB", name: "Khối Back-office" },
+  { id: "LVI", name: "Khối Kỹ thuật" },
+];
+
 const sanitizeFileName = (name: string): string => {
   return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
 };
@@ -49,9 +58,9 @@ const ContractCategories = () => {
   const categoryIdParam = searchParams.get('categoryId');
   const contractIdParam = searchParams.get('contractId');
   const isAdmin = role === "admin";
-  const canEdit = role === "admin" || role === "accountant" || role === "finance";
-  const canEditContract = (c: any) => isAdmin || ((role === "accountant" || role === "finance") && c.created_by === user?.id);
-  const isViewOnly = role === "manager";
+  const canEdit = role === "admin" || role === "accountant" || role === "finance" || role === "manager";
+  const canEditContract = (c: any) => isAdmin || ((role === "accountant" || role === "finance" || role === "manager") && c.created_by === user?.id);
+  const isViewOnly = false; // Manager is no longer view only for their own contracts
   const [categories, setCategories] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
   const [contractPayments, setContractPayments] = useState<Record<string, any[]>>({});
@@ -91,7 +100,11 @@ const ContractCategories = () => {
     const { data } = await supabase.from("contract_categories").select("*").order("name");
     if (data) {
       setCategories(data);
-      const { data: allContracts } = await supabase.from("contracts").select("category_id");
+      let query = supabase.from("contracts").select("category_id");
+      if (role === "manager") {
+        query = query.eq("department", profile?.department || "");
+      }
+      const { data: allContracts } = await query;
       if (allContracts) {
         const counts: Record<string, number> = {};
         allContracts.forEach((c: any) => { if (c.category_id) counts[c.category_id] = (counts[c.category_id] || 0) + 1; });
@@ -102,7 +115,11 @@ const ContractCategories = () => {
   };
 
   const fetchContracts = async (categoryId: string) => {
-    const { data } = await supabase.from("contracts").select("*").eq("category_id", categoryId).order("created_at", { ascending: false });
+    let query = supabase.from("contracts").select("*").eq("category_id", categoryId).order("created_at", { ascending: false });
+    if (role === "manager") {
+      query = query.eq("department", profile?.department || "");
+    }
+    const { data } = await query;
     if (data) {
       setContracts(data);
       const ids = data.map((c: any) => c.id);
@@ -395,7 +412,18 @@ const ContractCategories = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Đơn vị phụ trách</Label>
-                    <Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="VD: Phòng Pháp chế" />
+                    {role === "manager" ? (
+                      <Select value={form.department} onValueChange={(v) => setForm({ ...form, department: v })}>
+                        <SelectTrigger><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
+                        <SelectContent>
+                          {DEPARTMENTS.map((dept) => (
+                            <SelectItem key={dept.id} value={dept.id}>{dept.id} - {dept.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="VD: Phòng Pháp chế" />
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Số PE đã duyệt *</Label>
