@@ -228,7 +228,9 @@ export async function notifyAdminsOnContractUpload(
 export async function notifyAdminsOnContractDeletion(
   contractTitle: string,
   actorName: string,
-  department?: string
+  department?: string,
+  contractId?: string,
+  categoryId?: string,
 ) {
   const timeStr = formatVNTime();
   const title = "Hợp đồng đã bị xóa";
@@ -237,7 +239,12 @@ export async function notifyAdminsOnContractDeletion(
     `• Người thực hiện: ${actorName}`,
     `• Phòng ban: ${department || "—"}`,
     `• Thời gian: ${timeStr}`
-  ].join("\n");
+  ];
+
+  if (contractId) content.push(`\n<!--CONTRACT_ID:${contractId}-->`);
+  if (categoryId) content.push(`\n<!--CATEGORY_ID:${categoryId}-->`);
+
+  const finalContent = content.join("\n");
 
   const { data: adminUsers, error: rpcError } = await (supabase.rpc as any)(
     "get_users_by_roles",
@@ -259,7 +266,7 @@ export async function notifyAdminsOnContractDeletion(
   const notifications = Array.from(recipientIds).map((userId) => ({
     user_id: userId,
     title,
-    content: content,
+    content: finalContent,
     is_read: false,
   }));
 
@@ -269,7 +276,7 @@ export async function notifyAdminsOnContractDeletion(
     notification_type: "in_app",
     recipient_user_id: userId,
     title,
-    content: content,
+    content: finalContent,
     status: "sent",
   }));
 

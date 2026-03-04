@@ -177,13 +177,21 @@ const ContractCategories = () => {
 
   const handleDeleteContract = async (contract: any) => {
     const { error } = await (supabase.rpc as any)("delete_contract", { _contract_id: contract.id });
-    if (error) toast.error("Lỗi xóa", { description: error.message });
-    else {
+    if (error) {
+      toast.error("Lỗi xóa", { description: error.message });
+    } else {
       toast.success("Đã xóa hợp đồng");
       if (selectedCategory) fetchContracts(selectedCategory.id);
+
+      // If the current user is NOT an admin, trigger notification to admins
       if (!isAdmin && user && profile) {
-        const uploaderName = user.email ? getEmployeeName(user.email) || profile.full_name || user.email : "Người dùng";
-        await notifyAdminsOnContractDeletion(contract.title, uploaderName, profile.department || "");
+        try {
+          const uploaderName = user.email ? getEmployeeName(user.email) || profile.full_name || user.email : "Người dùng";
+          // Also pass contractId to the notification so we handle it similarly to upload
+          await notifyAdminsOnContractDeletion(contract.title || "Không tên", uploaderName, contract.department || profile.department || "", contract.id, contract.category_id);
+        } catch (err) {
+          console.error("Failed to notify admins of deletion", err);
+        }
       }
     }
   };
