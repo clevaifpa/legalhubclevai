@@ -62,7 +62,6 @@ export async function createWorkflowNotifications(params: NotifyParams) {
       `• Tên hợp đồng: ${contractTitle}`,
       `• Người yêu cầu: ${actorName}`,
       `• Phòng ban: ${dept}`,
-      `• Thời gian: ${timeStr}`,
       `• Trạng thái: ${STATUS_LABELS[newStatus] || newStatus}`,
       `\n<!--REQUEST_ID:${reviewRequestId}-->`
     ].join("\n");
@@ -73,7 +72,6 @@ export async function createWorkflowNotifications(params: NotifyParams) {
       `• Trạng thái: ${STATUS_LABELS[oldStatus] || oldStatus} → ${STATUS_LABELS[newStatus] || newStatus}`,
       `• Người thực hiện: ${actorName}`,
       `• Phòng ban: ${dept}`,
-      `• Thời gian: ${timeStr}`,
       `\n<!--REQUEST_ID:${reviewRequestId}-->`
     ].join("\n");
   }
@@ -90,10 +88,11 @@ export async function createWorkflowNotifications(params: NotifyParams) {
   // Notify relevant roles based on new status
   const rolesToNotify: string[] = ["admin"]; // admins always get notified
 
+  if (newStatus === "cho_quan_ly") rolesToNotify.push("manager");
   if (newStatus === "cho_ke_toan") rolesToNotify.push("accountant");
   if (newStatus === "cho_tai_chinh") rolesToNotify.push("finance");
   if (newStatus === "hoan_tat" || newStatus === "tu_choi") {
-    rolesToNotify.push("accountant", "finance");
+    rolesToNotify.push("manager", "accountant", "finance");
   }
 
   // Fetch user IDs for these roles using RPC
@@ -174,7 +173,6 @@ export async function notifyAdminsOnContractUpload(
     `• Tên hợp đồng: ${contractTitle}`,
     `• Người upload: ${actorName}`,
     `• Phòng ban: ${department || "—"}`,
-    `• Thời gian: ${timeStr}`,
   ];
   if (contractId) content.push(`\n<!--CONTRACT_ID:${contractId}-->`);
   if (categoryId) content.push(`\n<!--CATEGORY_ID:${categoryId}-->`);
@@ -237,8 +235,7 @@ export async function notifyAdminsOnContractDeletion(
   const content = [
     `• Tên hợp đồng: ${contractTitle}`,
     `• Người thực hiện: ${actorName}`,
-    `• Phòng ban: ${department || "—"}`,
-    `• Thời gian: ${timeStr}`,
+    `• Phòng ban: ${department || "—"}`
   ];
 
   if (contractId) content.push(`\n<!--CONTRACT_ID:${contractId}-->`);

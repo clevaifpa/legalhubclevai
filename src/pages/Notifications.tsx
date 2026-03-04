@@ -32,7 +32,7 @@ export default function Notifications() {
 
             const { data } = await supabase
                 .from("review_requests")
-                .select("id, deadline")
+                .select("id, review_deadline")
                 .in("id", Array.from(requestIds));
 
             if (data) {
@@ -40,7 +40,7 @@ export default function Notifications() {
                 const validIds = new Set<string>();
                 data.forEach((r: any) => {
                     validIds.add(r.id);
-                    if (r.deadline) dMap[r.id] = r.deadline;
+                    if (r.review_deadline) dMap[r.id] = r.review_deadline;
                 });
                 setDeadlines(dMap);
                 setValidRequestIds(validIds);
