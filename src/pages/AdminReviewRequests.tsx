@@ -127,8 +127,6 @@ const AdminReviewRequests = () => {
   const [managers, setManagers] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [editingReqId, setEditingReqId] = useState<string | null>(null);
-
   const [form, setForm] = useState({
     priority: "trung_binh",
     contract_title: "",
@@ -246,50 +244,6 @@ const AdminReviewRequests = () => {
     setNewNote("");
   };
 
-  const handleResetForm = () => {
-    setDialogOpen(false);
-    setEditingReqId(null);
-    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "" });
-    setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
-  };
-
-  const handleEdit = (req: any) => {
-    setEditingReqId(req.id);
-    let schedules = paymentSchedules[req.id] || [];
-
-    setForm({
-      priority: req.priority || "trung_binh",
-      contract_title: req.contract_title || "",
-      partner_name: req.partner_name || "",
-      contract_value: req.contract_value ? String(req.contract_value) : "",
-      contract_value_na: req.contract_value === 0,
-      request_deadline: req.request_deadline || "",
-      contract_start_date: req.contract_start_date || "",
-      contract_end_date: req.contract_end_date || "",
-      review_deadline: req.review_deadline || "",
-      description: req.description || "",
-      google_doc_url: req.file_url || "",
-      approved_pe_number: req.approved_pe_number || "",
-      department: req.department || "",
-      contract_type_category: req.contract_type_category || "",
-      tax_code: req.tax_code || "",
-      manager_id: req.manager_id || "",
-    });
-
-    if (schedules.length > 0) {
-      setPaymentPhases(schedules.map((s: any) => ({
-        phase_name: s.phase_name,
-        payment_amount: s.payment_amount ? String(s.payment_amount) : "",
-        payment_due_date: s.payment_due_date || "",
-        is_na: s.payment_amount === 0
-      })));
-    } else {
-      setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
-    }
-
-    setDialogOpen(true);
-  };
-
   const handleSubmitNewRequest = async () => {
     if (!user || !profile) return;
 
@@ -313,84 +267,39 @@ const AdminReviewRequests = () => {
     setSubmitting(true);
 
     const employeeName = getEmployeeName(user.email);
-    let submitError = null;
-    let finalReqId = editingReqId;
+    const initialStatus = isDirectSubmit ? "cho_phap_che" : "cho_quan_ly";
 
-    if (editingReqId) {
-      // Logic Update
-      const { error } = await supabase.from("review_requests").update({
-        department: form.department,
-        priority: form.priority as any,
-        contract_title: form.contract_title,
-        partner_name: form.partner_name,
-        contract_value: form.contract_value_na ? 0 : (parseInt(form.contract_value) || 0),
-        request_deadline: form.request_deadline,
-        contract_start_date: form.contract_start_date || null,
-        contract_end_date: form.contract_end_date || null,
-        review_deadline: form.review_deadline || null,
-        description: form.description,
-        file_url: form.google_doc_url || null,
-        approved_pe_number: form.approved_pe_number.trim() || null,
-        contract_type_category: form.contract_type_category,
-        tax_code: form.tax_code,
-        manager_id: isDirectSubmit ? null : (form.manager_id || null),
-      }).eq("id", editingReqId);
-      submitError = error;
+    const { data: insertedReq, error } = await supabase.from("review_requests").insert({
+      requester_id: user.id,
+      requester_name: employeeName || profile.full_name || user.email || "",
+      department: form.department,
+      priority: form.priority as any,
+      contract_title: form.contract_title,
+      partner_name: form.partner_name,
+      contract_value: form.contract_value_na ? 0 : (parseInt(form.contract_value) || 0),
+      request_deadline: form.request_deadline,
+      contract_start_date: form.contract_start_date || null,
+      contract_end_date: form.contract_end_date || null,
+      review_deadline: form.review_deadline || null,
+      description: form.description,
+      file_url: form.google_doc_url || null,
+      approved_pe_number: form.approved_pe_number.trim() || null,
+      contract_type_category: form.contract_type_category,
+      tax_code: form.tax_code,
+      manager_id: isDirectSubmit ? null : (form.manager_id || null),
+      status: initialStatus as any,
+      admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Quản lý — bỏ qua bước duyệt của Quản lý, đang chờ Pháp chế review." : null,
+    } as any).select().single();
 
-      if (!error) {
-        await supabase.from("payment_schedules").delete().eq("review_request_id", editingReqId);
-      }
-    } else {
-      // Logic Create
-      const initialStatus = isDirectSubmit ? "cho_phap_che" : "cho_quan_ly";
-      const { data, error } = await supabase.from("review_requests").insert({
-        requester_id: user.id,
-        requester_name: employeeName || profile.full_name || user.email || "",
-        department: form.department,
-        priority: form.priority as any,
-        contract_title: form.contract_title,
-        partner_name: form.partner_name,
-        contract_value: form.contract_value_na ? 0 : (parseInt(form.contract_value) || 0),
-        request_deadline: form.request_deadline,
-        contract_start_date: form.contract_start_date || null,
-        contract_end_date: form.contract_end_date || null,
-        review_deadline: form.review_deadline || null,
-        description: form.description,
-        file_url: form.google_doc_url || null,
-        approved_pe_number: form.approved_pe_number.trim() || null,
-        contract_type_category: form.contract_type_category,
-        tax_code: form.tax_code,
-        manager_id: isDirectSubmit ? null : (form.manager_id || null),
-        status: initialStatus as any,
-        admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Quản lý/Tài chính — bỏ qua bước duyệt của Quản lý, đang chờ Pháp chế review." : null,
-      } as any).select().single();
-
-      submitError = error;
-      if (data) finalReqId = data.id;
-
-      if (data) {
-        await createWorkflowNotifications({
-          reviewRequestId: data.id,
-          contractTitle: form.contract_title,
-          oldStatus: "moi_tao",
-          newStatus: initialStatus,
-          actorName: employeeName || profile.full_name || "",
-          requesterId: user.id,
-          managerId: form.manager_id || null,
-          department: profile?.department || form.department || "",
-        });
-      }
-    }
-
-    if (submitError) {
-      toast.error(editingReqId ? "Lỗi cập nhật yêu cầu" : "Lỗi tạo yêu cầu", { description: submitError.message });
+    if (error) {
+      toast.error("Lỗi tạo yêu cầu", { description: error.message });
       setSubmitting(false);
       return;
     }
 
-    if (finalReqId) {
+    if (insertedReq) {
       const schedules = paymentPhases.map(p => ({
-        review_request_id: finalReqId!,
+        review_request_id: insertedReq.id,
         phase_name: p.phase_name,
         payment_amount: p.is_na ? 0 : (parseInt(p.payment_amount) || 0),
         payment_due_date: p.payment_due_date,
@@ -398,9 +307,26 @@ const AdminReviewRequests = () => {
       await supabase.from("payment_schedules").insert(schedules as any);
     }
 
+    if (insertedReq) {
+      await createWorkflowNotifications({
+        reviewRequestId: insertedReq.id,
+        contractTitle: form.contract_title,
+        oldStatus: "moi_tao",
+        newStatus: initialStatus,
+        actorName: employeeName || profile.full_name || "",
+        requesterId: user.id,
+        managerId: form.manager_id || null,
+        department: profile?.department || form.department || "",
+      });
+    }
+
     setSubmitting(false);
-    toast.success(editingReqId ? "Cập nhật thành công!" : (isDirectSubmit ? "Yêu cầu đã tạo, chuyển tiếp cho Pháp chế review!" : "Yêu cầu review đã được tạo!"));
-    handleResetForm();
+    toast.success(isDirectSubmit
+      ? "Yêu cầu đã tạo, chuyển tiếp cho Pháp chế review!"
+      : "Yêu cầu review đã được tạo!");
+    setDialogOpen(false);
+    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "" });
+    setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
     fetchRequests();
   };
 
@@ -595,19 +521,16 @@ const AdminReviewRequests = () => {
         </div>
 
         {isDirectSubmit && (
-          <Dialog open={dialogOpen} onOpenChange={(open) => {
-            if (!open) handleResetForm();
-            else setDialogOpen(true);
-          }}>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <Button
               className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0"
-              onClick={handleResetForm}
+              onClick={() => setDialogOpen(true)}
             >
               Tạo yêu cầu mới
             </Button>
             <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>{editingReqId ? "Chỉnh sửa yêu cầu review hợp đồng" : form.contract_title ? `Tạo yêu cầu review hợp đồng (${isAdmin ? "Pháp chế" : isManager ? "Quản lý" : "Kế toán/Tài chính"})` : "Tạo yêu cầu review hợp đồng"}</DialogTitle>
+                <DialogTitle>Tạo yêu cầu review hợp đồng ({isAdmin ? "Pháp chế" : isManager ? "Quản lý" : "Kế toán/Tài chính"})</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -787,9 +710,9 @@ const AdminReviewRequests = () => {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={handleResetForm}>Hủy</Button>
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
                 <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSubmitNewRequest} disabled={submitting || !isFormValid}>
-                  {submitting ? "Đang xử lý..." : (editingReqId ? "Cập nhật yêu cầu" : "Gửi yêu cầu")}
+                  {submitting ? "Đang gửi..." : "Gửi yêu cầu"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -959,55 +882,6 @@ const AdminReviewRequests = () => {
                     </button>
                   )}
                 </div>
-
-                {req.requester_id === user?.id && (
-                  req.manager_id
-                    ? req.status === "cho_quan_ly"
-                    : ["cho_phap_che", "dang_review"].includes(req.status)
-                ) && (
-                    <>
-                      <Separator />
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" className="text-xs" onClick={() => handleEdit(req)}>
-                          Chỉnh sửa
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10">
-                              Xóa yêu cầu
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
-                              <AlertDialogDescription>Yêu cầu review "{req.contract_title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Hủy</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(req.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </>
-                  )}
-
-                {canAct ? (
-                  <>
-                    <Separator />
-                    <div className="flex justify-end gap-2">
-                      <Button size="sm" className="text-xs bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => openDetail(req)}>
-                        Duyệt
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex justify-end">
-                    <Button size="sm" className="text-xs" variant="outline" onClick={() => openDetail(req)}>
-                      Xem chi tiết
-                    </Button>
-                  </div>
-                )}
 
                 <Separator />
                 <div className="flex items-center justify-between">
