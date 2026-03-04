@@ -412,18 +412,14 @@ const ContractCategories = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Đơn vị phụ trách</Label>
-                    {role === "manager" ? (
-                      <Select value={form.department} onValueChange={(v) => setForm({ ...form, department: v })}>
-                        <SelectTrigger><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
-                        <SelectContent>
-                          {DEPARTMENTS.map((dept) => (
-                            <SelectItem key={dept.id} value={dept.id}>{dept.id} - {dept.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="VD: Phòng Pháp chế" />
-                    )}
+                    <Select value={form.department} onValueChange={(v) => setForm({ ...form, department: v })}>
+                      <SelectTrigger><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
+                      <SelectContent>
+                        {DEPARTMENTS.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id}>{dept.id} - {dept.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Số PE đã duyệt *</Label>
