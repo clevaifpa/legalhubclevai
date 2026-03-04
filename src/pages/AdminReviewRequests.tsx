@@ -226,7 +226,6 @@ const AdminReviewRequests = () => {
   }, []);
 
   const filtered = requests.filter((req) => {
-    if (reqIdParam && req.id !== reqIdParam) return false;
     const matchSearch = search === "" ||
       req.contract_title.toLowerCase().includes(search.toLowerCase()) ||
       req.partner_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -747,12 +746,6 @@ const AdminReviewRequests = () => {
                 ))}
               </SelectContent>
             </Select>
-            {reqIdParam && (
-              <Button variant="outline" className="shrink-0" onClick={() => {
-                searchParams.delete('id');
-                setSearchParams(searchParams);
-              }}>Bỏ lọc thông báo</Button>
-            )}
           </div>
         </CardContent>
       </Card>
@@ -1012,6 +1005,132 @@ const AdminReviewRequests = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {reqIdParam && requests.find(r => r.id === reqIdParam) && (() => {
+        const req = requests.find(r => r.id === reqIdParam)!;
+        const deptReviews = extractDeptReviews(notes[req.id] || []);
+        const reqPayments = paymentSchedules[req.id] || [];
+
+        return (
+          <Dialog open={true} onOpenChange={(open) => {
+            if (!open) {
+              searchParams.delete('id');
+              setSearchParams(searchParams);
+            }
+          }}>
+            <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0 border-none bg-transparent shadow-none">
+              <Card className="border shadow-lg">
+                <CardHeader className="pb-3 bg-background sticky top-0 z-10 border-b">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <DialogTitle className="text-base font-semibold">{req.contract_title}</DialogTitle>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        Yêu cầu bởi <span className="font-medium text-foreground">{req.requester_name}</span> — {req.department}
+                        {req.contract_type_category && <> — {req.contract_type_category}</>}
+                        {req.tax_code && <> — MST: {req.tax_code}</>}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
+                        <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!req.manager_id} />
+                      )}
+                      <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-4 bg-background">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3 rounded-lg bg-muted/40">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Đối tác</p>
+                      <p className="text-sm font-medium">{req.partner_name || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Giá trị</p>
+                      <p className="text-sm font-medium">{req.contract_value > 0 ? formatCurrency(req.contract_value) : "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Thời hạn HĐ</p>
+                      <p className="text-sm font-medium">{req.contract_start_date && req.contract_end_date ? `${formatDate(req.contract_start_date)} - ${formatDate(req.contract_end_date)}` : "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Hạn review</p>
+                      <p className="text-sm font-medium">{req.review_deadline ? formatDate(req.review_deadline) : "—"}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-muted/20 border space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Mô tả chi tiết</p>
+                    <p className="text-sm whitespace-pre-wrap">{req.description || "Không có mô tả"}</p>
+                  </div>
+
+                  {reqPayments.length > 0 && (
+                    <div className="p-3 rounded-lg bg-muted/30 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Đợt thanh toán</p>
+                      <div className="space-y-1">
+                        {reqPayments.map((ps: any) => (
+                          <div key={ps.id} className="flex items-center justify-between text-sm">
+                            <span className="font-medium">{ps.phase_name}</span>
+                            <span>{ps.payment_amount > 0 ? formatCurrency(ps.payment_amount) : "N/A"} — {ps.payment_due_date ? formatDate(ps.payment_due_date) : "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
+                    <DepartmentReviewTracker deptReviews={deptReviews} skipManagerStep={!req.manager_id} />
+                  )}
+
+                  <div className="space-y-1">
+                    {isAdmin && (
+                      <>
+                        {req.file_url && (
+                          <button
+                            onClick={async () => {
+                              const url = req.file_url as string;
+                              if (url.includes("/storage/v1/object/public/contracts/")) {
+                                const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
+                                const { data } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
+                                if (data) window.open(data.signedUrl, "_blank");
+                              } else {
+                                window.open(url, "_blank");
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
+                          >
+                            Xem tài liệu ban đầu
+                          </button>
+                        )}
+                        {req.legal_review_doc_link && (
+                          <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline block mt-2">
+                            Xem tài liệu đã review (Pháp chế)
+                          </a>
+                        )}
+                      </>
+                    )}
+                    {isManager && req.file_url && (
+                      <button
+                        onClick={async () => {
+                          const url = req.file_url as string;
+                          if (url.includes("/storage/v1/object/public/contracts/")) {
+                            const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
+                            const { data } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
+                            if (data) window.open(data.signedUrl, "_blank");
+                          } else {
+                            window.open(url, "_blank");
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
+                      >
+                        Xem tài liệu
+                      </button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 };

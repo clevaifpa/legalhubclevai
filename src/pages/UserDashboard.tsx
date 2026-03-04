@@ -596,15 +596,7 @@ const UserDashboard = () => {
 
       {/* Request List */}
       <div className="space-y-4">
-        {reqIdParam && (
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={() => {
-              searchParams.delete('id');
-              setSearchParams(searchParams);
-            }}>Bỏ lọc thông báo</Button>
-          </div>
-        )}
-        {requests.filter(r => !reqIdParam || r.id === reqIdParam).map((req, i) => {
+        {requests.map((req, i) => {
           const deptReviews = extractDeptReviews(notes[req.id] || []);
 
           return (
@@ -757,12 +749,140 @@ const UserDashboard = () => {
         })}
       </div>
 
-      {requests.filter(r => !reqIdParam || r.id === reqIdParam).length === 0 && (
+      {requests.length === 0 && (
         <div className="text-center py-12">
           <p className="text-muted-foreground font-medium">Chưa có yêu cầu review nào</p>
           <p className="text-sm text-muted-foreground/70 mt-1">Nhấn "Tạo yêu cầu mới" để bắt đầu</p>
         </div>
       )}
+      {/* Modal View for specific request */}
+      {reqIdParam && requests.find(r => r.id === reqIdParam) && (() => {
+        const req = requests.find(r => r.id === reqIdParam)!;
+        const deptReviews = extractDeptReviews(notes[req.id] || []);
+
+        return (
+          <Dialog open={true} onOpenChange={(open) => {
+            if (!open) {
+              searchParams.delete('id');
+              setSearchParams(searchParams);
+            }
+          }}>
+            <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0 border-none bg-transparent shadow-none">
+              <Card className="border shadow-lg">
+                <CardHeader className="pb-3 bg-background sticky top-0 z-10 border-b">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <DialogTitle className="text-base font-semibold">{req.contract_title}</DialogTitle>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        Yêu cầu bởi <span className="font-medium text-foreground">{req.requester_name}</span> — {req.department}
+                        {req.contract_type_category && <> — {req.contract_type_category}</>}
+                        {req.tax_code && <> — MST: {req.tax_code}</>}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
+                        <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!req.manager_id} />
+                      )}
+                      <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-4 bg-background">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3 rounded-lg bg-muted/40">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Đối tác</p>
+                      <p className="text-sm font-medium">{req.partner_name || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Giá trị</p>
+                      <p className="text-sm font-medium">{req.contract_value > 0 ? formatCurrency(req.contract_value) : "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Thời hạn HĐ</p>
+                      <p className="text-sm font-medium">{req.contract_start_date && req.contract_end_date ? `${formatDate(req.contract_start_date)} - ${formatDate(req.contract_end_date)}` : "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Hạn review</p>
+                      <p className="text-sm font-medium">{req.review_deadline ? formatDate(req.review_deadline) : "—"}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-muted/20 border space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Mô tả chi tiết</p>
+                    <p className="text-sm whitespace-pre-wrap">{req.description || "Không có mô tả"}</p>
+                  </div>
+
+                  {paymentSchedules[req.id] && paymentSchedules[req.id].length > 0 && (
+                    <div className="p-3 rounded-lg bg-muted/30 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Đợt thanh toán</p>
+                      <div className="space-y-1">
+                        {paymentSchedules[req.id].map((ps: any) => (
+                          <div key={ps.id} className="flex items-center justify-between text-sm">
+                            <span className="font-medium">{ps.phase_name}</span>
+                            <span>{ps.payment_amount > 0 ? formatCurrency(ps.payment_amount) : "N/A"} — {ps.payment_due_date ? formatDate(ps.payment_due_date) : "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {(req.legal_review_doc_link || req.file_url) && (
+                    <div className="space-y-1">
+                      {req.legal_review_doc_link && (
+                        <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
+                          Xem tài liệu đã review (Pháp chế)
+                        </a>
+                      )}
+                      {req.file_url && (
+                        <button
+                          onClick={async () => {
+                            const url = req.file_url as string;
+                            if (url.includes("/storage/v1/object/public/contracts/")) {
+                              const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
+                              const { data } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
+                              if (data) window.open(data.signedUrl, "_blank");
+                            } else {
+                              window.open(url, "_blank");
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline block mt-2"
+                        >
+                          Xem tài liệu ban đầu
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {req.admin_notes && (
+                    <div className="p-3 rounded-lg bg-accent/5 border border-accent/20">
+                      <p className="text-xs font-medium text-accent mb-1">Nhận xét pháp chế</p>
+                      <p className="text-sm">{req.admin_notes}</p>
+                    </div>
+                  )}
+
+                  {notes[req.id] && notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length > 0 && (
+                    <div className="space-y-2 mt-4">
+                      <p className="text-sm font-medium">Lịch sử xử lý ({notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length})</p>
+                      <div className="space-y-2 pl-6 border-l-2 border-muted ml-2">
+                        {notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).map((note: any) => (
+                          <div key={note.id} className="p-3 rounded-lg bg-card border text-sm relative">
+                            <div className="absolute -left-[1.65rem] top-3 w-3 h-3 rounded-full bg-accent border-2 border-background" />
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-medium text-xs">{note.author_name}</span>
+                              <span className="text-xs text-muted-foreground">{formatDate(note.created_at)}</span>
+                            </div>
+                            <p className="text-muted-foreground">{note.content}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 };
