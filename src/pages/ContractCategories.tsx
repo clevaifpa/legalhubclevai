@@ -121,7 +121,7 @@ const ContractCategories = () => {
   };
 
   useEffect(() => { fetchCategories(); }, []);
-  useEffect(() => { if (selectedCategory) fetchContracts(selectedCategory.id); }, [selectedCategory]);
+  useEffect(() => { if (selectedCategory) fetchContracts(selectedCategory.id); }, [selectedCategory, contractIdParam]);
 
   useEffect(() => {
     if (categoryIdParam && categories.length > 0) {

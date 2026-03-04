@@ -37,6 +37,13 @@ export default function Notifications() {
                 url += `&categoryId=${categoryMatch[1]}`;
             }
             navigate(url);
+            return;
+        }
+
+        // Fallback for older notifications without embedded IDs
+        if (n.title?.includes("Hợp đồng mới") || n.content?.includes("Tên hợp đồng")) {
+            navigate("/tong-hop-dong");
+            return;
         }
     };
 
