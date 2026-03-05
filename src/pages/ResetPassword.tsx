@@ -63,17 +63,13 @@ const ResetPassword = () => {
           if (!profile) {
             const name = params.get("name") || user.email?.split('@')[0] || "User";
             const dept = params.get("dept") || "";
-            // Insert back into profiles
-            await supabase.from('profiles').insert({
-              user_id: user.id,
-              full_name: name,
-              department: dept,
-              email: user.email
-            });
-            // Try inserting default role, ignore if it fails
-            await supabase.from('user_roles').insert({
-              user_id: user.id,
-              role: 'user'
+
+            // Use RPC to bypass RLS and create profile + role
+            await supabase.rpc('recreate_user_profile', {
+              _user_id: user.id,
+              _email: user.email,
+              _full_name: name,
+              _department: dept
             });
 
             toast.success("Khôi phục thông tin tài khoản thành công!");
