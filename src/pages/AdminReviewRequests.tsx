@@ -183,8 +183,11 @@ const AdminReviewRequests = () => {
       .order("created_at", { ascending: false });
 
     // Manager only sees requests from their department
-    if (isManager && !isAdmin && managerDepartment) {
-      query = query.eq("department", managerDepartment);
+    if (isManager && !isAdmin) {
+      const myDept = managerDepartment || profile?.department;
+      if (myDept) {
+        query = query.eq("department", myDept);
+      }
     }
 
     const { data } = await query;
