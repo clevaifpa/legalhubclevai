@@ -100,9 +100,9 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "LegalHub <onboarding@resend.dev>",
+        from: "Clevai Lexora <onboarding@resend.dev>",
         to: [requesterEmail],
-        subject: `[LegalHub] Cập nhật: ${contractTitle} - ${newStatus}`,
+        subject: `[Clevai Lexora] Cập nhật: ${contractTitle} - ${newStatus}`,
         html: emailHtml,
       }),
     });

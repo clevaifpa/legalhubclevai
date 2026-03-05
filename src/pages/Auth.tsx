@@ -126,7 +126,7 @@ const Auth = () => {
             </div>
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">LegalHub</CardTitle>
+            <CardTitle className="text-2xl font-bold">Clevai Lexora</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               Hệ thống quản lý hợp đồng & pháp chế
             </p>
