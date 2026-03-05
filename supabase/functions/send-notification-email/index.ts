@@ -66,7 +66,7 @@ serve(async (req) => {
     const emailHtml = `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb;">
         <div style="text-align: center; margin-bottom: 24px;">
-          <h2 style="color: #ea580c; margin: 0;">⚖️ LegalHub</h2>
+          <h2 style="color: #ea580c; margin: 0;">⚖️ Clevai Lexora</h2>
           <p style="color: #6b7280; font-size: 14px;">Thông báo cập nhật trạng thái hợp đồng</p>
         </div>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
@@ -89,7 +89,7 @@ serve(async (req) => {
           </tr>
         </table>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
-        <p style="font-size: 12px; color: #9ca3af; text-align: center;">Email tự động từ hệ thống LegalHub. Vui lòng đăng nhập để xem chi tiết.</p>
+        <p style="font-size: 12px; color: #9ca3af; text-align: center;">Email tự động từ hệ thống Clevai Lexora. Vui lòng đăng nhập để xem chi tiết.</p>
       </div>
     `;
 
@@ -100,9 +100,9 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "LegalHub <onboarding@resend.dev>",
+        from: "Clevai Lexora <onboarding@resend.dev>",
         to: [requesterEmail],
-        subject: `[LegalHub] Cập nhật: ${contractTitle} - ${newStatus}`,
+        subject: `[Clevai Lexora] Cập nhật: ${contractTitle} - ${newStatus}`,
         html: emailHtml,
       }),
     });

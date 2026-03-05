@@ -70,11 +70,11 @@ const ResetPassword = () => {
               department: dept,
               email: user.email
             });
-            // Try inserting default role, ignore if RLS blocks it
+            // Try inserting default role, ignore if it fails
             await supabase.from('user_roles').insert({
               user_id: user.id,
               role: 'user'
-            }).catch(() => { });
+            });
 
             toast.success("Khôi phục thông tin tài khoản thành công!");
           }
