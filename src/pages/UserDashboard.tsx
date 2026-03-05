@@ -269,12 +269,12 @@ const UserDashboard = () => {
       }).select().single();
 
       submitError = error;
-      if (insertedReq) finalReqId = insertedReq.id;
+      if (data) finalReqId = data.id;
 
       // Send notifications for new request
-      if (insertedReq) {
+      if (data) {
         await createWorkflowNotifications({
-          reviewRequestId: insertedReq.id,
+          reviewRequestId: data.id,
           contractTitle: form.contract_title,
           oldStatus: "moi_tao",
           newStatus: initialStatus,
