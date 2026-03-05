@@ -340,7 +340,10 @@ const AdminReviewRequests = () => {
     }
 
     if (submitError) {
-      toast.error(editingReqId ? "Lỗi cập nhật yêu cầu" : "Lỗi tạo yêu cầu", { description: submitError.message });
+      console.error("DEBUG SUBMIT ERROR:", submitError);
+      toast.error(editingReqId ? "Lỗi cập nhật yêu cầu" : "Lỗi tạo yêu cầu", {
+        description: submitError.message + " " + JSON.stringify(submitError)
+      });
       setSubmitting(false);
       return;
     }
@@ -350,7 +353,7 @@ const AdminReviewRequests = () => {
         review_request_id: finalReqId!,
         phase_name: p.phase_name,
         payment_amount: p.is_na ? 0 : (parseInt(p.payment_amount) || 0),
-        payment_due_date: p.payment_due_date,
+        payment_due_date: p.payment_due_date || null,
       }));
       await supabase.from("payment_schedules").insert(schedules as any);
     }
