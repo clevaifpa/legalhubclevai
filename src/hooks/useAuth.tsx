@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserData = async (userId: string) => {
     const [rolesRes, profileRes] = await Promise.all([
-      supabase.from("user_roles").select("role, department").eq("user_id", userId),
+      supabase.from("user_roles").select("role").eq("user_id", userId),
       supabase.from("profiles").select("full_name, department").eq("user_id", userId).single(),
     ]);
 
@@ -70,9 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       else if (allRoles.includes("finance")) setRole("finance");
       else setRole("user");
 
-      // Get manager department
-      const managerRole = rolesRes.data.find((r: any) => r.role === "manager");
-      if (managerRole) setManagerDepartment((managerRole as any).department || null);
+      // Get manager department from profile
+      const isManagerRole = rolesRes.data.some((r: any) => r.role === "manager");
+      if (isManagerRole && profileRes.data) {
+        setManagerDepartment(profileRes.data.department || null);
+      }
     } else {
       setRole("user");
       setRoles(["user"]);
