@@ -44,6 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Handle deleted account (no profile found)
     if (profileRes.error && profileRes.error.code === 'PGRST116') {
+      // Allow them to stay logged in temporarily if they are recovering from deletion
+      if (window.location.pathname.includes('/reset-password')) {
+        setLoading(false);
+        return;
+      }
       toast.error("Tài khoản này đã bị xóa khỏi hệ thống. Vui lòng đăng ký lại nếu cần sử dụng.", { duration: 10000 });
       await supabase.auth.signOut();
       setUser(null);
