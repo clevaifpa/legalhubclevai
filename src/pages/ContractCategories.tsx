@@ -260,9 +260,12 @@ const ContractCategories = () => {
         signedFileUrl = await uploadFile(signedPdfFile, path);
       }
 
+      // Map UI status het_hieu_luc_chua_hoan_thanh to DB status het_hieu_luc
+      const dbStatus = form.status === "het_hieu_luc_chua_hoan_thanh" ? "het_hieu_luc" : form.status;
+
       const { data: insertedContract, error } = await supabase.from("contracts").insert({
         title: form.title.trim(), partner_name: form.partner_name.trim(),
-        contract_type: form.contract_type as any, status: form.status as any,
+        contract_type: form.contract_type as any, status: dbStatus as any,
         value: parseInt(form.value) || 0, effective_date: form.effective_date || null,
         expiry_date: form.expiry_date, department: form.department,
         risk_level: form.risk_level as any, category_id: selectedCategory.id,
@@ -525,7 +528,9 @@ const ContractCategories = () => {
                             value={c.status}
                             onValueChange={async (newStatus) => {
                               const oldStatus = c.status;
-                              const { error } = await supabase.from("contracts").update({ status: newStatus as any }).eq("id", c.id);
+                              // Map back to DB enum
+                              const dbStatusToSave = newStatus === "het_hieu_luc_chua_hoan_thanh" ? "het_hieu_luc" : newStatus;
+                              const { error } = await supabase.from("contracts").update({ status: dbStatusToSave as any }).eq("id", c.id);
                               if (error) {
                                 toast.error("Lỗi cập nhật trạng thái", { description: error.message });
                               } else {
@@ -536,7 +541,7 @@ const ContractCategories = () => {
                                     editor_name: profile.full_name || user.email || "",
                                     record_id: c.id,
                                     table_name: "contracts",
-                                    changes: { field: "status", old: oldStatus, new: newStatus },
+                                    changes: { field: "status", old: oldStatus, new: dbStatusToSave },
                                   } as any);
                                 }
                                 toast.success("Đã cập nhật trạng thái");
@@ -545,16 +550,25 @@ const ContractCategories = () => {
                             }}
                           >
                             <SelectTrigger className="h-7 w-32 text-xs">
-                              <SelectValue />
+                              <SelectValue placeholder={
+                                nearestObl && c.status === "het_hieu_luc"
+                                  ? "Hết hiệu lực - Chưa hoàn thành"
+                                  : STATUS_LABELS[c.status] || c.status
+                              } />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="da_ky">Đã ký</SelectItem>
                               <SelectItem value="het_hieu_luc">Đã hết hạn</SelectItem>
+                              <SelectItem value="het_hieu_luc_chua_hoan_thanh">Hết hiệu lực - Chưa hoàn thành nghĩa vụ</SelectItem>
                               <SelectItem value="da_thanh_ly">Đã thanh lý</SelectItem>
                             </SelectContent>
                           </Select>
                         ) : (
-                          <Badge variant="secondary">{STATUS_LABELS[c.status] || c.status}</Badge>
+                          <Badge variant="secondary">
+                            {nearestObl && c.status === "het_hieu_luc"
+                              ? "Hết hiệu lực - Chưa hoàn thành nghĩa vụ"
+                              : STATUS_LABELS[c.status] || c.status}
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{c.expiry_date ? formatDate(c.expiry_date) : "—"}</TableCell>
@@ -648,7 +662,11 @@ const ContractCategories = () => {
                 <div className="space-y-6 mt-4">
                   <div>
                     <h3 className="font-bold text-lg">{detailContract.title}</h3>
-                    <Badge className="mt-2" variant="secondary">{STATUS_LABELS[detailContract.status] || detailContract.status}</Badge>
+                    <Badge className="mt-2" variant="secondary">
+                      {getNearestObligation(detailContract.id) && detailContract.status === "het_hieu_luc"
+                        ? "Hết hiệu lực - Chưa hoàn thành nghĩa vụ"
+                        : STATUS_LABELS[detailContract.status] || detailContract.status}
+                    </Badge>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-4 rounded-lg">
