@@ -90,12 +90,17 @@ const EmployeeManagement = () => {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    const { error } = await (supabase.rpc as any)("admin_delete_user", { _user_id: userId });
-    if (error) {
-      toast.error("Lỗi xóa tài khoản", { description: error.message });
-    } else {
+    try {
+      const { error } = await supabase.functions.invoke("admin-delete-user", {
+        body: { userId },
+      });
+
+      if (error) throw error;
+
       toast.success("Đã xóa hoàn toàn tài khoản");
       fetchData();
+    } catch (err: any) {
+      toast.error("Lỗi xóa tài khoản", { description: err.message || "Không thể thực hiện yêu cầu này" });
     }
   };
 
