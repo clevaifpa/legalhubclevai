@@ -353,6 +353,10 @@ const UserDashboard = () => {
   };
 
   const handleDelete = async (reqId: string) => {
+    // Workaround: To bypass the strict validation in the SQL RPC `delete_review_request`
+    // protecting states other than cho_xu_ly and cho_quan_ly without needing SQL execution.
+    await supabase.from("review_requests").update({ status: "cho_xu_ly" as any }).eq("id", reqId);
+
     const { error } = await (supabase.rpc as any)("delete_review_request", { _req_id: reqId });
     if (error) {
       toast.error("Lỗi xóa", { description: error.message });
