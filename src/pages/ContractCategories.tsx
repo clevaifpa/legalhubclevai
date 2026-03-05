@@ -286,7 +286,25 @@ const ContractCategories = () => {
             payment_amount: parseInt(p.payment_amount) || 0,
             payment_due_date: p.payment_due_date || null,
           }));
+
+          if (form.status === "het_hieu_luc_chua_hoan_thanh") {
+            schedules.push({
+              contract_id: insertedContract.id,
+              phase_name: "[HIDDEN] CHUA_HOAN_THANH",
+              payment_amount: 0,
+              payment_due_date: null,
+            });
+          }
+
           await supabase.from("contract_payment_schedules").insert(schedules as any);
+        } else if (form.status === "het_hieu_luc_chua_hoan_thanh") {
+          // If no valid phases, but they chose this status, we MUST create the hidden flag
+          await supabase.from("contract_payment_schedules").insert({
+            contract_id: insertedContract.id,
+            phase_name: "[HIDDEN] CHUA_HOAN_THANH",
+            payment_amount: 0,
+            payment_due_date: null,
+          } as any);
         }
 
         // Notify Admins
@@ -344,7 +362,7 @@ const ContractCategories = () => {
   // Get nearest obligation date for a contract
   const getNearestObligation = (contractId: string) => {
     const payments = contractPayments[contractId] || [];
-    const unpaid = payments.filter((p: any) => p.payment_status !== "da_thanh_toan" && p.payment_due_date);
+    const unpaid = payments.filter((p: any) => p.payment_status !== "da_thanh_toan" && p.payment_due_date && p.phase_name !== "[HIDDEN] CHUA_HOAN_THANH");
     if (unpaid.length === 0) return null;
     unpaid.sort((a: any, b: any) => new Date(a.payment_due_date).getTime() - new Date(b.payment_due_date).getTime());
     return unpaid[0];
@@ -515,6 +533,15 @@ const ContractCategories = () => {
                 {filteredContracts.map((c) => {
                   const nearestObl = getNearestObligation(c.id);
                   const payments = contractPayments[c.id] || [];
+                  const visiblePayments = payments.filter((p: any) => p.phase_name !== "[HIDDEN] CHUA_HOAN_THANH");
+
+                  // Compute reliable UI status
+                  const hasHiddenFlag = payments.some((p: any) => p.phase_name === "[HIDDEN] CHUA_HOAN_THANH");
+                  const hasUnpaidVisible = visiblePayments.some((p: any) => p.payment_status !== "da_thanh_toan");
+                  const derivedStatus = (c.status === "het_hieu_luc" && (hasHiddenFlag || hasUnpaidVisible))
+                    ? "het_hieu_luc_chua_hoan_thanh"
+                    : c.status;
+
                   return (
                     <TableRow key={c.id} className="hover:bg-muted/30 transition-colors">
                       <TableCell className="font-medium max-w-[200px]">
@@ -544,6 +571,24 @@ const ContractCategories = () => {
                                     changes: { field: "status", old: oldStatus, new: dbStatusToSave },
                                   } as any);
                                 }
+
+                                // Manage hidden flag for state retention
+                                if (newStatus === "het_hieu_luc_chua_hoan_thanh") {
+                                  if (!hasHiddenFlag) {
+                                    await supabase.from("contract_payment_schedules").insert({
+                                      contract_id: c.id,
+                                      phase_name: "[HIDDEN] CHUA_HOAN_THANH",
+                                      payment_amount: 0,
+                                      payment_due_date: null,
+                                    } as any);
+                                  }
+                                } else {
+                                  const flagPhase = payments.find((p: any) => p.phase_name === "[HIDDEN] CHUA_HOAN_THANH");
+                                  if (flagPhase) {
+                                    await supabase.from("contract_payment_schedules").delete().eq("id", flagPhase.id);
+                                  }
+                                }
+
                                 toast.success("Đã cập nhật trạng thái");
                                 fetchContracts(selectedCategory.id);
                               }
@@ -551,9 +596,7 @@ const ContractCategories = () => {
                           >
                             <SelectTrigger className="h-7 w-32 text-xs">
                               <SelectValue placeholder={
-                                nearestObl && c.status === "het_hieu_luc"
-                                  ? "Hết hiệu lực - Chưa hoàn thành"
-                                  : STATUS_LABELS[c.status] || c.status
+                                STATUS_LABELS[derivedStatus] || derivedStatus
                               } />
                             </SelectTrigger>
                             <SelectContent>
@@ -565,9 +608,7 @@ const ContractCategories = () => {
                           </Select>
                         ) : (
                           <Badge variant="secondary">
-                            {nearestObl && c.status === "het_hieu_luc"
-                              ? "Hết hiệu lực - Chưa hoàn thành nghĩa vụ"
-                              : STATUS_LABELS[c.status] || c.status}
+                            {STATUS_LABELS[derivedStatus] || derivedStatus}
                           </Badge>
                         )}
                       </TableCell>
@@ -583,7 +624,7 @@ const ContractCategories = () => {
                               </Button>
                             )}
                           </div>
-                        ) : payments.length > 0 ? (
+                        ) : visiblePayments.length > 0 ? (
                           <span className="text-xs text-success">Đã hoàn thành</span>
                         ) : "—"}
                       </TableCell>
@@ -648,6 +689,13 @@ const ContractCategories = () => {
         {contractIdParam && contracts.find(c => c.id === contractIdParam) && (() => {
           const detailContract = contracts.find(c => c.id === contractIdParam)!;
           const payments = contractPayments[detailContract.id] || [];
+          const visiblePayments = payments.filter((p: any) => p.phase_name !== "[HIDDEN] CHUA_HOAN_THANH");
+          const hasHiddenFlag = payments.some((p: any) => p.phase_name === "[HIDDEN] CHUA_HOAN_THANH");
+          const hasUnpaidVisible = visiblePayments.some((p: any) => p.payment_status !== "da_thanh_toan");
+          const derivedStatus = (detailContract.status === "het_hieu_luc" && (hasHiddenFlag || hasUnpaidVisible))
+            ? "het_hieu_luc_chua_hoan_thanh"
+            : detailContract.status;
+
           return (
             <Dialog open={true} onOpenChange={(open) => {
               if (!open) {
@@ -663,9 +711,7 @@ const ContractCategories = () => {
                   <div>
                     <h3 className="font-bold text-lg">{detailContract.title}</h3>
                     <Badge className="mt-2" variant="secondary">
-                      {getNearestObligation(detailContract.id) && detailContract.status === "het_hieu_luc"
-                        ? "Hết hiệu lực - Chưa hoàn thành nghĩa vụ"
-                        : STATUS_LABELS[detailContract.status] || detailContract.status}
+                      {STATUS_LABELS[derivedStatus] || derivedStatus}
                     </Badge>
                   </div>
 
@@ -679,9 +725,9 @@ const ContractCategories = () => {
 
                   <div>
                     <h4 className="font-semibold text-sm mb-3">Đợt thanh toán (Nghĩa vụ)</h4>
-                    {payments.length > 0 ? (
+                    {visiblePayments.length > 0 ? (
                       <div className="space-y-2">
-                        {payments.map((p: any) => (
+                        {visiblePayments.map((p: any) => (
                           <div key={p.id} className="flex justify-between items-center text-sm p-3 border rounded-md">
                             <span className="font-medium">{p.phase_name}</span>
                             <span>{formatCurrency(p.payment_amount)} — <span className="text-muted-foreground">{p.payment_due_date ? formatDate(p.payment_due_date) : "—"}</span></span>
