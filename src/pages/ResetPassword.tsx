@@ -65,14 +65,19 @@ const ResetPassword = () => {
             const dept = params.get("dept") || "";
 
             // Use RPC to bypass RLS and create profile + role
-            await supabase.rpc('recreate_user_profile', {
+            const { error: rpcError } = await supabase.rpc('recreate_user_profile', {
               _user_id: user.id,
               _email: user.email,
               _full_name: name,
               _department: dept
             });
 
-            toast.success("Khôi phục thông tin tài khoản thành công!");
+            if (rpcError) {
+              console.error(rpcError);
+              toast.error("Chưa đồng bộ CSDL", { description: "Vui lòng nhấn nút Update/Sync Database màu xanh lá trên Lovable để cập nhật mã đặc quyền." });
+            } else {
+              toast.success("Khôi phục thông tin tài khoản thành công!");
+            }
           }
         }
       }
