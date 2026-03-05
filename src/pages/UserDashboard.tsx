@@ -245,7 +245,7 @@ const UserDashboard = () => {
       }
     } else {
       // Logic tạo mới (Create)
-      const initialStatus = isDirectSubmit ? "cho_phap_che" : "cho_quan_ly";
+      const initialStatus = isDirectSubmit ? "dang_review" : "cho_quan_ly";
       const { data, error } = await supabase.from("review_requests").insert({
         requester_id: user.id,
         requester_name: employeeName || profile.full_name || user.email || "",
