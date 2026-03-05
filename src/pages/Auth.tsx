@@ -122,8 +122,8 @@ const Auth = () => {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary">
-              
+            <div className="flex items-center justify-center w-16 h-16">
+              <img src={logo} alt="Clevai Lexora" className="w-16 h-16 object-contain" />
             </div>
           </div>
           <div>
