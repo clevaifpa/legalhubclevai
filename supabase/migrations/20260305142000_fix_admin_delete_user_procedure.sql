@@ -28,7 +28,7 @@ BEGIN
   DELETE FROM public.notifications WHERE user_id = _user_id;
   DELETE FROM public.payment_schedules WHERE review_request_id IN (SELECT id FROM public.review_requests WHERE requester_id = _user_id);
   DELETE FROM public.contract_payment_schedules WHERE contract_id IN (SELECT id FROM public.contracts WHERE created_by = _user_id);
-  DELETE FROM public.edit_logs WHERE editor_id = _user_id::text;
+  DELETE FROM public.edit_logs WHERE editor_id = _user_id;
 
   -- 3. Delete from profile/role tables
   DELETE FROM public.user_roles WHERE user_id = _user_id;
