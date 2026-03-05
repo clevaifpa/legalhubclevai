@@ -269,19 +269,19 @@ const UserDashboard = () => {
       }).select().single();
 
       submitError = error;
-      if (data) finalReqId = data.id;
+      if (insertedReq) finalReqId = insertedReq.id;
 
       // Send notifications for new request
-      if (data) {
+      if (insertedReq) {
         await createWorkflowNotifications({
-          reviewRequestId: data.id,
+          reviewRequestId: insertedReq.id,
           contractTitle: form.contract_title,
           oldStatus: "moi_tao",
           newStatus: initialStatus,
-          actorName: getEmployeeName(user.email) || profile.full_name || "",
+          actorName: employeeName || profile.full_name || "",
           requesterId: user.id,
           managerId: form.manager_id || null,
-          department: profile?.department || form.department || "",
+          department: form.department || profile?.department || "",
         });
       }
     }

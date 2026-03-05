@@ -183,11 +183,8 @@ const AdminReviewRequests = () => {
       .order("created_at", { ascending: false });
 
     // Manager only sees requests from their department
-    if (isManager && !isAdmin) {
-      const myDept = managerDepartment || profile?.department;
-      if (myDept) {
-        query = query.eq("department", myDept);
-      }
+    if (isManager && !isAdmin && managerDepartment) {
+      query = query.eq("department", managerDepartment);
     }
 
     const { data } = await query;
@@ -337,7 +334,7 @@ const AdminReviewRequests = () => {
           actorName: employeeName || profile.full_name || "",
           requesterId: user.id,
           managerId: form.manager_id || null,
-          department: profile?.department || form.department || "",
+          department: form.department || profile?.department || "",
         });
       }
     }

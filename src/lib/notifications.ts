@@ -88,14 +88,13 @@ export async function createWorkflowNotifications(params: NotifyParams) {
   // Notify relevant roles based on new status
   const rolesToNotify: string[] = ["admin"]; // admins always get notified
 
-  if (newStatus === "cho_quan_ly") rolesToNotify.push("manager");
   if (newStatus === "cho_ke_toan") rolesToNotify.push("accountant");
   if (newStatus === "cho_tai_chinh") rolesToNotify.push("finance");
   if (newStatus === "hoan_tat" || newStatus === "tu_choi") {
-    rolesToNotify.push("manager", "accountant", "finance");
+    rolesToNotify.push("accountant", "finance");
   }
 
-  // Fetch user IDs for these roles using RPC
+  // Fetch user IDs for global roles using RPC
   const { data: roleUsers, error: rpcError } = await (supabase.rpc as any)(
     "get_users_by_roles",
     { _roles: rolesToNotify }
@@ -107,6 +106,19 @@ export async function createWorkflowNotifications(params: NotifyParams) {
 
   if (roleUsers) {
     (roleUsers as any[]).forEach((ru: any) => recipientIds.add(ru.user_id));
+  }
+
+  // Notify department-specific managers
+  if (newStatus === "cho_quan_ly" || newStatus === "hoan_tat" || newStatus === "tu_choi") {
+    if (dept) {
+      const { data: deptManagers, error: deptError } = await (supabase.rpc as any)(
+        "get_managers_by_department",
+        { _department: dept }
+      );
+      if (!deptError && deptManagers) {
+        (deptManagers as any[]).forEach((m: any) => recipientIds.add(m.user_id));
+      }
+    }
   }
 
   // Remove the actor (current user) from recipients to avoid self-notification
