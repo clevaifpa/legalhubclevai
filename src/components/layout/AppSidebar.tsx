@@ -71,12 +71,12 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
         <div className="flex items-center justify-between gap-2 w-full">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-sidebar-primary shrink-0">
-              <span className="text-sidebar-primary-foreground font-bold text-sm">L</span>
+            <div className="flex items-center justify-center w-10 h-10 shrink-0">
+              <img src="/logo.png" alt="Logo" className="w-full h-full object-contain drop-shadow-sm" />
             </div>
             <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
               <span className="font-bold text-sidebar-accent-foreground text-sm leading-tight truncate">
-                LegalHub
+                Clevai Lexora
               </span>
               <span className="text-[11px] text-sidebar-foreground/60 leading-tight truncate">
                 {getRoleLabel()}
