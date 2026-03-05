@@ -64,20 +64,10 @@ const ResetPassword = () => {
             const name = params.get("name") || user.email?.split('@')[0] || "User";
             const dept = params.get("dept") || "";
 
-            // Use RPC to bypass RLS and create profile + role
-            const { error: rpcError } = await supabase.rpc('recreate_user_profile', {
-              _user_id: user.id,
-              _email: user.email,
-              _full_name: name,
-              _department: dept
-            });
-
-            if (rpcError) {
-              console.error(rpcError);
-              toast.error("Chưa đồng bộ CSDL", { description: "Vui lòng nhấn nút Update/Sync Database màu xanh lá trên Lovable để cập nhật mã đặc quyền." });
-            } else {
-              toast.success("Khôi phục thông tin tài khoản thành công!");
-            }
+            // Profile doesn't exist - this can happen after account deletion/recreation
+            // Just log it, user will need admin to fix
+            console.warn("Profile not found for user after password reset. User may need admin assistance.");
+            toast.info("Đặt lại mật khẩu thành công. Nếu gặp vấn đề, vui lòng liên hệ admin.");
           }
         }
       }
