@@ -209,9 +209,11 @@ const EmployeeManagement = () => {
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Xác nhận xóa tài khoản?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Tài khoản "{displayName}" sẽ bị xóa. Hành động này không thể hoàn tác.
+                                  <AlertDialogTitle>Bạn có chắc chắn muốn xóa tài khoản này không?</AlertDialogTitle>
+                                  <AlertDialogDescription className="whitespace-pre-line">
+                                    Tài khoản sẽ bị xóa hoàn toàn khỏi hệ thống và
+                                    không thể đăng nhập lại.
+                                    Người dùng phải đăng ký lại từ đầu.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>

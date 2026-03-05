@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { toast } from "sonner";
 
 type AppRole = "admin" | "user" | "accountant" | "finance" | "manager";
 
@@ -40,6 +41,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.from("user_roles").select("role, department").eq("user_id", userId),
       supabase.from("profiles").select("full_name, department").eq("user_id", userId).single(),
     ]);
+
+    // Handle deleted account (no profile found)
+    if (profileRes.error && profileRes.error.code === 'PGRST116') {
+      toast.error("Tài khoản này đã bị xóa khỏi hệ thống. Vui lòng đăng ký lại nếu cần sử dụng.", { duration: 10000 });
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      setRole(null);
+      setRoles([]);
+      setProfile(null);
+      setManagerDepartment(null);
+      return;
+    }
 
     if (rolesRes.data && rolesRes.data.length > 0) {
       const allRoles = rolesRes.data.map((r: any) => r.role as AppRole);
