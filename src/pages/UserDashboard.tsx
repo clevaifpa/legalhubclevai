@@ -308,11 +308,15 @@ const UserDashboard = () => {
     fetchRequests();
   };
 
-  const handleResetForm = () => {
-    setDialogOpen(false);
+  const resetFormData = () => {
     setEditingReqId(null);
     setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "" });
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
+  };
+
+  const handleResetForm = () => {
+    setDialogOpen(false);
+    resetFormData();
   };
 
   const handleEdit = (req: any) => {
@@ -387,11 +391,9 @@ const UserDashboard = () => {
           if (!open) handleResetForm();
           else setDialogOpen(true);
         }}>
-          <DialogTrigger asChild>
-            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0" onClick={handleResetForm}>
-              Tạo yêu cầu mới
-            </Button>
-          </DialogTrigger>
+          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0" onClick={() => { resetFormData(); setDialogOpen(true); }}>
+            Tạo yêu cầu mới
+          </Button>
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingReqId ? "Chỉnh sửa yêu cầu review hợp đồng" : "Tạo yêu cầu review hợp đồng"}</DialogTitle>

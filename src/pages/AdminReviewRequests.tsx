@@ -340,10 +340,7 @@ const AdminReviewRequests = () => {
     }
 
     if (submitError) {
-      console.error("DEBUG SUBMIT ERROR:", submitError);
-      toast.error(editingReqId ? "Lỗi cập nhật yêu cầu" : "Lỗi tạo yêu cầu", {
-        description: submitError.message + " " + JSON.stringify(submitError)
-      });
+      toast.error(editingReqId ? "Lỗi cập nhật yêu cầu" : "Lỗi tạo yêu cầu", { description: submitError.message });
       setSubmitting(false);
       return;
     }
@@ -353,7 +350,7 @@ const AdminReviewRequests = () => {
         review_request_id: finalReqId!,
         phase_name: p.phase_name,
         payment_amount: p.is_na ? 0 : (parseInt(p.payment_amount) || 0),
-        payment_due_date: p.payment_due_date || null,
+        payment_due_date: p.payment_due_date,
       }));
       await supabase.from("payment_schedules").insert(schedules as any);
     }
@@ -379,11 +376,15 @@ const AdminReviewRequests = () => {
     fetchRequests();
   };
 
-  const handleResetForm = () => {
-    setDialogOpen(false);
+  const resetFormData = () => {
     setEditingReqId(null);
     setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "" });
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
+  };
+
+  const handleResetForm = () => {
+    setDialogOpen(false);
+    resetFormData();
   };
 
   const handleEdit = (req: any) => {
@@ -624,7 +625,7 @@ const AdminReviewRequests = () => {
           }}>
             <Button
               className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0"
-              onClick={handleResetForm}
+              onClick={() => { resetFormData(); setDialogOpen(true); }}
             >
               Tạo yêu cầu mới
             </Button>
