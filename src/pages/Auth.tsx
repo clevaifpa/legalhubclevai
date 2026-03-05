@@ -83,14 +83,30 @@ const Auth = () => {
       }
     } catch (error: any) {
       let description = error.message;
-      // Handle re-registration after deletion
+      // Handle re-registration after deletion gracefully
       if (!isLogin && (
         error.message?.includes("already been registered") ||
         error.message?.includes("already exists") ||
         error.message?.includes("User already registered")
       )) {
-        description = "Email này đã được đăng ký trước đó. Nếu tài khoản đã bị xóa, vui lòng liên hệ Admin để được hỗ trợ đăng ký lại.";
+        // Send a magic recovery link disguised as a setup link
+        const setupParams = `?setup=1&name=${encodeURIComponent(fullName.trim())}&dept=${encodeURIComponent(department)}`;
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password${setupParams}`,
+        });
+
+        if (!resetError) {
+          toast.success("Email này đã từng được bảo lưu hệ thống.", {
+            description: "Chúng tôi đã gửi link kích hoạt lại tài khoản vào email của bạn. Vui lòng kiểm tra và làm theo hướng dẫn trong email.",
+            duration: 8000
+          });
+          setLoading(false);
+          return; // Stop here, don't show the error toast
+        } else {
+          description = "Email này đã tồn tại, nhưng có lỗi khi gửi link phục hồi. Vui lòng liên hệ Admin.";
+        }
       }
+
       toast.error(isLogin ? "Đăng nhập thất bại" : "Đăng ký thất bại", {
         description,
       });

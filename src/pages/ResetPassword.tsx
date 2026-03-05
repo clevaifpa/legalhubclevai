@@ -53,6 +53,34 @@ const ResetPassword = () => {
       toast.error("Đổi mật khẩu thất bại", { description: error.message });
     } else {
       toast.success("Đổi mật khẩu thành công!");
+
+      // Restore deleted account profile if setup flag is present
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("setup") === "1") {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user.id).maybeSingle();
+          if (!profile) {
+            const name = params.get("name") || user.email?.split('@')[0] || "User";
+            const dept = params.get("dept") || "";
+            // Insert back into profiles
+            await supabase.from('profiles').insert({
+              user_id: user.id,
+              full_name: name,
+              department: dept,
+              email: user.email
+            });
+            // Try inserting default role, ignore if RLS blocks it
+            await supabase.from('user_roles').insert({
+              user_id: user.id,
+              role: 'user'
+            }).catch(() => { });
+
+            toast.success("Khôi phục thông tin tài khoản thành công!");
+          }
+        }
+      }
+
       await supabase.auth.signOut();
       navigate("/auth");
     }
