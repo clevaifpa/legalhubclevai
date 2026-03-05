@@ -374,7 +374,7 @@ export type Database = {
       }
       review_notes: {
         Row: {
-          author_id: string
+          author_id: string | null
           author_name: string
           content: string
           created_at: string
@@ -382,7 +382,7 @@ export type Database = {
           review_request_id: string
         }
         Insert: {
-          author_id: string
+          author_id?: string | null
           author_name: string
           content: string
           created_at?: string
@@ -390,7 +390,7 @@ export type Database = {
           review_request_id: string
         }
         Update: {
-          author_id?: string
+          author_id?: string | null
           author_name?: string
           content?: string
           created_at?: string
@@ -426,7 +426,7 @@ export type Database = {
           partner_name: string
           priority: Database["public"]["Enums"]["priority_level"]
           request_deadline: string
-          requester_id: string
+          requester_id: string | null
           requester_name: string
           review_deadline: string | null
           status: Database["public"]["Enums"]["review_request_status"]
@@ -451,7 +451,7 @@ export type Database = {
           partner_name?: string
           priority?: Database["public"]["Enums"]["priority_level"]
           request_deadline: string
-          requester_id: string
+          requester_id?: string | null
           requester_name: string
           review_deadline?: string | null
           status?: Database["public"]["Enums"]["review_request_status"]
@@ -476,7 +476,7 @@ export type Database = {
           partner_name?: string
           priority?: Database["public"]["Enums"]["priority_level"]
           request_deadline?: string
-          requester_id?: string
+          requester_id?: string | null
           requester_name?: string
           review_deadline?: string | null
           status?: Database["public"]["Enums"]["review_request_status"]

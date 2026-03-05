@@ -355,18 +355,7 @@ const AdminReviewRequests = () => {
       await supabase.from("payment_schedules").insert(schedules as any);
     }
 
-    if (insertedReq) {
-      await createWorkflowNotifications({
-        reviewRequestId: insertedReq.id,
-        contractTitle: form.contract_title,
-        oldStatus: "moi_tao",
-        newStatus: initialStatus,
-        actorName: employeeName || profile.full_name || "",
-        requesterId: user.id,
-        managerId: form.manager_id || null,
-        department: profile?.department || form.department || "",
-      });
-    }
+    // Notification already sent in the create/update block above
 
     setSubmitting(false);
     toast.success(editingReqId ? "Cập nhật thành công!" : (isDirectSubmit
