@@ -89,7 +89,7 @@ serve(async (req) => {
           </tr>
         </table>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
-        <p style="font-size: 12px; color: #9ca3af; text-align: center;">Email tự động từ hệ thống LegalHub. Vui lòng đăng nhập để xem chi tiết.</p>
+        <p style="font-size: 12px; color: #9ca3af; text-align: center;">Email tự động từ hệ thống Clevai Lexora. Vui lòng đăng nhập để xem chi tiết.</p>
       </div>
     `;
 
