@@ -73,7 +73,6 @@ const ResetPassword = () => {
             _full_name: name,
             _department: dept
           });
-
           if (rpcError) {
             console.error("Failed to recreate profile:", rpcError);
             toast.error("Lỗi phục hồi thông tin tài khoản. Vui lòng liên hệ admin.");

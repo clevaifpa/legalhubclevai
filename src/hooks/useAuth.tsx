@@ -42,13 +42,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.from("profiles").select("full_name, department").eq("user_id", userId).single(),
     ]);
 
-    // Handle deleted account (no profile found)
+    // Handle deleted account (no profile found) - try to auto-recreate
     if (profileRes.error && profileRes.error.code === 'PGRST116') {
       // Allow them to stay logged in temporarily if they are recovering from deletion
       if (window.location.pathname.includes('/reset-password')) {
         setLoading(false);
         return;
       }
+
+      // Try to auto-recreate profile using RPC
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        const name = currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || "User";
+        const dept = currentUser.user_metadata?.department || "";
+        
+        const { error: rpcError } = await (supabase.rpc as any)('recreate_user_profile', {
+          _user_id: currentUser.id,
+          _email: currentUser.email,
+          _full_name: name,
+          _department: dept
+        });
+
+        if (!rpcError) {
+          // Profile recreated successfully - refetch data
+          const [newRolesRes, newProfileRes] = await Promise.all([
+            supabase.from("user_roles").select("role").eq("user_id", userId),
+            supabase.from("profiles").select("full_name, department").eq("user_id", userId).single(),
+          ]);
+
+          if (newProfileRes.data) {
+            setProfile(newProfileRes.data as any);
+            toast.success("Tài khoản đã được phục hồi thành công!");
+          }
+
+          if (newRolesRes.data && newRolesRes.data.length > 0) {
+            const allRoles = newRolesRes.data.map((r: any) => r.role as AppRole);
+            setRoles(allRoles);
+            if (allRoles.includes("admin")) setRole("admin");
+            else if (allRoles.includes("manager")) setRole("manager");
+            else if (allRoles.includes("accountant")) setRole("accountant");
+            else if (allRoles.includes("finance")) setRole("finance");
+            else setRole("user");
+          } else {
+            setRole("user");
+            setRoles(["user"]);
+          }
+          return;
+        }
+      }
+
+      // RPC failed or no user - sign out
       toast.error("Tài khoản này đã bị xóa khỏi hệ thống. Vui lòng đăng ký lại nếu cần sử dụng.", { duration: 10000 });
       await supabase.auth.signOut();
       setUser(null);
@@ -63,14 +106,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (rolesRes.data && rolesRes.data.length > 0) {
       const allRoles = rolesRes.data.map((r: any) => r.role as AppRole);
       setRoles(allRoles);
-      // Priority: admin > manager > accountant > finance > user
       if (allRoles.includes("admin")) setRole("admin");
       else if (allRoles.includes("manager")) setRole("manager");
       else if (allRoles.includes("accountant")) setRole("accountant");
       else if (allRoles.includes("finance")) setRole("finance");
       else setRole("user");
 
-      // Get manager department from profile
       const isManagerRole = rolesRes.data.some((r: any) => r.role === "manager");
       if (isManagerRole && profileRes.data) {
         setManagerDepartment(profileRes.data.department || null);
