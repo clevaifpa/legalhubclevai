@@ -65,9 +65,20 @@ const ResetPassword = () => {
             const dept = params.get("dept") || "";
 
             // Profile doesn't exist - this can happen after account deletion/recreation
-            // Just log it, user will need admin to fix
-            console.warn("Profile not found for user after password reset. User may need admin assistance.");
-            toast.info("Đặt lại mật khẩu thành công. Nếu gặp vấn đề, vui lòng liên hệ admin.");
+            // Call the RPC to recreate it
+            const { error: rpcError } = await (supabase.rpc as any)('recreate_user_profile', {
+              _user_id: user.id,
+              _email: user.email,
+              _full_name: name,
+              _department: dept
+            });
+
+            if (rpcError) {
+              console.error("Failed to recreate profile:", rpcError);
+              toast.error("Lỗi phục hồi thông tin tài khoản. Vui lòng liên hệ admin.");
+            } else {
+              toast.success("Tài khoản đã được phục hồi thành công!");
+            }
           }
         }
       }
