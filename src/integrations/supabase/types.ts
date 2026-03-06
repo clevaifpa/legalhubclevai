@@ -535,6 +535,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      recreate_user_profile: {
+        Args: {
+          _department: string
+          _email: string
+          _full_name: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "accountant" | "finance" | "manager"
