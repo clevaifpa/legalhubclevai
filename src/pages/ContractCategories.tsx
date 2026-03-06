@@ -552,7 +552,7 @@ const ContractCategories = () => {
                       <TableCell>
                         {canEditContract(c) ? (
                           <Select
-                            value={c.status}
+                            value={derivedStatus}
                             onValueChange={async (newStatus) => {
                               const oldStatus = c.status;
                               // Map back to DB enum

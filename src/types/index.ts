@@ -2,7 +2,7 @@ export type ContractType = 'mua_ban' | 'dich_vu' | 'nda' | 'hop_tac' | 'lao_dong
 
 export type RiskLevel = 'thap' | 'trung_binh' | 'cao';
 
-export type ContractStatus = 'nhap' | 'dang_review' | 'da_ky' | 'het_hieu_luc';
+export type ContractStatus = 'nhap' | 'dang_review' | 'da_ky' | 'het_hieu_luc' | 'het_hieu_luc_chua_hoan_thanh' | 'da_thanh_ly';
 
 export type ReviewStatus = 'cho_xu_ly' | 'dang_review' | 'yeu_cau_chinh_sua' | 'da_phe_duyet' | 'tu_choi';
 
@@ -30,7 +30,9 @@ export const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
   nhap: 'Nháp',
   dang_review: 'Đang review',
   da_ky: 'Đã ký',
-  het_hieu_luc: 'Hết hiệu lực',
+  het_hieu_luc: 'Đã hết hạn',
+  het_hieu_luc_chua_hoan_thanh: 'Hết hiệu lực - Chưa hoàn thành nghĩa vụ',
+  da_thanh_ly: 'Đã thanh lý',
 };
 
 export const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {

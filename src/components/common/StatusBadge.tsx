@@ -16,6 +16,8 @@ const contractStatusConfig: Record<ContractStatus, string> = {
   dang_review: "bg-info/10 text-info border-info/20",
   da_ky: "bg-success/10 text-success border-success/20",
   het_hieu_luc: "bg-destructive/10 text-destructive border-destructive/20",
+  het_hieu_luc_chua_hoan_thanh: "bg-destructive/10 text-destructive border-destructive/20",
+  da_thanh_ly: "bg-muted text-muted-foreground border-border",
 };
 
 const reviewStatusConfig: Record<ReviewStatus, string> = {
