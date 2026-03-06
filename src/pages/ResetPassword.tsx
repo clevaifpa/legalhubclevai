@@ -54,31 +54,27 @@ const ResetPassword = () => {
     } else {
       toast.success("Đổi mật khẩu thành công!");
 
-      // Restore deleted account profile if setup flag is present
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("setup") === "1") {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user.id).maybeSingle();
-          if (!profile) {
-            const name = params.get("name") || user.email?.split('@')[0] || "User";
-            const dept = params.get("dept") || "";
+      // Always check if profile exists - handles zombie accounts
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user.id).maybeSingle();
+        if (!profile) {
+          const params = new URLSearchParams(window.location.search);
+          const name = params.get("name") || user.email?.split('@')[0] || "User";
+          const dept = params.get("dept") || "";
 
-            // Profile doesn't exist - this can happen after account deletion/recreation
-            // Call the RPC to recreate it
-            const { error: rpcError } = await (supabase.rpc as any)('recreate_user_profile', {
-              _user_id: user.id,
-              _email: user.email,
-              _full_name: name,
-              _department: dept
-            });
+          const { error: rpcError } = await (supabase.rpc as any)('recreate_user_profile', {
+            _user_id: user.id,
+            _email: user.email,
+            _full_name: name,
+            _department: dept
+          });
 
-            if (rpcError) {
-              console.error("Failed to recreate profile:", rpcError);
-              toast.error("Lỗi phục hồi thông tin tài khoản. Vui lòng liên hệ admin.");
-            } else {
-              toast.success("Tài khoản đã được phục hồi thành công!");
-            }
+          if (rpcError) {
+            console.error("Failed to recreate profile:", rpcError);
+            toast.error("Lỗi phục hồi thông tin tài khoản. Vui lòng liên hệ admin.");
+          } else {
+            toast.success("Tài khoản đã được phục hồi thành công!");
           }
         }
       }
