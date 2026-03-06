@@ -260,8 +260,8 @@ const ContractCategories = () => {
         signedFileUrl = await uploadFile(signedPdfFile, path);
       }
 
-      // Use the actual selected status directly as it's now supported in the DB enum
-      const dbStatus = form.status;
+      // Map UI status het_hieu_luc_chua_hoan_thanh to DB status het_hieu_luc
+      const dbStatus = form.status === "het_hieu_luc_chua_hoan_thanh" ? "het_hieu_luc" : form.status;
 
       const { data: insertedContract, error } = await supabase.from("contracts").insert({
         title: form.title.trim(), partner_name: form.partner_name.trim(),
@@ -555,8 +555,8 @@ const ContractCategories = () => {
                             value={c.status}
                             onValueChange={async (newStatus) => {
                               const oldStatus = c.status;
-                              // Use the newStatus directly
-                              const dbStatusToSave = newStatus;
+                              // Map back to DB enum
+                              const dbStatusToSave = newStatus === "het_hieu_luc_chua_hoan_thanh" ? "het_hieu_luc" : newStatus;
                               const { error } = await supabase.from("contracts").update({ status: dbStatusToSave as any }).eq("id", c.id);
                               if (error) {
                                 toast.error("Lỗi cập nhật trạng thái", { description: error.message });
