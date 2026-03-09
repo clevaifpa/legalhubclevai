@@ -135,26 +135,11 @@ const UserDashboard = () => {
     setPaymentPhases(paymentPhases.map((p, i) => i === idx ? { ...p, [field]: value } : p));
   };
 
-  // Fetch managers filtered by department
-  const GLOBAL_MANAGER_EMAIL = "hiennd@clevai.edu.vn";
-
+  // Fetch managers filtered by department (global manager included via DB function)
   const fetchManagers = async (dept: string) => {
     if (!dept) { setManagers([]); return; }
     const { data } = await supabase.rpc("get_managers_by_department", { _department: dept } as any);
-    const deptManagers: { user_id: string; full_name: string }[] = data || [];
-    
-    // Always include global manager (hiennd) if not already in list
-    const { data: globalMgr } = await supabase
-      .from("profiles")
-      .select("user_id, full_name")
-      .eq("email", GLOBAL_MANAGER_EMAIL)
-      .single();
-    
-    if (globalMgr && !deptManagers.some(m => m.user_id === globalMgr.user_id)) {
-      deptManagers.push({ user_id: globalMgr.user_id, full_name: `${globalMgr.full_name} (Quản lý chung)` });
-    }
-    
-    setManagers(deptManagers);
+    setManagers(data || []);
   };
 
   useEffect(() => {
