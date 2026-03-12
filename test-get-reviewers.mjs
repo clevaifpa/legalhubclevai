@@ -12,16 +12,9 @@ const supabaseKey = env['VITE_SUPABASE_PUBLISHABLE_KEY'];
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function testInsert() {
-    const payload = {
-        user_id: 'e7a17e59-84ca-4913-b7f7-c1579d5c33c9',
-        title: 'Test Notification',
-        content: 'Test content',
-        is_read: false
-    };
-    console.log("Inserting:", payload);
-    const { data, error } = await supabase.from('notifications').insert(payload).select();
-    console.log("Result:", data, error);
+async function test() {
+    const { data, error } = await supabase.rpc('get_all_reviewers_with_names');
+    console.log("Data:", data, "Error:", error);
 }
 
-testInsert();
+test();

@@ -421,6 +421,7 @@ export type Database = {
           description: string | null
           file_url: string | null
           finance_reviewer_id: string | null
+          global_manager_id: string | null
           id: string
           legal_review_doc_link: string | null
           legal_reviewer_id: string | null
@@ -448,6 +449,7 @@ export type Database = {
           description?: string | null
           file_url?: string | null
           finance_reviewer_id?: string | null
+          global_manager_id?: string | null
           id?: string
           legal_review_doc_link?: string | null
           legal_reviewer_id?: string | null
@@ -475,6 +477,7 @@ export type Database = {
           description?: string | null
           file_url?: string | null
           finance_reviewer_id?: string | null
+          global_manager_id?: string | null
           id?: string
           legal_review_doc_link?: string | null
           legal_reviewer_id?: string | null
@@ -560,7 +563,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user" | "accountant" | "finance" | "manager"
+      app_role: "admin" | "user" | "accountant" | "finance" | "manager" | "manager_chung"
       contract_status:
       | "nhap"
       | "dang_review"
@@ -716,7 +719,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "accountant", "finance", "manager"],
+      app_role: ["admin", "user", "accountant", "finance", "manager", "manager_chung"],
       contract_status: [
         "nhap",
         "dang_review",

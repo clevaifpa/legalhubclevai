@@ -138,10 +138,6 @@ const AdminReviewRequests = () => {
   const [submitting, setSubmitting] = useState(false);
   const [editingReqId, setEditingReqId] = useState<string | null>(null);
 
-  const [legalReviewerId, setLegalReviewerId] = useState("");
-  const [accountantReviewerId, setAccountantReviewerId] = useState("");
-  const [financeReviewerId, setFinanceReviewerId] = useState("");
-
   const [form, setForm] = useState({
     priority: "trung_binh",
     contract_title: "",
@@ -275,29 +271,33 @@ const AdminReviewRequests = () => {
     setFinanceReviewerId(req.finance_reviewer_id || "");
   };
 
-  const handleSaveAssignments = async () => {
-    if (!selectedReq) return;
-    setSaving(true);
+  const handleAssignReviewer = async (reqId: string, dept: string, reviewerId: string) => {
+    let columnToUpdate = "";
+    if (dept === "quan_ly") columnToUpdate = "manager_id";
+    if (dept === "quan_ly_chung") columnToUpdate = "global_manager_id";
+    if (dept === "phap_ly") columnToUpdate = "legal_reviewer_id";
+    if (dept === "ke_toan") columnToUpdate = "accountant_reviewer_id";
+    if (dept === "tai_chinh") columnToUpdate = "finance_reviewer_id";
+
+    if (!columnToUpdate) return;
+
     const { error } = await supabase.from("review_requests").update({
-      legal_reviewer_id: legalReviewerId || null,
-      accountant_reviewer_id: accountantReviewerId || null,
-      finance_reviewer_id: financeReviewerId || null,
-    }).eq("id", selectedReq.id);
+      [columnToUpdate]: reviewerId === "none" || !reviewerId ? null : reviewerId
+    }).eq("id", reqId);
 
     if (error) {
-      toast.error("Lỗi cập nhật người duyệt", { description: error.message });
+      toast.error("Lỗi phân công người duyệt", { description: error.message });
     } else {
       toast.success("Đã phân công người duyệt thành công!");
-      fetchRequests();
+      fetchRequests(); // Lấy lại dữ liệu để cap nhat List view
       // Update selected req so the UI reflects it immediately
-      setSelectedReq({
-        ...selectedReq,
-        legal_reviewer_id: legalReviewerId || null,
-        accountant_reviewer_id: accountantReviewerId || null,
-        finance_reviewer_id: financeReviewerId || null,
-      });
+      if (selectedReq && selectedReq.id === reqId) {
+        setSelectedReq({
+          ...selectedReq,
+          [columnToUpdate]: reviewerId === "none" || !reviewerId ? null : reviewerId,
+        });
+      }
     }
-    setSaving(false);
   };
 
   const handleSubmitNewRequest = async () => {
@@ -657,6 +657,7 @@ const AdminReviewRequests = () => {
   // Helper for tracking props
   const getAssignedReviewers = (req: any) => ({
     quan_ly: { id: req.manager_id, name: reviewers.find(r => r.user_id === req.manager_id)?.full_name },
+    quan_ly_chung: { id: req.global_manager_id, name: reviewers.find(r => r.user_id === req.global_manager_id)?.full_name },
     phap_ly: { id: req.legal_reviewer_id, name: reviewers.find(r => r.user_id === req.legal_reviewer_id)?.full_name },
     ke_toan: { id: req.accountant_reviewer_id, name: reviewers.find(r => r.user_id === req.accountant_reviewer_id)?.full_name },
     tai_chinh: { id: req.finance_reviewer_id, name: reviewers.find(r => r.user_id === req.finance_reviewer_id)?.full_name }
@@ -977,7 +978,14 @@ const AdminReviewRequests = () => {
                 )}
 
                 {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                  <DepartmentReviewTracker deptReviews={deptReviews} assignedReviewers={getAssignedReviewers(req)} skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
+                  <DepartmentReviewTracker
+                    deptReviews={deptReviews}
+                    assignedReviewers={getAssignedReviewers(req)}
+                    skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")}
+                    assignable={isAdmin}
+                    reviewers={reviewers}
+                    onAssignReviewer={(dept, reviewerId) => handleAssignReviewer(req.id, dept, reviewerId)}
+                  />
                 )}
 
                 {/* File links */}
@@ -1115,61 +1123,14 @@ const AdminReviewRequests = () => {
               </Badge>
             </div>
 
-            {selectedReq && (
-              <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[selectedReq.id] || [])} assignedReviewers={getAssignedReviewers(selectedReq)} skipManagerStep={!!selectedReq.admin_notes?.includes("Quản lý chung duyệt")} />
-            )}
-
-            <Separator />
-
-            {/* Admin Assigments */}
-            {isAdmin && (
-              <div className="space-y-4 p-4 rounded-lg bg-muted/20 border">
-                <h4 className="font-semibold text-sm">Phân công người duyệt</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs">Pháp chế</Label>
-                    <Select value={legalReviewerId} onValueChange={setLegalReviewerId}>
-                      <SelectTrigger><SelectValue placeholder="Chọn Pháp chế" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none" onClick={() => setLegalReviewerId("")}>(Trống)</SelectItem>
-                        {reviewers.filter(r => r.role === 'admin').map((r) => (
-                          <SelectItem key={r.user_id} value={r.user_id}>{r.full_name || "Chưa đặt tên"}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Kế toán</Label>
-                    <Select value={accountantReviewerId} onValueChange={setAccountantReviewerId}>
-                      <SelectTrigger><SelectValue placeholder="Chọn Kế toán" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none" onClick={() => setAccountantReviewerId("")}>(Trống)</SelectItem>
-                        {reviewers.filter(r => r.role === 'accountant').map((r) => (
-                          <SelectItem key={r.user_id} value={r.user_id}>{r.full_name || "Chưa đặt tên"}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Tài chính</Label>
-                    <Select value={financeReviewerId} onValueChange={setFinanceReviewerId}>
-                      <SelectTrigger><SelectValue placeholder="Chọn Tài chính" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none" onClick={() => setFinanceReviewerId("")}>(Trống)</SelectItem>
-                        {reviewers.filter(r => r.role === 'finance').map((r) => (
-                          <SelectItem key={r.user_id} value={r.user_id}>{r.full_name || "Chưa đặt tên"}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <Button size="sm" variant="outline" onClick={handleSaveAssignments} disabled={saving}>
-                    {saving ? "Đang lưu..." : "Lưu phân công"}
-                  </Button>
-                </div>
-              </div>
-            )}
+            <DepartmentReviewTracker
+              deptReviews={extractDeptReviews(notes[selectedReq.id] || [])}
+              assignedReviewers={getAssignedReviewers(selectedReq)}
+              skipManagerStep={!!selectedReq.admin_notes?.includes("Quản lý chung duyệt")}
+              assignable={isAdmin}
+              reviewers={reviewers}
+              onAssignReviewer={(dept, reviewerId) => handleAssignReviewer(selectedReq.id, dept, reviewerId)}
+            />
 
             <Separator />
 

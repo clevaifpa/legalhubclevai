@@ -2,6 +2,13 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
     type ReviewDepartment,
     type DepartmentReviewStatus,
     REVIEW_DEPARTMENTS,
@@ -16,6 +23,9 @@ interface DepartmentReviewTrackerProps {
     assignedReviewers?: Partial<Record<ReviewDepartment, { id: string; name: string }>>;
     compact?: boolean;
     skipManagerStep?: boolean;
+    assignable?: boolean;
+    reviewers?: any[];
+    onAssignReviewer?: (dept: ReviewDepartment, reviewerId: string) => void;
 }
 
 const StatusText = ({ status }: { status: DepartmentReviewStatus["status"] }) => {
@@ -27,7 +37,15 @@ const StatusText = ({ status }: { status: DepartmentReviewStatus["status"] }) =>
     }
 };
 
-export function DepartmentReviewTracker({ deptReviews, assignedReviewers = {}, compact = false, skipManagerStep = false }: DepartmentReviewTrackerProps) {
+export function DepartmentReviewTracker({
+    deptReviews,
+    assignedReviewers = {},
+    compact = false,
+    skipManagerStep = false,
+    assignable = false,
+    reviewers = [],
+    onAssignReviewer
+}: DepartmentReviewTrackerProps) {
     const departments = (Object.keys(REVIEW_DEPARTMENTS) as ReviewDepartment[])
         .filter(dept => !(skipManagerStep && dept === "quan_ly"))
         .sort((a, b) => REVIEW_DEPARTMENTS[a].stepOrder - REVIEW_DEPARTMENTS[b].stepOrder);
@@ -87,10 +105,13 @@ export function DepartmentReviewTracker({ deptReviews, assignedReviewers = {}, c
                 <Progress value={customProgress.percentage} className="h-2" />
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {departments.map((dept, idx) => {
                     const review = deptReviews[dept];
                     const config = REVIEW_DEPARTMENTS[dept];
+                    const availableReviewers = reviewers.filter(r => r.role === config.requiredRole);
+                    const currentAssignedId = assignedReviewers[dept]?.id || "none";
+
                     return (
                         <div
                             key={dept}
@@ -107,23 +128,44 @@ export function DepartmentReviewTracker({ deptReviews, assignedReviewers = {}, c
                                 <span className="text-xs font-semibold">Bước {idx + 1}: {config.label}</span>
                                 <StatusText status={review.status} />
                             </div>
-                            <Badge
-                                variant="outline"
-                                className={`text-[10px] px-1.5 py-0 ${DEPARTMENT_REVIEW_STATUS_COLORS[review.status]}`}
-                            >
-                                {DEPARTMENT_REVIEW_STATUS_LABELS[review.status]}
-                            </Badge>
+                            <div className="mb-2">
+                                <Badge
+                                    variant="outline"
+                                    className={`text-[10px] px-1.5 py-0 ${DEPARTMENT_REVIEW_STATUS_COLORS[review.status]}`}
+                                >
+                                    {DEPARTMENT_REVIEW_STATUS_LABELS[review.status]}
+                                </Badge>
+                            </div>
+
                             {review.reviewerName ? (
-                                <p className="text-[10px] text-muted-foreground mt-1.5 truncate">
-                                    {review.reviewerName} • {review.reviewedAt ? formatDate(review.reviewedAt) : ""}
+                                <p className="text-[10px] text-muted-foreground mt-1.5 truncate" title={review.reviewerName}>
+                                    Đã duyệt: {review.reviewerName} • {review.reviewedAt ? formatDate(review.reviewedAt) : ""}
                                 </p>
+                            ) : assignable && onAssignReviewer ? (
+                                <div className="mt-1.5">
+                                    <Select
+                                        value={currentAssignedId}
+                                        onValueChange={(val) => onAssignReviewer(dept, val === "none" ? "" : val)}
+                                    >
+                                        <SelectTrigger className="h-7 text-[10px] w-full px-2 py-0">
+                                            <SelectValue placeholder="Chọn người duyệt" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none" className="text-[10px] italic text-muted-foreground">(Chưa chọn)</SelectItem>
+                                            {availableReviewers.map((r) => (
+                                                <SelectItem key={r.user_id} value={r.user_id} className="text-[10px]">{r.full_name || r.user_id}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             ) : (
-                                <p className="text-[10px] text-muted-foreground mt-1.5 truncate">
-                                    {assignedReviewers[dept]?.name || "(Chưa có người duyệt)"}
+                                <p className="text-[10px] text-muted-foreground mt-1.5 truncate" title={assignedReviewers[dept]?.name || "(Chưa có người duyệt)"}>
+                                    Người duyệt: {assignedReviewers[dept]?.name || "(Chưa có người duyệt)"}
                                 </p>
                             )}
+
                             {review.notes && (
-                                <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2 italic">
+                                <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2 italic" title={review.notes}>
                                     "{review.notes}"
                                 </p>
                             )}

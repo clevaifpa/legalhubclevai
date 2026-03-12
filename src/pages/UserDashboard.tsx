@@ -402,6 +402,7 @@ const UserDashboard = () => {
   // Helper for tracking props
   const getAssignedReviewers = (req: any) => ({
     quan_ly: { id: req.manager_id, name: reviewers.find(r => r.user_id === req.manager_id)?.full_name },
+    quan_ly_chung: { id: req.global_manager_id, name: reviewers.find(r => r.user_id === req.global_manager_id)?.full_name },
     phap_ly: { id: req.legal_reviewer_id, name: reviewers.find(r => r.user_id === req.legal_reviewer_id)?.full_name },
     ke_toan: { id: req.accountant_reviewer_id, name: reviewers.find(r => r.user_id === req.accountant_reviewer_id)?.full_name },
     tai_chinh: { id: req.finance_reviewer_id, name: reviewers.find(r => r.user_id === req.finance_reviewer_id)?.full_name }
