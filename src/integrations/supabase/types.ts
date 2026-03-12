@@ -420,11 +420,8 @@ export type Database = {
           department: string
           description: string | null
           file_url: string | null
-          finance_reviewer_id: string | null
-          global_manager_id: string | null
           id: string
           legal_review_doc_link: string | null
-          legal_reviewer_id: string | null
           manager_id: string | null
           partner_name: string
           priority: Database["public"]["Enums"]["priority_level"]
@@ -448,11 +445,8 @@ export type Database = {
           department: string
           description?: string | null
           file_url?: string | null
-          finance_reviewer_id?: string | null
-          global_manager_id?: string | null
           id?: string
           legal_review_doc_link?: string | null
-          legal_reviewer_id?: string | null
           manager_id?: string | null
           partner_name?: string
           priority?: Database["public"]["Enums"]["priority_level"]
@@ -476,11 +470,8 @@ export type Database = {
           department?: string
           description?: string | null
           file_url?: string | null
-          finance_reviewer_id?: string | null
-          global_manager_id?: string | null
           id?: string
           legal_review_doc_link?: string | null
-          legal_reviewer_id?: string | null
           manager_id?: string | null
           partner_name?: string
           priority?: Database["public"]["Enums"]["priority_level"]
@@ -524,14 +515,6 @@ export type Database = {
       auto_expire_contracts: { Args: never; Returns: undefined }
       delete_contract: { Args: { _contract_id: string }; Returns: undefined }
       delete_review_request: { Args: { _req_id: string }; Returns: undefined }
-      get_all_reviewers_with_names: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          user_id: string
-          role: string
-          full_name: string
-        }[]
-      }
       get_managers_by_department: {
         Args: { _department: string }
         Returns: {
@@ -563,34 +546,34 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user" | "accountant" | "finance" | "manager" | "manager_chung"
+      app_role: "admin" | "user" | "accountant" | "finance" | "manager"
       contract_status:
-      | "nhap"
-      | "dang_review"
-      | "da_ky"
-      | "het_hieu_luc"
-      | "da_thanh_ly"
+        | "nhap"
+        | "dang_review"
+        | "da_ky"
+        | "het_hieu_luc"
+        | "da_thanh_ly"
       contract_type:
-      | "mua_ban"
-      | "dich_vu"
-      | "nda"
-      | "hop_tac"
-      | "lao_dong"
-      | "thue"
-      | "khac"
+        | "mua_ban"
+        | "dich_vu"
+        | "nda"
+        | "hop_tac"
+        | "lao_dong"
+        | "thue"
+        | "khac"
       priority_level: "cao" | "trung_binh" | "thap"
       review_request_status:
-      | "cho_xu_ly"
-      | "dang_review"
-      | "da_hoan_thanh"
-      | "yeu_cau_chinh_sua"
-      | "tu_choi"
-      | "cho_quan_ly"
-      | "cho_quan_ly_chung"
-      | "cho_phap_che"
-      | "cho_ke_toan"
-      | "cho_tai_chinh"
-      | "hoan_tat"
+        | "cho_xu_ly"
+        | "dang_review"
+        | "da_hoan_thanh"
+        | "yeu_cau_chinh_sua"
+        | "tu_choi"
+        | "cho_quan_ly"
+        | "cho_quan_ly_chung"
+        | "cho_phap_che"
+        | "cho_ke_toan"
+        | "cho_tai_chinh"
+        | "hoan_tat"
       risk_level: "thap" | "trung_binh" | "cao"
     }
     CompositeTypes: {
@@ -605,121 +588,121 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-  : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-  ? R
-  : never
+    ? R
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-  ? R
-  : never
-  : never
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
+      Insert: infer I
+    }
+    ? I
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
-  ? U
-  : never
+      Update: infer U
+    }
+    ? U
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Update: infer U
-  }
-  ? U
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "accountant", "finance", "manager", "manager_chung"],
+      app_role: ["admin", "user", "accountant", "finance", "manager"],
       contract_status: [
         "nhap",
         "dang_review",
