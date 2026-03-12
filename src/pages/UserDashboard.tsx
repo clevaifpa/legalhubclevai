@@ -24,7 +24,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTracker";
-import { extractDeptReviews, decodeDeptReview, WORKFLOW_STATUSES } from "@/types/reviewDepartments";
+import { extractDeptReviews, decodeDeptReview, WORKFLOW_STATUSES, GLOBAL_MANAGER_EMAIL } from "@/types/reviewDepartments";
 
 const isValidGoogleDocUrl = (url: string): boolean => {
   if (!url) return false;
@@ -50,6 +50,7 @@ const CONTRACT_TYPE_CATEGORIES = [
 const STATUS_LABELS: Record<string, string> = {
   cho_xu_ly: "Chờ xử lý",
   cho_quan_ly: "Chờ Quản lý xác nhận",
+  cho_quan_ly_chung: "Chờ Quản lý chung duyệt",
   cho_phap_che: "Chờ Pháp chế review",
   cho_ke_toan: "Chờ Kế toán review",
   cho_tai_chinh: "Chờ Tài chính review",
@@ -63,6 +64,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   cho_xu_ly: "bg-muted text-muted-foreground",
   cho_quan_ly: "bg-muted text-muted-foreground",
+  cho_quan_ly_chung: "bg-info/10 text-info border-info/20",
   cho_phap_che: "bg-info/10 text-info border-info/20",
   cho_ke_toan: "bg-info/10 text-info border-info/20",
   cho_tai_chinh: "bg-info/10 text-info border-info/20",
@@ -92,6 +94,7 @@ const UserDashboard = () => {
   const [notes, setNotes] = useState<Record<string, any[]>>({});
   const [paymentSchedules, setPaymentSchedules] = useState<Record<string, any[]>>({});
   const [managers, setManagers] = useState<any[]>([]);
+  const [globalManagerId, setGlobalManagerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -145,6 +148,19 @@ const UserDashboard = () => {
   useEffect(() => {
     if (form.department) fetchManagers(form.department);
   }, [form.department]);
+
+  // Fetch global manager user_id on mount
+  useEffect(() => {
+    const fetchGlobalManager = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("email", GLOBAL_MANAGER_EMAIL)
+        .single();
+      if (data) setGlobalManagerId(data.user_id);
+    };
+    fetchGlobalManager();
+  }, []);
 
   const fetchRequests = async () => {
     if (!user) return;
@@ -245,7 +261,7 @@ const UserDashboard = () => {
       }
     } else {
       // Logic tạo mới (Create)
-      const initialStatus = isDirectSubmit ? "dang_review" : "cho_quan_ly";
+      const initialStatus = isDirectSubmit ? "cho_quan_ly_chung" : "cho_quan_ly";
       const { data, error } = await supabase.from("review_requests").insert({
         requester_id: user.id,
         requester_name: employeeName || profile.full_name || user.email || "",
@@ -263,9 +279,9 @@ const UserDashboard = () => {
         approved_pe_number: form.approved_pe_number.trim() || null,
         contract_type_category: form.contract_type_category,
         tax_code: form.tax_code,
-        manager_id: isDirectSubmit ? null : (form.manager_id || null),
+        manager_id: isDirectSubmit ? (globalManagerId || null) : (form.manager_id || null),
         status: initialStatus as any,
-        admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Tài chính — bỏ qua bước Quản lý." : null,
+        admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Tài chính — chuyển thẳng cho Quản lý chung duyệt." : null,
       }).select().single();
 
       submitError = error;
@@ -586,7 +602,7 @@ const UserDashboard = () => {
       {/* Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Chờ duyệt", statuses: ["cho_quan_ly", "cho_phap_che", "cho_ke_toan", "cho_tai_chinh", "cho_xu_ly"] },
+          { label: "Chờ duyệt", statuses: ["cho_quan_ly", "cho_quan_ly_chung", "cho_phap_che", "cho_ke_toan", "cho_tai_chinh", "cho_xu_ly"] },
           { label: "Đang review", statuses: ["dang_review"] },
           { label: "Hoàn tất", statuses: ["hoan_tat", "da_hoan_thanh"] },
           { label: "Từ chối", statuses: ["tu_choi", "yeu_cau_chinh_sua"] },
@@ -619,7 +635,7 @@ const UserDashboard = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                      <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!req.manager_id} />
+                      <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
                     )}
                     <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
                   </div>
@@ -722,7 +738,7 @@ const UserDashboard = () => {
                   </div>
                 )}
 
-                {["cho_xu_ly", "cho_quan_ly", "cho_phap_che", "dang_review"].includes(req.status) && (
+                {["cho_xu_ly", "cho_quan_ly", "cho_quan_ly_chung", "cho_phap_che", "dang_review"].includes(req.status) && (
                   <>
                     <Separator />
                     <div className="flex justify-end gap-2">
@@ -787,7 +803,7 @@ const UserDashboard = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                        <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!req.manager_id} />
+                        <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
                       )}
                       <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
                     </div>

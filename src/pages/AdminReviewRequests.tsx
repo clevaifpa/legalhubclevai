@@ -36,11 +36,13 @@ import {
   getCurrentStep,
   getNextStatus,
   WORKFLOW_STATUSES,
+  GLOBAL_MANAGER_EMAIL,
 } from "@/types/reviewDepartments";
 
 const STATUS_LABELS: Record<string, string> = {
   cho_xu_ly: "Chờ xử lý",
   cho_quan_ly: "Chờ Quản lý xác nhận",
+  cho_quan_ly_chung: "Chờ Quản lý chung duyệt",
   cho_phap_che: "Chờ Pháp chế review",
   cho_ke_toan: "Chờ Kế toán review",
   cho_tai_chinh: "Chờ Tài chính review",
@@ -54,6 +56,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   cho_xu_ly: "bg-muted text-muted-foreground",
   cho_quan_ly: "bg-muted text-muted-foreground",
+  cho_quan_ly_chung: "bg-info/10 text-info border-info/20",
   cho_phap_che: "bg-info/10 text-info border-info/20",
   cho_ke_toan: "bg-info/10 text-info border-info/20",
   cho_tai_chinh: "bg-info/10 text-info border-info/20",
@@ -102,14 +105,20 @@ const AdminReviewRequests = () => {
   const isFinance = role === "finance";
   const isDirectSubmit = isAdmin || isAccountant || isFinance || isManager;
 
-  // Determine which status this role can act on
-  const getMyActionableStatus = (): string | null => {
-    if (isAdmin) return null; // admin can act on any
-    if (isManager) return "cho_quan_ly";
-    if (isAccountant) return "cho_ke_toan";
-    if (isFinance) return "cho_tai_chinh";
-    return null;
-  };
+  const [globalManagerId, setGlobalManagerId] = useState<string | null>(null);
+
+  // Fetch global manager user_id on mount
+  useEffect(() => {
+    const fetchGlobalManager = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("email", GLOBAL_MANAGER_EMAIL)
+        .single();
+      if (data) setGlobalManagerId(data.user_id);
+    };
+    fetchGlobalManager();
+  }, []);
 
   const [requests, setRequests] = useState<any[]>([]);
   const [notes, setNotes] = useState<Record<string, any[]>>({});
@@ -298,7 +307,7 @@ const AdminReviewRequests = () => {
       }
     } else {
       // Logic tạo mới (Create)
-      const initialStatus = isDirectSubmit ? "cho_phap_che" : "cho_quan_ly";
+      const initialStatus = isDirectSubmit ? "cho_quan_ly_chung" : "cho_quan_ly";
 
       const { data: insertedReq, error } = await supabase.from("review_requests").insert({
         requester_id: user.id,
@@ -317,9 +326,9 @@ const AdminReviewRequests = () => {
         approved_pe_number: form.approved_pe_number.trim() || null,
         contract_type_category: form.contract_type_category,
         tax_code: form.tax_code,
-        manager_id: isDirectSubmit ? null : (form.manager_id || null),
+        manager_id: isDirectSubmit ? (globalManagerId || null) : (form.manager_id || null),
         status: initialStatus as any,
-        admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Quản lý — bỏ qua bước duyệt của Quản lý, đang chờ Pháp chế review." : null,
+        admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Quản lý — chuyển thẳng cho Quản lý chung duyệt." : null,
       } as any).select().single();
 
       submitError = error;
@@ -359,7 +368,7 @@ const AdminReviewRequests = () => {
 
     setSubmitting(false);
     toast.success(editingReqId ? "Cập nhật thành công!" : (isDirectSubmit
-      ? "Yêu cầu đã tạo, chuyển tiếp cho Pháp chế review!"
+      ? "Yêu cầu đã tạo, chuyển cho Quản lý chung duyệt!"
       : "Yêu cầu review đã được tạo!"));
     handleResetForm();
     fetchRequests();
@@ -579,8 +588,12 @@ const AdminReviewRequests = () => {
   const canActOnRequest = (req: any): boolean => {
     if (!req) return false;
     if (isAdmin) return true;
-    const actionableStatus = getMyActionableStatus();
-    return req.status === actionableStatus;
+    if (isManager && req.status === 'cho_quan_ly') return true;
+    // Global manager (hiennd) can act on cho_quan_ly_chung
+    if (isManager && req.status === 'cho_quan_ly_chung' && user?.email === GLOBAL_MANAGER_EMAIL) return true;
+    if (isAccountant && req.status === 'cho_ke_toan') return true;
+    if (isFinance && req.status === 'cho_tai_chinh') return true;
+    return false;
   };
 
   const statusCounts = requests.reduce((acc: Record<string, number>, r) => {
@@ -862,7 +875,7 @@ const AdminReviewRequests = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                      <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!req.manager_id} />
+                      <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
                     )}
                     <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
                   </div>
@@ -910,7 +923,7 @@ const AdminReviewRequests = () => {
                 )}
 
                 {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                  <DepartmentReviewTracker deptReviews={deptReviews} skipManagerStep={!req.manager_id} />
+                  <DepartmentReviewTracker deptReviews={deptReviews} skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
                 )}
 
                 {/* File links */}
@@ -1008,7 +1021,7 @@ const AdminReviewRequests = () => {
                   )}
                 </div>
 
-                {user?.id === req.requester_id && ["cho_xu_ly", "cho_quan_ly", "cho_phap_che", "dang_review"].includes(req.status) && (
+                {user?.id === req.requester_id && ["cho_xu_ly", "cho_quan_ly", "cho_quan_ly_chung", "cho_phap_che", "dang_review"].includes(req.status) && (
                   <>
                     <Separator />
                     <div className="flex justify-end gap-2">
@@ -1065,7 +1078,7 @@ const AdminReviewRequests = () => {
             </div>
 
             {selectedReq && (
-              <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[selectedReq.id] || [])} skipManagerStep={!selectedReq.manager_id} />
+              <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[selectedReq.id] || [])} skipManagerStep={!!selectedReq.admin_notes?.includes("Quản lý chung duyệt")} />
             )}
 
             <Separator />
@@ -1149,7 +1162,7 @@ const AdminReviewRequests = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                        <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!req.manager_id} />
+                        <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
                       )}
                       <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
                     </div>
@@ -1195,7 +1208,7 @@ const AdminReviewRequests = () => {
                   )}
 
                   {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                    <DepartmentReviewTracker deptReviews={deptReviews} skipManagerStep={!req.manager_id} />
+                    <DepartmentReviewTracker deptReviews={deptReviews} skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
                   )}
 
                   <div className="space-y-1">

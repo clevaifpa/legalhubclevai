@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 const STATUS_LABELS: Record<string, string> = {
   cho_xu_ly: "Chờ xử lý",
   cho_quan_ly: "Chờ Quản lý xác nhận",
+  cho_quan_ly_chung: "Chờ Quản lý chung duyệt",
   cho_phap_che: "Chờ Pháp chế review",
   cho_ke_toan: "Chờ Kế toán review",
   cho_tai_chinh: "Chờ Tài chính review",
@@ -88,6 +89,15 @@ export async function createWorkflowNotifications(params: NotifyParams) {
   // Notify relevant roles based on new status
   const rolesToNotify: string[] = ["admin"]; // admins always get notified
 
+  if (newStatus === "cho_quan_ly_chung") {
+    // Notify global manager (hiennd) specifically
+    const { data: globalMgr } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .eq("email", "hiennd@clevai.edu.vn")
+      .single();
+    if (globalMgr) recipientIds.add(globalMgr.user_id);
+  }
   if (newStatus === "cho_ke_toan") rolesToNotify.push("accountant");
   if (newStatus === "cho_tai_chinh") rolesToNotify.push("finance");
   if (newStatus === "hoan_tat" || newStatus === "tu_choi") {
