@@ -923,7 +923,7 @@ const AdminReviewRequests = () => {
                 )}
 
                 {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                  <DepartmentReviewTracker deptReviews={deptReviews} skipManagerStep={!req.manager_id} />
+                  <DepartmentReviewTracker deptReviews={deptReviews} skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
                 )}
 
                 {/* File links */}
