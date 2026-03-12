@@ -588,7 +588,7 @@ const UserDashboard = () => {
       {/* Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Chờ duyệt", statuses: ["cho_quan_ly", "cho_phap_che", "cho_ke_toan", "cho_tai_chinh", "cho_xu_ly"] },
+          { label: "Chờ duyệt", statuses: ["cho_quan_ly", "cho_quan_ly_chung", "cho_phap_che", "cho_ke_toan", "cho_tai_chinh", "cho_xu_ly"] },
           { label: "Đang review", statuses: ["dang_review"] },
           { label: "Hoàn tất", statuses: ["hoan_tat", "da_hoan_thanh"] },
           { label: "Từ chối", statuses: ["tu_choi", "yeu_cau_chinh_sua"] },
