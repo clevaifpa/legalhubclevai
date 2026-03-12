@@ -36,6 +36,7 @@ import {
   getCurrentStep,
   getNextStatus,
   WORKFLOW_STATUSES,
+  GLOBAL_MANAGER_EMAIL,
 } from "@/types/reviewDepartments";
 
 const STATUS_LABELS: Record<string, string> = {
