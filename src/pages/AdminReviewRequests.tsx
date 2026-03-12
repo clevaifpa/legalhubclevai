@@ -1078,7 +1078,7 @@ const AdminReviewRequests = () => {
             </div>
 
             {selectedReq && (
-              <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[selectedReq.id] || [])} skipManagerStep={!selectedReq.manager_id} />
+              <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[selectedReq.id] || [])} skipManagerStep={!!selectedReq.admin_notes?.includes("Quản lý chung duyệt")} />
             )}
 
             <Separator />
