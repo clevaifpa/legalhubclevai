@@ -1120,14 +1120,16 @@ const AdminReviewRequests = () => {
               </Badge>
             </div>
 
-            <DepartmentReviewTracker
-              deptReviews={extractDeptReviews(notes[selectedReq.id] || [])}
-              assignedReviewers={getAssignedReviewers(selectedReq)}
-              skipManagerStep={!!selectedReq.admin_notes?.includes("Quản lý chung duyệt")}
-              assignable={isAdmin}
-              reviewers={reviewers}
-              onAssignReviewer={(dept, reviewerId) => handleAssignReviewer(selectedReq.id, dept, reviewerId)}
-            />
+            {selectedReq && (
+              <DepartmentReviewTracker
+                deptReviews={extractDeptReviews(notes[selectedReq.id] || [])}
+                assignedReviewers={getAssignedReviewers(selectedReq)}
+                skipManagerStep={!!selectedReq.admin_notes?.includes("Quản lý chung duyệt")}
+                assignable={isAdmin}
+                reviewers={reviewers}
+                onAssignReviewer={(dept, reviewerId) => handleAssignReviewer(selectedReq.id, dept, reviewerId)}
+              />
+            )}
 
             <Separator />
 
