@@ -105,14 +105,20 @@ const AdminReviewRequests = () => {
   const isFinance = role === "finance";
   const isDirectSubmit = isAdmin || isAccountant || isFinance || isManager;
 
-  // Determine which status this role can act on
-  const getMyActionableStatus = (): string | null => {
-    if (isAdmin) return null; // admin can act on any
-    if (isManager) return "cho_quan_ly";
-    if (isAccountant) return "cho_ke_toan";
-    if (isFinance) return "cho_tai_chinh";
-    return null;
-  };
+  const [globalManagerId, setGlobalManagerId] = useState<string | null>(null);
+
+  // Fetch global manager user_id on mount
+  useEffect(() => {
+    const fetchGlobalManager = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("email", GLOBAL_MANAGER_EMAIL)
+        .single();
+      if (data) setGlobalManagerId(data.user_id);
+    };
+    fetchGlobalManager();
+  }, []);
 
   const [requests, setRequests] = useState<any[]>([]);
   const [notes, setNotes] = useState<Record<string, any[]>>({});
