@@ -569,6 +569,7 @@ export type Database = {
         | "yeu_cau_chinh_sua"
         | "tu_choi"
         | "cho_quan_ly"
+        | "cho_quan_ly_chung"
         | "cho_phap_che"
         | "cho_ke_toan"
         | "cho_tai_chinh"
@@ -726,6 +727,7 @@ export const Constants = {
         "yeu_cau_chinh_sua",
         "tu_choi",
         "cho_quan_ly",
+        "cho_quan_ly_chung",
         "cho_phap_che",
         "cho_ke_toan",
         "cho_tai_chinh",
