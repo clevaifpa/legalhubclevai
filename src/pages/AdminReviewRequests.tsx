@@ -368,7 +368,7 @@ const AdminReviewRequests = () => {
 
     setSubmitting(false);
     toast.success(editingReqId ? "Cập nhật thành công!" : (isDirectSubmit
-      ? "Yêu cầu đã tạo, chuyển tiếp cho Pháp chế review!"
+      ? "Yêu cầu đã tạo, chuyển cho Quản lý chung duyệt!"
       : "Yêu cầu review đã được tạo!"));
     handleResetForm();
     fetchRequests();
