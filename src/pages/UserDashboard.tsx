@@ -50,6 +50,7 @@ const CONTRACT_TYPE_CATEGORIES = [
 const STATUS_LABELS: Record<string, string> = {
   cho_xu_ly: "Chờ xử lý",
   cho_quan_ly: "Chờ Quản lý xác nhận",
+  cho_quan_ly_chung: "Chờ Quản lý chung duyệt",
   cho_phap_che: "Chờ Pháp chế review",
   cho_ke_toan: "Chờ Kế toán review",
   cho_tai_chinh: "Chờ Tài chính review",
