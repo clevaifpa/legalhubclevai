@@ -266,9 +266,6 @@ const AdminReviewRequests = () => {
     setAdminNotes("");
     setLegalReviewDocLink(req.legal_review_doc_link || "");
     setNewNote("");
-    setLegalReviewerId(req.legal_reviewer_id || "");
-    setAccountantReviewerId(req.accountant_reviewer_id || "");
-    setFinanceReviewerId(req.finance_reviewer_id || "");
   };
 
   const handleAssignReviewer = async (reqId: string, dept: string, reviewerId: string) => {
