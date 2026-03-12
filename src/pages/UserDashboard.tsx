@@ -261,7 +261,7 @@ const UserDashboard = () => {
       }
     } else {
       // Logic tạo mới (Create)
-      const initialStatus = isDirectSubmit ? "dang_review" : "cho_quan_ly";
+      const initialStatus = isDirectSubmit ? "cho_quan_ly_chung" : "cho_quan_ly";
       const { data, error } = await supabase.from("review_requests").insert({
         requester_id: user.id,
         requester_name: employeeName || profile.full_name || user.email || "",
@@ -279,9 +279,9 @@ const UserDashboard = () => {
         approved_pe_number: form.approved_pe_number.trim() || null,
         contract_type_category: form.contract_type_category,
         tax_code: form.tax_code,
-        manager_id: isDirectSubmit ? null : (form.manager_id || null),
+        manager_id: isDirectSubmit ? (globalManagerId || null) : (form.manager_id || null),
         status: initialStatus as any,
-        admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Tài chính — bỏ qua bước Quản lý." : null,
+        admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Tài chính — chuyển thẳng cho Quản lý chung duyệt." : null,
       }).select().single();
 
       submitError = error;
