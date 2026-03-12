@@ -149,6 +149,19 @@ const UserDashboard = () => {
     if (form.department) fetchManagers(form.department);
   }, [form.department]);
 
+  // Fetch global manager user_id on mount
+  useEffect(() => {
+    const fetchGlobalManager = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("email", GLOBAL_MANAGER_EMAIL)
+        .single();
+      if (data) setGlobalManagerId(data.user_id);
+    };
+    fetchGlobalManager();
+  }, []);
+
   const fetchRequests = async () => {
     if (!user) return;
     const { data } = await supabase
