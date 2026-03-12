@@ -95,6 +95,7 @@ const UserDashboard = () => {
   const [paymentSchedules, setPaymentSchedules] = useState<Record<string, any[]>>({});
   const [managers, setManagers] = useState<any[]>([]);
   const [globalManagerId, setGlobalManagerId] = useState<string | null>(null);
+  const [reviewers, setReviewers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -145,6 +146,15 @@ const UserDashboard = () => {
     setManagers(data || []);
   };
 
+  const fetchReviewers = async () => {
+    const { data, error } = await supabase.rpc("get_all_reviewers_with_names");
+    if (!error) {
+      setReviewers(data || []);
+    } else {
+      console.error("Error fetching reviewers:", error);
+    }
+  };
+
   useEffect(() => {
     if (form.department) fetchManagers(form.department);
   }, [form.department]);
@@ -160,6 +170,7 @@ const UserDashboard = () => {
       if (data) setGlobalManagerId(data.user_id);
     };
     fetchGlobalManager();
+    fetchReviewers();
   }, []);
 
   const fetchRequests = async () => {
@@ -386,9 +397,15 @@ const UserDashboard = () => {
     }
   };
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Đang tải...</p></div>;
-  }
+  if (loading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Đang tải dữ liệu...</div>;
+
+  // Helper for tracking props
+  const getAssignedReviewers = (req: any) => ({
+    quan_ly: { id: req.manager_id, name: reviewers.find(r => r.user_id === req.manager_id)?.full_name },
+    phap_ly: { id: req.legal_reviewer_id, name: reviewers.find(r => r.user_id === req.legal_reviewer_id)?.full_name },
+    ke_toan: { id: req.accountant_reviewer_id, name: reviewers.find(r => r.user_id === req.accountant_reviewer_id)?.full_name },
+    tai_chinh: { id: req.finance_reviewer_id, name: reviewers.find(r => r.user_id === req.finance_reviewer_id)?.full_name }
+  });
 
   const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
 
@@ -635,7 +652,7 @@ const UserDashboard = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                      <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
+                      <DepartmentReviewTracker deptReviews={deptReviews} assignedReviewers={getAssignedReviewers(req)} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
                     )}
                     <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
                   </div>
@@ -694,16 +711,8 @@ const UserDashboard = () => {
                     )}
                     {req.file_url && (
                       <button
-                        onClick={async () => {
-                          const url = req.file_url as string;
-                          if (url.includes("/storage/v1/object/public/contracts/")) {
-                            const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
-                            const { data } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
-                            if (data) window.open(data.signedUrl, "_blank");
-                            else toast.error("Không thể mở file");
-                          } else {
-                            window.open(url, "_blank");
-                          }
+                        onClick={() => {
+                          window.open(req.file_url as string, "_blank");
                         }}
                         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
                       >
@@ -803,7 +812,7 @@ const UserDashboard = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                        <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
+                        <DepartmentReviewTracker deptReviews={deptReviews} assignedReviewers={getAssignedReviewers(req)} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
                       )}
                       <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
                     </div>
@@ -857,15 +866,8 @@ const UserDashboard = () => {
                       )}
                       {req.file_url && (
                         <button
-                          onClick={async () => {
-                            const url = req.file_url as string;
-                            if (url.includes("/storage/v1/object/public/contracts/")) {
-                              const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
-                              const { data } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
-                              if (data) window.open(data.signedUrl, "_blank");
-                            } else {
-                              window.open(url, "_blank");
-                            }
+                          onClick={() => {
+                            window.open(req.file_url as string, "_blank");
                           }}
                           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline block mt-2"
                         >

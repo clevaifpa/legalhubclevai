@@ -133,9 +133,14 @@ const AdminReviewRequests = () => {
   const [saving, setSaving] = useState(false);
 
   const [managers, setManagers] = useState<any[]>([]);
+  const [reviewers, setReviewers] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingReqId, setEditingReqId] = useState<string | null>(null);
+
+  const [legalReviewerId, setLegalReviewerId] = useState("");
+  const [accountantReviewerId, setAccountantReviewerId] = useState("");
+  const [financeReviewerId, setFinanceReviewerId] = useState("");
 
   const [form, setForm] = useState({
     priority: "trung_binh",
@@ -181,9 +186,22 @@ const AdminReviewRequests = () => {
     setManagers(data || []);
   };
 
+  const fetchReviewers = async () => {
+    const { data, error } = await supabase.rpc("get_all_reviewers_with_names");
+    if (!error) {
+      setReviewers(data || []);
+    } else {
+      console.error("Error fetching reviewers:", error);
+    }
+  };
+
   useEffect(() => {
     if (form.department) fetchManagers(form.department);
   }, [form.department]);
+
+  useEffect(() => {
+    fetchReviewers();
+  }, []);
 
   const fetchRequests = async () => {
     let query = supabase
@@ -252,6 +270,34 @@ const AdminReviewRequests = () => {
     setAdminNotes("");
     setLegalReviewDocLink(req.legal_review_doc_link || "");
     setNewNote("");
+    setLegalReviewerId(req.legal_reviewer_id || "");
+    setAccountantReviewerId(req.accountant_reviewer_id || "");
+    setFinanceReviewerId(req.finance_reviewer_id || "");
+  };
+
+  const handleSaveAssignments = async () => {
+    if (!selectedReq) return;
+    setSaving(true);
+    const { error } = await supabase.from("review_requests").update({
+      legal_reviewer_id: legalReviewerId || null,
+      accountant_reviewer_id: accountantReviewerId || null,
+      finance_reviewer_id: financeReviewerId || null,
+    }).eq("id", selectedReq.id);
+
+    if (error) {
+      toast.error("Lỗi cập nhật người duyệt", { description: error.message });
+    } else {
+      toast.success("Đã phân công người duyệt thành công!");
+      fetchRequests();
+      // Update selected req so the UI reflects it immediately
+      setSelectedReq({
+        ...selectedReq,
+        legal_reviewer_id: legalReviewerId || null,
+        accountant_reviewer_id: accountantReviewerId || null,
+        finance_reviewer_id: financeReviewerId || null,
+      });
+    }
+    setSaving(false);
   };
 
   const handleSubmitNewRequest = async () => {
@@ -608,6 +654,14 @@ const AdminReviewRequests = () => {
   const roleLabel = isAdmin ? "Pháp chế" : isManager ? "Quản lý" : isAccountant ? "Kế toán" : isFinance ? "Tài chính" : "";
   const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
 
+  // Helper for tracking props
+  const getAssignedReviewers = (req: any) => ({
+    quan_ly: { id: req.manager_id, name: reviewers.find(r => r.user_id === req.manager_id)?.full_name },
+    phap_ly: { id: req.legal_reviewer_id, name: reviewers.find(r => r.user_id === req.legal_reviewer_id)?.full_name },
+    ke_toan: { id: req.accountant_reviewer_id, name: reviewers.find(r => r.user_id === req.accountant_reviewer_id)?.full_name },
+    tai_chinh: { id: req.finance_reviewer_id, name: reviewers.find(r => r.user_id === req.finance_reviewer_id)?.full_name }
+  });
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -875,7 +929,7 @@ const AdminReviewRequests = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                      <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
+                      <DepartmentReviewTracker deptReviews={deptReviews} assignedReviewers={getAssignedReviewers(req)} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
                     )}
                     <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
                   </div>
@@ -923,7 +977,7 @@ const AdminReviewRequests = () => {
                 )}
 
                 {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                  <DepartmentReviewTracker deptReviews={deptReviews} skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
+                  <DepartmentReviewTracker deptReviews={deptReviews} assignedReviewers={getAssignedReviewers(req)} skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
                 )}
 
                 {/* File links */}
@@ -932,16 +986,8 @@ const AdminReviewRequests = () => {
                     <>
                       {req.file_url && (
                         <button
-                          onClick={async () => {
-                            const url = req.file_url as string;
-                            if (url.includes("/storage/v1/object/public/contracts/")) {
-                              const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
-                              const { data } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
-                              if (data) window.open(data.signedUrl, "_blank");
-                              else toast.error("Không thể mở file");
-                            } else {
-                              window.open(url, "_blank");
-                            }
+                          onClick={() => {
+                            window.open(req.file_url as string, "_blank");
                           }}
                           className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
                         >
@@ -968,16 +1014,8 @@ const AdminReviewRequests = () => {
                   )}
                   {isManager && req.file_url && (
                     <button
-                      onClick={async () => {
-                        const url = req.file_url as string;
-                        if (url.includes("/storage/v1/object/public/contracts/")) {
-                          const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
-                          const { data } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
-                          if (data) window.open(data.signedUrl, "_blank");
-                          else toast.error("Không thể mở file");
-                        } else {
-                          window.open(url, "_blank");
-                        }
+                      onClick={() => {
+                        window.open(req.file_url as string, "_blank");
                       }}
                       className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
                     >
@@ -1078,7 +1116,59 @@ const AdminReviewRequests = () => {
             </div>
 
             {selectedReq && (
-              <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[selectedReq.id] || [])} skipManagerStep={!!selectedReq.admin_notes?.includes("Quản lý chung duyệt")} />
+              <DepartmentReviewTracker deptReviews={extractDeptReviews(notes[selectedReq.id] || [])} assignedReviewers={getAssignedReviewers(selectedReq)} skipManagerStep={!!selectedReq.admin_notes?.includes("Quản lý chung duyệt")} />
+            )}
+
+            <Separator />
+
+            {/* Admin Assigments */}
+            {isAdmin && (
+              <div className="space-y-4 p-4 rounded-lg bg-muted/20 border">
+                <h4 className="font-semibold text-sm">Phân công người duyệt</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Pháp chế</Label>
+                    <Select value={legalReviewerId} onValueChange={setLegalReviewerId}>
+                      <SelectTrigger><SelectValue placeholder="Chọn Pháp chế" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none" onClick={() => setLegalReviewerId("")}>(Trống)</SelectItem>
+                        {reviewers.filter(r => r.role === 'admin').map((r) => (
+                          <SelectItem key={r.user_id} value={r.user_id}>{r.full_name || "Chưa đặt tên"}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Kế toán</Label>
+                    <Select value={accountantReviewerId} onValueChange={setAccountantReviewerId}>
+                      <SelectTrigger><SelectValue placeholder="Chọn Kế toán" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none" onClick={() => setAccountantReviewerId("")}>(Trống)</SelectItem>
+                        {reviewers.filter(r => r.role === 'accountant').map((r) => (
+                          <SelectItem key={r.user_id} value={r.user_id}>{r.full_name || "Chưa đặt tên"}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Tài chính</Label>
+                    <Select value={financeReviewerId} onValueChange={setFinanceReviewerId}>
+                      <SelectTrigger><SelectValue placeholder="Chọn Tài chính" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none" onClick={() => setFinanceReviewerId("")}>(Trống)</SelectItem>
+                        {reviewers.filter(r => r.role === 'finance').map((r) => (
+                          <SelectItem key={r.user_id} value={r.user_id}>{r.full_name || "Chưa đặt tên"}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button size="sm" variant="outline" onClick={handleSaveAssignments} disabled={saving}>
+                    {saving ? "Đang lưu..." : "Lưu phân công"}
+                  </Button>
+                </div>
+              </div>
             )}
 
             <Separator />
@@ -1162,7 +1252,7 @@ const AdminReviewRequests = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                        <DepartmentReviewTracker deptReviews={deptReviews} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
+                        <DepartmentReviewTracker deptReviews={deptReviews} assignedReviewers={getAssignedReviewers(req)} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
                       )}
                       <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
                     </div>
@@ -1208,7 +1298,7 @@ const AdminReviewRequests = () => {
                   )}
 
                   {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                    <DepartmentReviewTracker deptReviews={deptReviews} skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
+                    <DepartmentReviewTracker deptReviews={deptReviews} assignedReviewers={getAssignedReviewers(req)} skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
                   )}
 
                   <div className="space-y-1">
@@ -1216,15 +1306,8 @@ const AdminReviewRequests = () => {
                       <>
                         {req.file_url && (
                           <button
-                            onClick={async () => {
-                              const url = req.file_url as string;
-                              if (url.includes("/storage/v1/object/public/contracts/")) {
-                                const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
-                                const { data } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
-                                if (data) window.open(data.signedUrl, "_blank");
-                              } else {
-                                window.open(url, "_blank");
-                              }
+                            onClick={() => {
+                              window.open(req.file_url as string, "_blank");
                             }}
                             className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
                           >
@@ -1240,15 +1323,8 @@ const AdminReviewRequests = () => {
                     )}
                     {isManager && req.file_url && (
                       <button
-                        onClick={async () => {
-                          const url = req.file_url as string;
-                          if (url.includes("/storage/v1/object/public/contracts/")) {
-                            const path = url.substring(url.indexOf("/storage/v1/object/public/contracts/") + "/storage/v1/object/public/contracts/".length);
-                            const { data } = await supabase.storage.from("contracts").createSignedUrl(path, 3600);
-                            if (data) window.open(data.signedUrl, "_blank");
-                          } else {
-                            window.open(url, "_blank");
-                          }
+                        onClick={() => {
+                          window.open(req.file_url as string, "_blank");
                         }}
                         className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
                       >

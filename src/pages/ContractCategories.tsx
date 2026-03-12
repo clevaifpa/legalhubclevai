@@ -226,11 +226,10 @@ const ContractCategories = () => {
     return urlOrPath;
   };
 
-  const openFile = async (urlOrPath: string) => {
+  const openFile = (urlOrPath: string) => {
     const storagePath = extractStoragePath(urlOrPath);
-    const { data, error } = await supabase.storage.from("contracts").createSignedUrl(storagePath, 3600);
-    if (error) { toast.error("Không thể mở file", { description: error.message }); return; }
-    window.open(data.signedUrl, "_blank");
+    const { data } = supabase.storage.from("contracts").getPublicUrl(storagePath);
+    window.open(data.publicUrl, "_blank");
   };
 
   const handleUploadContract = async () => {

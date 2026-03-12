@@ -13,6 +13,7 @@ import { formatDate } from "@/lib/format";
 
 interface DepartmentReviewTrackerProps {
     deptReviews: Record<ReviewDepartment, DepartmentReviewStatus>;
+    assignedReviewers?: Partial<Record<ReviewDepartment, { id: string; name: string }>>;
     compact?: boolean;
     skipManagerStep?: boolean;
 }
@@ -26,7 +27,7 @@ const StatusText = ({ status }: { status: DepartmentReviewStatus["status"] }) =>
     }
 };
 
-export function DepartmentReviewTracker({ deptReviews, compact = false, skipManagerStep = false }: DepartmentReviewTrackerProps) {
+export function DepartmentReviewTracker({ deptReviews, assignedReviewers = {}, compact = false, skipManagerStep = false }: DepartmentReviewTrackerProps) {
     const departments = (Object.keys(REVIEW_DEPARTMENTS) as ReviewDepartment[])
         .filter(dept => !(skipManagerStep && dept === "quan_ly"))
         .sort((a, b) => REVIEW_DEPARTMENTS[a].stepOrder - REVIEW_DEPARTMENTS[b].stepOrder);
@@ -60,8 +61,10 @@ export function DepartmentReviewTracker({ deptReviews, compact = false, skipMana
                             <TooltipContent side="top" className="text-xs">
                                 <p className="font-semibold">{config.label}</p>
                                 <p>{DEPARTMENT_REVIEW_STATUS_LABELS[review.status]}</p>
-                                {review.reviewerName && (
-                                    <p className="text-muted-foreground">Bởi: {review.reviewerName}</p>
+                                {review.reviewerName ? (
+                                    <p className="text-muted-foreground">Người duyệt: {review.reviewerName}</p>
+                                ) : (
+                                    <p className="text-muted-foreground">Người duyệt: {assignedReviewers[dept]?.name || "(Chưa phân công)"}</p>
                                 )}
                             </TooltipContent>
                         </Tooltip>
@@ -110,9 +113,13 @@ export function DepartmentReviewTracker({ deptReviews, compact = false, skipMana
                             >
                                 {DEPARTMENT_REVIEW_STATUS_LABELS[review.status]}
                             </Badge>
-                            {review.reviewerName && (
+                            {review.reviewerName ? (
                                 <p className="text-[10px] text-muted-foreground mt-1.5 truncate">
                                     {review.reviewerName} • {review.reviewedAt ? formatDate(review.reviewedAt) : ""}
+                                </p>
+                            ) : (
+                                <p className="text-[10px] text-muted-foreground mt-1.5 truncate">
+                                    {assignedReviewers[dept]?.name || "(Chưa có người duyệt)"}
                                 </p>
                             )}
                             {review.notes && (
