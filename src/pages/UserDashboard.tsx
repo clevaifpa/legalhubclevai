@@ -94,6 +94,7 @@ const UserDashboard = () => {
   const [notes, setNotes] = useState<Record<string, any[]>>({});
   const [paymentSchedules, setPaymentSchedules] = useState<Record<string, any[]>>({});
   const [managers, setManagers] = useState<any[]>([]);
+  const [globalManagerId, setGlobalManagerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
