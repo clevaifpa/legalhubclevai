@@ -55,6 +55,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   cho_xu_ly: "bg-muted text-muted-foreground",
   cho_quan_ly: "bg-muted text-muted-foreground",
+  cho_quan_ly_chung: "bg-info/10 text-info border-info/20",
   cho_phap_che: "bg-info/10 text-info border-info/20",
   cho_ke_toan: "bg-info/10 text-info border-info/20",
   cho_tai_chinh: "bg-info/10 text-info border-info/20",

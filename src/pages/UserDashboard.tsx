@@ -724,7 +724,7 @@ const UserDashboard = () => {
                   </div>
                 )}
 
-                {["cho_xu_ly", "cho_quan_ly", "cho_phap_che", "dang_review"].includes(req.status) && (
+                {["cho_xu_ly", "cho_quan_ly", "cho_quan_ly_chung", "cho_phap_che", "dang_review"].includes(req.status) && (
                   <>
                     <Separator />
                     <div className="flex justify-end gap-2">
