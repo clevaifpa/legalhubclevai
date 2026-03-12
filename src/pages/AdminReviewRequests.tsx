@@ -183,7 +183,7 @@ const AdminReviewRequests = () => {
   };
 
   const fetchReviewers = async () => {
-    const { data, error } = await supabase.rpc("get_all_reviewers_with_names");
+    const { data, error } = await (supabase.rpc as any)("get_all_reviewers_with_names");
     if (!error) {
       setReviewers(data || []);
     } else {
