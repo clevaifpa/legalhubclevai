@@ -588,8 +588,12 @@ const AdminReviewRequests = () => {
   const canActOnRequest = (req: any): boolean => {
     if (!req) return false;
     if (isAdmin) return true;
-    const actionableStatus = getMyActionableStatus();
-    return req.status === actionableStatus;
+    if (isManager && req.status === 'cho_quan_ly') return true;
+    // Global manager (hiennd) can act on cho_quan_ly_chung
+    if (isManager && req.status === 'cho_quan_ly_chung' && user?.email === GLOBAL_MANAGER_EMAIL) return true;
+    if (isAccountant && req.status === 'cho_ke_toan') return true;
+    if (isFinance && req.status === 'cho_tai_chinh') return true;
+    return false;
   };
 
   const statusCounts = requests.reduce((acc: Record<string, number>, r) => {
