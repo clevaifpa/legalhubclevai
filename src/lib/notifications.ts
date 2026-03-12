@@ -89,6 +89,15 @@ export async function createWorkflowNotifications(params: NotifyParams) {
   // Notify relevant roles based on new status
   const rolesToNotify: string[] = ["admin"]; // admins always get notified
 
+  if (newStatus === "cho_quan_ly_chung") {
+    // Notify global manager (hiennd) specifically
+    const { data: globalMgr } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .eq("email", "hiennd@clevai.edu.vn")
+      .single();
+    if (globalMgr) recipientIds.add(globalMgr.user_id);
+  }
   if (newStatus === "cho_ke_toan") rolesToNotify.push("accountant");
   if (newStatus === "cho_tai_chinh") rolesToNotify.push("finance");
   if (newStatus === "hoan_tat" || newStatus === "tu_choi") {
