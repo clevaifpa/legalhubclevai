@@ -368,6 +368,7 @@ const AdminReviewRequests = () => {
         contract_type_category: form.contract_type_category,
         tax_code: form.tax_code,
         manager_id: isDirectSubmit ? (globalManagerId || null) : (form.manager_id || null),
+        global_manager_id: globalManagerId || null,
         status: initialStatus as any,
         admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Quản lý — chuyển thẳng cho Quản lý chung duyệt." : null,
       } as any).select().single();
