@@ -269,28 +269,29 @@ const AdminReviewRequests = () => {
   };
 
   const handleAssignReviewer = async (reqId: string, dept: string, reviewerId: string) => {
-    // Only manager_id column exists in review_requests table
-    if (dept === "quan_ly" || dept === "quan_ly_chung") {
-      const { error } = await supabase.from("review_requests").update({
-        manager_id: reviewerId === "none" || !reviewerId ? null : reviewerId
-      }).eq("id", reqId);
+    const colMap: Record<string, string> = {
+      quan_ly: "manager_id",
+      quan_ly_chung: "global_manager_id",
+      phap_ly: "legal_reviewer_id",
+      ke_toan: "accountant_reviewer_id",
+      tai_chinh: "finance_reviewer_id",
+    };
+    const col = colMap[dept];
+    if (!col) return;
 
-      if (error) {
-        toast.error("Lỗi phân công người duyệt", { description: error.message });
-      } else {
-        toast.success("Đã phân công người duyệt thành công!");
-        fetchRequests();
-        if (selectedReq && selectedReq.id === reqId) {
-          setSelectedReq({
-            ...selectedReq,
-            manager_id: reviewerId === "none" || !reviewerId ? null : reviewerId,
-          });
-        }
-      }
+    const val = reviewerId === "none" || !reviewerId ? null : reviewerId;
+    const { error } = await supabase.from("review_requests").update({
+      [col]: val,
+    } as any).eq("id", reqId);
+
+    if (error) {
+      toast.error("Lỗi phân công người duyệt", { description: error.message });
     } else {
-      // For other departments (phap_ly, ke_toan, tai_chinh), 
-      // assignment is handled by the workflow status, not a DB column
-      toast.info("Phân công tự động theo quy trình duyệt");
+      toast.success("Đã phân công người duyệt thành công!");
+      fetchRequests();
+      if (selectedReq && selectedReq.id === reqId) {
+        setSelectedReq({ ...selectedReq, [col]: val });
+      }
     }
   };
 
@@ -367,6 +368,7 @@ const AdminReviewRequests = () => {
         contract_type_category: form.contract_type_category,
         tax_code: form.tax_code,
         manager_id: isDirectSubmit ? (globalManagerId || null) : (form.manager_id || null),
+        global_manager_id: globalManagerId || null,
         status: initialStatus as any,
         admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Quản lý — chuyển thẳng cho Quản lý chung duyệt." : null,
       } as any).select().single();
@@ -375,6 +377,31 @@ const AdminReviewRequests = () => {
       if (insertedReq) finalReqId = insertedReq.id;
 
       if (insertedReq) {
+        // Auto-assign reviewers for steps with only 1 person
+        const autoAssign: Record<string, string> = {};
+        const roleStepMap: Record<string, string> = {
+          admin: "legal_reviewer_id",
+          accountant: "accountant_reviewer_id",
+          finance: "finance_reviewer_id",
+        };
+        for (const [roleKey, col] of Object.entries(roleStepMap)) {
+          const candidates = reviewers.filter(r => r.role === roleKey);
+          if (candidates.length === 1) {
+            autoAssign[col] = candidates[0].user_id;
+          }
+        }
+        // Auto-assign global manager if only 1 manager
+        const managerCandidates = reviewers.filter(r => r.role === "manager");
+        if (managerCandidates.length === 1) {
+          autoAssign["global_manager_id"] = managerCandidates[0].user_id;
+        } else if (globalManagerId) {
+          autoAssign["global_manager_id"] = globalManagerId;
+        }
+
+        if (Object.keys(autoAssign).length > 0) {
+          await supabase.from("review_requests").update(autoAssign as any).eq("id", insertedReq.id);
+        }
+
         await createWorkflowNotifications({
           reviewRequestId: insertedReq.id,
           contractTitle: form.contract_title,
@@ -650,13 +677,16 @@ const AdminReviewRequests = () => {
 
   // Helper for tracking props
   const getAssignedReviewers = (req: any) => {
-    const globalMgrName = reviewers.find(r => r.user_id === globalManagerId)?.full_name || "Quản lý chung";
+    const findName = (id: string | null) => {
+      if (!id) return "";
+      return reviewers.find(r => r.user_id === id)?.full_name || "";
+    };
     return {
-      quan_ly: { id: req.manager_id, name: reviewers.find(r => r.user_id === req.manager_id)?.full_name },
-      quan_ly_chung: { id: globalManagerId || "", name: globalMgrName },
-      phap_ly: { id: "", name: "" },
-      ke_toan: { id: "", name: "" },
-      tai_chinh: { id: "", name: "" }
+      quan_ly: { id: req.manager_id || "", name: findName(req.manager_id) },
+      quan_ly_chung: { id: req.global_manager_id || globalManagerId || "", name: findName(req.global_manager_id) || findName(globalManagerId) || "Quản lý chung" },
+      phap_ly: { id: req.legal_reviewer_id || "", name: findName(req.legal_reviewer_id) },
+      ke_toan: { id: req.accountant_reviewer_id || "", name: findName(req.accountant_reviewer_id) },
+      tai_chinh: { id: req.finance_reviewer_id || "", name: findName(req.finance_reviewer_id) },
     };
   };
 

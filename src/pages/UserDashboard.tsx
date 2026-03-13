@@ -291,6 +291,7 @@ const UserDashboard = () => {
         contract_type_category: form.contract_type_category,
         tax_code: form.tax_code,
         manager_id: isDirectSubmit ? (globalManagerId || null) : (form.manager_id || null),
+        global_manager_id: globalManagerId || null,
         status: initialStatus as any,
         admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Tài chính — chuyển thẳng cho Quản lý chung duyệt." : null,
       }).select().single();
@@ -300,6 +301,29 @@ const UserDashboard = () => {
 
       // Send notifications for new request
       if (data) {
+        // Auto-assign reviewers for steps with only 1 person
+        const autoAssign: Record<string, string> = {};
+        const roleStepMap: Record<string, string> = {
+          admin: "legal_reviewer_id",
+          accountant: "accountant_reviewer_id",
+          finance: "finance_reviewer_id",
+        };
+        for (const [roleKey, col] of Object.entries(roleStepMap)) {
+          const candidates = reviewers.filter(r => r.role === roleKey);
+          if (candidates.length === 1) {
+            autoAssign[col] = candidates[0].user_id;
+          }
+        }
+        const managerCandidates = reviewers.filter(r => r.role === "manager");
+        if (managerCandidates.length === 1) {
+          autoAssign["global_manager_id"] = managerCandidates[0].user_id;
+        } else if (globalManagerId) {
+          autoAssign["global_manager_id"] = globalManagerId;
+        }
+        if (Object.keys(autoAssign).length > 0) {
+          await supabase.from("review_requests").update(autoAssign as any).eq("id", data.id);
+        }
+
         await createWorkflowNotifications({
           reviewRequestId: data.id,
           contractTitle: form.contract_title,
@@ -401,13 +425,16 @@ const UserDashboard = () => {
 
   // Helper for tracking props
   const getAssignedReviewers = (req: any) => {
-    const globalMgrName = reviewers.find(r => r.user_id === globalManagerId)?.full_name || "Quản lý chung";
+    const findName = (id: string | null) => {
+      if (!id) return "";
+      return reviewers.find(r => r.user_id === id)?.full_name || "";
+    };
     return {
-      quan_ly: { id: req.manager_id, name: reviewers.find(r => r.user_id === req.manager_id)?.full_name },
-      quan_ly_chung: { id: globalManagerId || "", name: globalMgrName },
-      phap_ly: { id: "", name: "" },
-      ke_toan: { id: "", name: "" },
-      tai_chinh: { id: "", name: "" }
+      quan_ly: { id: req.manager_id || "", name: findName(req.manager_id) },
+      quan_ly_chung: { id: req.global_manager_id || globalManagerId || "", name: findName(req.global_manager_id) || findName(globalManagerId) || "Quản lý chung" },
+      phap_ly: { id: req.legal_reviewer_id || "", name: findName(req.legal_reviewer_id) },
+      ke_toan: { id: req.accountant_reviewer_id || "", name: findName(req.accountant_reviewer_id) },
+      tai_chinh: { id: req.finance_reviewer_id || "", name: findName(req.finance_reviewer_id) },
     };
   };
 
