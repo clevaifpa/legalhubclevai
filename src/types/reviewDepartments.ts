@@ -29,7 +29,7 @@ export const REVIEW_DEPARTMENTS: Record<ReviewDepartment, {
         label: 'QL chung',
         description: 'Xác nhận bởi Quản lý chung',
         stepOrder: 2,
-        requiredRole: 'manager_chung',
+        requiredRole: 'manager',
     },
     phap_ly: {
         label: 'Pháp chế',

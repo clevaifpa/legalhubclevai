@@ -269,31 +269,28 @@ const AdminReviewRequests = () => {
   };
 
   const handleAssignReviewer = async (reqId: string, dept: string, reviewerId: string) => {
-    let columnToUpdate = "";
-    if (dept === "quan_ly") columnToUpdate = "manager_id";
-    if (dept === "quan_ly_chung") columnToUpdate = "global_manager_id";
-    if (dept === "phap_ly") columnToUpdate = "legal_reviewer_id";
-    if (dept === "ke_toan") columnToUpdate = "accountant_reviewer_id";
-    if (dept === "tai_chinh") columnToUpdate = "finance_reviewer_id";
+    // Only manager_id column exists in review_requests table
+    if (dept === "quan_ly" || dept === "quan_ly_chung") {
+      const { error } = await supabase.from("review_requests").update({
+        manager_id: reviewerId === "none" || !reviewerId ? null : reviewerId
+      }).eq("id", reqId);
 
-    if (!columnToUpdate) return;
-
-    const { error } = await supabase.from("review_requests").update({
-      [columnToUpdate]: reviewerId === "none" || !reviewerId ? null : reviewerId
-    }).eq("id", reqId);
-
-    if (error) {
-      toast.error("Lỗi phân công người duyệt", { description: error.message });
-    } else {
-      toast.success("Đã phân công người duyệt thành công!");
-      fetchRequests(); // Lấy lại dữ liệu để cap nhat List view
-      // Update selected req so the UI reflects it immediately
-      if (selectedReq && selectedReq.id === reqId) {
-        setSelectedReq({
-          ...selectedReq,
-          [columnToUpdate]: reviewerId === "none" || !reviewerId ? null : reviewerId,
-        });
+      if (error) {
+        toast.error("Lỗi phân công người duyệt", { description: error.message });
+      } else {
+        toast.success("Đã phân công người duyệt thành công!");
+        fetchRequests();
+        if (selectedReq && selectedReq.id === reqId) {
+          setSelectedReq({
+            ...selectedReq,
+            manager_id: reviewerId === "none" || !reviewerId ? null : reviewerId,
+          });
+        }
       }
+    } else {
+      // For other departments (phap_ly, ke_toan, tai_chinh), 
+      // assignment is handled by the workflow status, not a DB column
+      toast.info("Phân công tự động theo quy trình duyệt");
     }
   };
 
@@ -652,13 +649,16 @@ const AdminReviewRequests = () => {
   const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
 
   // Helper for tracking props
-  const getAssignedReviewers = (req: any) => ({
-    quan_ly: { id: req.manager_id, name: reviewers.find(r => r.user_id === req.manager_id)?.full_name },
-    quan_ly_chung: { id: req.global_manager_id, name: reviewers.find(r => r.user_id === req.global_manager_id)?.full_name },
-    phap_ly: { id: req.legal_reviewer_id, name: reviewers.find(r => r.user_id === req.legal_reviewer_id)?.full_name },
-    ke_toan: { id: req.accountant_reviewer_id, name: reviewers.find(r => r.user_id === req.accountant_reviewer_id)?.full_name },
-    tai_chinh: { id: req.finance_reviewer_id, name: reviewers.find(r => r.user_id === req.finance_reviewer_id)?.full_name }
-  });
+  const getAssignedReviewers = (req: any) => {
+    const globalMgrName = reviewers.find(r => r.user_id === globalManagerId)?.full_name || "Quản lý chung";
+    return {
+      quan_ly: { id: req.manager_id, name: reviewers.find(r => r.user_id === req.manager_id)?.full_name },
+      quan_ly_chung: { id: globalManagerId || "", name: globalMgrName },
+      phap_ly: { id: "", name: "" },
+      ke_toan: { id: "", name: "" },
+      tai_chinh: { id: "", name: "" }
+    };
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
