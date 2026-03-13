@@ -31,11 +31,12 @@ const ROLE_LABELS: Record<string, string> = {
   admin: "Admin (Pháp chế)",
   user: "Nhân viên",
   manager: "Người quản lý",
+  manager_chung: "Quản lý chung",
   accountant: "Kế toán",
   finance: "Tài chính",
 };
 
-const ASSIGNABLE_ROLES = ["admin", "manager", "accountant", "finance", "user"] as const;
+const ASSIGNABLE_ROLES = ["admin", "manager_chung", "manager", "accountant", "finance", "user"] as const;
 
 const EmployeeManagement = () => {
   const { user } = useAuth();
