@@ -409,6 +409,7 @@ export type Database = {
       }
       review_requests: {
         Row: {
+          accountant_reviewer_id: string | null
           admin_notes: string | null
           approved_pe_number: string | null
           contract_end_date: string | null
@@ -420,8 +421,11 @@ export type Database = {
           department: string
           description: string | null
           file_url: string | null
+          finance_reviewer_id: string | null
+          global_manager_id: string | null
           id: string
           legal_review_doc_link: string | null
+          legal_reviewer_id: string | null
           manager_id: string | null
           partner_name: string
           priority: Database["public"]["Enums"]["priority_level"]
@@ -434,6 +438,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accountant_reviewer_id?: string | null
           admin_notes?: string | null
           approved_pe_number?: string | null
           contract_end_date?: string | null
@@ -445,8 +450,11 @@ export type Database = {
           department: string
           description?: string | null
           file_url?: string | null
+          finance_reviewer_id?: string | null
+          global_manager_id?: string | null
           id?: string
           legal_review_doc_link?: string | null
+          legal_reviewer_id?: string | null
           manager_id?: string | null
           partner_name?: string
           priority?: Database["public"]["Enums"]["priority_level"]
@@ -459,6 +467,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accountant_reviewer_id?: string | null
           admin_notes?: string | null
           approved_pe_number?: string | null
           contract_end_date?: string | null
@@ -470,8 +479,11 @@ export type Database = {
           department?: string
           description?: string | null
           file_url?: string | null
+          finance_reviewer_id?: string | null
+          global_manager_id?: string | null
           id?: string
           legal_review_doc_link?: string | null
+          legal_reviewer_id?: string | null
           manager_id?: string | null
           partner_name?: string
           priority?: Database["public"]["Enums"]["priority_level"]
