@@ -269,31 +269,28 @@ const AdminReviewRequests = () => {
   };
 
   const handleAssignReviewer = async (reqId: string, dept: string, reviewerId: string) => {
-    let columnToUpdate = "";
-    if (dept === "quan_ly") columnToUpdate = "manager_id";
-    if (dept === "quan_ly_chung") columnToUpdate = "global_manager_id";
-    if (dept === "phap_ly") columnToUpdate = "legal_reviewer_id";
-    if (dept === "ke_toan") columnToUpdate = "accountant_reviewer_id";
-    if (dept === "tai_chinh") columnToUpdate = "finance_reviewer_id";
+    // Only manager_id column exists in review_requests table
+    if (dept === "quan_ly" || dept === "quan_ly_chung") {
+      const { error } = await supabase.from("review_requests").update({
+        manager_id: reviewerId === "none" || !reviewerId ? null : reviewerId
+      }).eq("id", reqId);
 
-    if (!columnToUpdate) return;
-
-    const { error } = await supabase.from("review_requests").update({
-      [columnToUpdate]: reviewerId === "none" || !reviewerId ? null : reviewerId
-    }).eq("id", reqId);
-
-    if (error) {
-      toast.error("Lỗi phân công người duyệt", { description: error.message });
-    } else {
-      toast.success("Đã phân công người duyệt thành công!");
-      fetchRequests(); // Lấy lại dữ liệu để cap nhat List view
-      // Update selected req so the UI reflects it immediately
-      if (selectedReq && selectedReq.id === reqId) {
-        setSelectedReq({
-          ...selectedReq,
-          [columnToUpdate]: reviewerId === "none" || !reviewerId ? null : reviewerId,
-        });
+      if (error) {
+        toast.error("Lỗi phân công người duyệt", { description: error.message });
+      } else {
+        toast.success("Đã phân công người duyệt thành công!");
+        fetchRequests();
+        if (selectedReq && selectedReq.id === reqId) {
+          setSelectedReq({
+            ...selectedReq,
+            manager_id: reviewerId === "none" || !reviewerId ? null : reviewerId,
+          });
+        }
       }
+    } else {
+      // For other departments (phap_ly, ke_toan, tai_chinh), 
+      // assignment is handled by the workflow status, not a DB column
+      toast.info("Phân công tự động theo quy trình duyệt");
     }
   };
 
