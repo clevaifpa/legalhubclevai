@@ -269,28 +269,29 @@ const AdminReviewRequests = () => {
   };
 
   const handleAssignReviewer = async (reqId: string, dept: string, reviewerId: string) => {
-    // Only manager_id column exists in review_requests table
-    if (dept === "quan_ly" || dept === "quan_ly_chung") {
-      const { error } = await supabase.from("review_requests").update({
-        manager_id: reviewerId === "none" || !reviewerId ? null : reviewerId
-      }).eq("id", reqId);
+    const colMap: Record<string, string> = {
+      quan_ly: "manager_id",
+      quan_ly_chung: "global_manager_id",
+      phap_ly: "legal_reviewer_id",
+      ke_toan: "accountant_reviewer_id",
+      tai_chinh: "finance_reviewer_id",
+    };
+    const col = colMap[dept];
+    if (!col) return;
 
-      if (error) {
-        toast.error("Lỗi phân công người duyệt", { description: error.message });
-      } else {
-        toast.success("Đã phân công người duyệt thành công!");
-        fetchRequests();
-        if (selectedReq && selectedReq.id === reqId) {
-          setSelectedReq({
-            ...selectedReq,
-            manager_id: reviewerId === "none" || !reviewerId ? null : reviewerId,
-          });
-        }
-      }
+    const val = reviewerId === "none" || !reviewerId ? null : reviewerId;
+    const { error } = await supabase.from("review_requests").update({
+      [col]: val,
+    } as any).eq("id", reqId);
+
+    if (error) {
+      toast.error("Lỗi phân công người duyệt", { description: error.message });
     } else {
-      // For other departments (phap_ly, ke_toan, tai_chinh), 
-      // assignment is handled by the workflow status, not a DB column
-      toast.info("Phân công tự động theo quy trình duyệt");
+      toast.success("Đã phân công người duyệt thành công!");
+      fetchRequests();
+      if (selectedReq && selectedReq.id === reqId) {
+        setSelectedReq({ ...selectedReq, [col]: val });
+      }
     }
   };
 

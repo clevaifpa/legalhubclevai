@@ -401,13 +401,16 @@ const UserDashboard = () => {
 
   // Helper for tracking props
   const getAssignedReviewers = (req: any) => {
-    const globalMgrName = reviewers.find(r => r.user_id === globalManagerId)?.full_name || "Quản lý chung";
+    const findName = (id: string | null) => {
+      if (!id) return "";
+      return reviewers.find(r => r.user_id === id)?.full_name || "";
+    };
     return {
-      quan_ly: { id: req.manager_id, name: reviewers.find(r => r.user_id === req.manager_id)?.full_name },
-      quan_ly_chung: { id: globalManagerId || "", name: globalMgrName },
-      phap_ly: { id: "", name: "" },
-      ke_toan: { id: "", name: "" },
-      tai_chinh: { id: "", name: "" }
+      quan_ly: { id: req.manager_id || "", name: findName(req.manager_id) },
+      quan_ly_chung: { id: req.global_manager_id || globalManagerId || "", name: findName(req.global_manager_id) || findName(globalManagerId) || "Quản lý chung" },
+      phap_ly: { id: req.legal_reviewer_id || "", name: findName(req.legal_reviewer_id) },
+      ke_toan: { id: req.accountant_reviewer_id || "", name: findName(req.accountant_reviewer_id) },
+      tai_chinh: { id: req.finance_reviewer_id || "", name: findName(req.finance_reviewer_id) },
     };
   };
 

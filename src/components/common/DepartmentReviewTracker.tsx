@@ -109,9 +109,14 @@ export function DepartmentReviewTracker({
                 {departments.map((dept, idx) => {
                     const review = deptReviews[dept];
                     const config = REVIEW_DEPARTMENTS[dept];
-                    const availableReviewers = dept === 'quan_ly_chung' 
-                      ? reviewers.filter(r => r.user_id === assignedReviewers[dept]?.id) 
-                      : reviewers.filter(r => r.role === config.requiredRole);
+                    const roleFilterMap: Record<string, string> = {
+                      quan_ly: 'manager',
+                      quan_ly_chung: 'manager',
+                      phap_ly: 'admin',
+                      ke_toan: 'accountant',
+                      tai_chinh: 'finance',
+                    };
+                    const availableReviewers = reviewers.filter(r => r.role === roleFilterMap[dept]);
                     const currentAssignedId = assignedReviewers[dept]?.id || "none";
 
                     return (
