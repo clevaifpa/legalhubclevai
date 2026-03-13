@@ -160,6 +160,9 @@ const AdminReviewRequests = () => {
     tax_code: "",
     manager_id: "",
     global_manager_id: "",
+    legal_reviewer_id: "",
+    accountant_reviewer_id: "",
+    finance_reviewer_id: "",
   });
 
   const [paymentPhases, setPaymentPhases] = useState<PaymentPhase[]>([
@@ -455,7 +458,7 @@ const AdminReviewRequests = () => {
 
   const resetFormData = () => {
     setEditingReqId(null);
-    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "", global_manager_id: "" });
+    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "", global_manager_id: "", legal_reviewer_id: "", accountant_reviewer_id: "", finance_reviewer_id: "" });
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
   };
 
@@ -486,6 +489,9 @@ const AdminReviewRequests = () => {
       tax_code: req.tax_code || "",
       manager_id: req.manager_id || "",
       global_manager_id: req.global_manager_id || (globalManagers.length === 1 ? globalManagers[0].user_id : ""),
+      legal_reviewer_id: req.legal_reviewer_id || (legalReviewers?.length === 1 ? legalReviewers[0].user_id : ""),
+      accountant_reviewer_id: req.accountant_reviewer_id || (accountantReviewers?.length === 1 ? accountantReviewers[0].user_id : ""),
+      finance_reviewer_id: req.finance_reviewer_id || (financeReviewers?.length === 1 ? financeReviewers[0].user_id : ""),
     });
 
     if (schedules.length > 0) {
@@ -692,6 +698,11 @@ const AdminReviewRequests = () => {
   const roleLabel = isAdmin ? "Pháp chế" : isManager ? "Quản lý" : isAccountant ? "Kế toán" : isFinance ? "Tài chính" : "";
   const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
 
+  // Group reviewers by role for the UI
+  const legalReviewers = reviewers.filter(r => r.role === 'admin');
+  const accountantReviewers = reviewers.filter(r => r.role === 'accountant');
+  const financeReviewers = reviewers.filter(r => r.role === 'finance');
+
   // Helper for tracking props
   const getAssignedReviewers = (req: any) => {
     const findName = (id: string | null) => {
@@ -761,22 +772,86 @@ const AdminReviewRequests = () => {
                     </div>
                   )}
                 </div>
-                {isAdmin && globalManagers.length > 1 && (
-                  <div className="grid grid-cols-1 gap-4 mb-4">
-                    <div className="space-y-2">
-                      <Label>Quản lý chung</Label>
+
+                {/* --- ADVANCED REVIEWER ASSIGNMENT (ADMIN ONLY OR SINGLE-CANDIDATE) --- */}
+                <div className="grid grid-cols-2 gap-4 mb-4 p-3 border rounded-md bg-muted/20">
+                  <div className="space-y-2">
+                    <Label>Quản lý chung (Bước 2)</Label>
+                    {globalManagers.length === 1 ? (
+                      <p className="text-sm font-medium text-muted-foreground bg-muted p-2 rounded">{globalManagers[0].full_name || globalManagers[0].email}</p>
+                    ) : isAdmin ? (
                       <Select value={form.global_manager_id || "none"} onValueChange={(v) => setForm({ ...form, global_manager_id: v === "none" ? "" : v })}>
                         <SelectTrigger><SelectValue placeholder="Chọn quản lý chung" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">-- Tự động xếp hoặc Gán sau --</SelectItem>
+                          <SelectItem value="none">-- Sẽ phân công sau --</SelectItem>
                           {globalManagers.map((m) => (
                             <SelectItem key={m.user_id} value={m.user_id}>{m.full_name || m.email || "Chưa đặt tên"}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
+                    ) : (
+                      <p className="text-sm italic text-muted-foreground bg-muted p-2 rounded border border-dashed">Sẽ được phân công bởi Admin</p>
+                    )}
                   </div>
-                )}
+
+                  <div className="space-y-2">
+                    <Label>Pháp chế (Bước 3)</Label>
+                    {legalReviewers.length === 1 ? (
+                      <p className="text-sm font-medium text-muted-foreground bg-muted p-2 rounded">{legalReviewers[0].full_name || legalReviewers[0].email}</p>
+                    ) : isAdmin ? (
+                      <Select value={form.legal_reviewer_id || "none"} onValueChange={(v) => setForm({ ...form, legal_reviewer_id: v === "none" ? "" : v })}>
+                        <SelectTrigger><SelectValue placeholder="Chọn pháp chế duyệt" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">-- Sẽ phân công sau --</SelectItem>
+                          {legalReviewers.map((m) => (
+                            <SelectItem key={m.user_id} value={m.user_id}>{m.full_name || m.email || "Chưa đặt tên"}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-sm italic text-muted-foreground bg-muted p-2 rounded border border-dashed">Sẽ được phân công bởi Admin</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Kế toán (Bước 4)</Label>
+                    {accountantReviewers.length === 1 ? (
+                      <p className="text-sm font-medium text-muted-foreground bg-muted p-2 rounded">{accountantReviewers[0].full_name || accountantReviewers[0].email}</p>
+                    ) : isAdmin ? (
+                      <Select value={form.accountant_reviewer_id || "none"} onValueChange={(v) => setForm({ ...form, accountant_reviewer_id: v === "none" ? "" : v })}>
+                        <SelectTrigger><SelectValue placeholder="Chọn kế toán duyệt" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">-- Sẽ phân công sau --</SelectItem>
+                          {accountantReviewers.map((m) => (
+                            <SelectItem key={m.user_id} value={m.user_id}>{m.full_name || m.email || "Chưa đặt tên"}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-sm italic text-muted-foreground bg-muted p-2 rounded border border-dashed">Sẽ được phân công bởi Admin</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Tài chính (Bước 5)</Label>
+                    {financeReviewers.length === 1 ? (
+                      <p className="text-sm font-medium text-muted-foreground bg-muted p-2 rounded">{financeReviewers[0].full_name || financeReviewers[0].email}</p>
+                    ) : isAdmin ? (
+                      <Select value={form.finance_reviewer_id || "none"} onValueChange={(v) => setForm({ ...form, finance_reviewer_id: v === "none" ? "" : v })}>
+                        <SelectTrigger><SelectValue placeholder="Chọn tài chính duyệt" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">-- Sẽ phân công sau --</SelectItem>
+                          {financeReviewers.map((m) => (
+                            <SelectItem key={m.user_id} value={m.user_id}>{m.full_name || m.email || "Chưa đặt tên"}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-sm italic text-muted-foreground bg-muted p-2 rounded border border-dashed">Sẽ được phân công bởi Admin</p>
+                    )}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Loại hợp đồng *</Label>

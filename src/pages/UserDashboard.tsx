@@ -120,6 +120,9 @@ const UserDashboard = () => {
     tax_code: "",
     manager_id: "",
     global_manager_id: "",
+    legal_reviewer_id: "",
+    accountant_reviewer_id: "",
+    finance_reviewer_id: "",
   });
 
   const [paymentPhases, setPaymentPhases] = useState<PaymentPhase[]>([
@@ -372,7 +375,7 @@ const UserDashboard = () => {
 
   const resetFormData = () => {
     setEditingReqId(null);
-    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "", global_manager_id: "" });
+    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "", global_manager_id: "", legal_reviewer_id: "", accountant_reviewer_id: "", finance_reviewer_id: "" });
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
   };
 
@@ -403,6 +406,9 @@ const UserDashboard = () => {
       tax_code: req.tax_code || "",
       manager_id: req.manager_id || "",
       global_manager_id: req.global_manager_id || (globalManagers.length === 1 ? globalManagers[0].user_id : ""),
+      legal_reviewer_id: req.legal_reviewer_id || "",
+      accountant_reviewer_id: req.accountant_reviewer_id || "",
+      finance_reviewer_id: req.finance_reviewer_id || "",
     });
 
     if (schedules.length > 0) {
@@ -452,6 +458,11 @@ const UserDashboard = () => {
 
   const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
 
+  // Group reviewers by role for the UI
+  const legalReviewers = reviewers.filter(r => r.role === 'admin');
+  const accountantReviewers = reviewers.filter(r => r.role === 'accountant');
+  const financeReviewers = reviewers.filter(r => r.role === 'finance');
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -499,6 +510,46 @@ const UserDashboard = () => {
                   </Select>
                 </div>
               </div>
+
+              {/* --- ADVANCED REVIEWER ASSIGNMENT (USER VIEW - READONLY IF NOT AUTO-ASSIGNABLE) --- */}
+              <div className="grid grid-cols-2 gap-4 mb-4 p-3 border rounded-md bg-muted/20">
+                <div className="space-y-2">
+                  <Label>Quản lý chung (Bước 2)</Label>
+                  {globalManagers.length === 1 ? (
+                    <p className="text-sm font-medium text-muted-foreground bg-muted p-2 rounded">{globalManagers[0].full_name || globalManagers[0].email}</p>
+                  ) : (
+                    <p className="text-sm italic text-muted-foreground bg-muted p-2 rounded border border-dashed">Sẽ được phân công bởi Admin</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Pháp chế (Bước 3)</Label>
+                  {legalReviewers.length === 1 ? (
+                    <p className="text-sm font-medium text-muted-foreground bg-muted p-2 rounded">{legalReviewers[0].full_name || legalReviewers[0].email}</p>
+                  ) : (
+                    <p className="text-sm italic text-muted-foreground bg-muted p-2 rounded border border-dashed">Sẽ được phân công bởi Admin</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Kế toán (Bước 4)</Label>
+                  {accountantReviewers.length === 1 ? (
+                    <p className="text-sm font-medium text-muted-foreground bg-muted p-2 rounded">{accountantReviewers[0].full_name || accountantReviewers[0].email}</p>
+                  ) : (
+                    <p className="text-sm italic text-muted-foreground bg-muted p-2 rounded border border-dashed">Sẽ được phân công bởi Admin</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tài chính (Bước 5)</Label>
+                  {financeReviewers.length === 1 ? (
+                    <p className="text-sm font-medium text-muted-foreground bg-muted p-2 rounded">{financeReviewers[0].full_name || financeReviewers[0].email}</p>
+                  ) : (
+                    <p className="text-sm italic text-muted-foreground bg-muted p-2 rounded border border-dashed">Sẽ được phân công bởi Admin</p>
+                  )}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Loại hợp đồng *</Label>
