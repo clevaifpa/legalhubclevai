@@ -649,13 +649,16 @@ const AdminReviewRequests = () => {
   const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
 
   // Helper for tracking props
-  const getAssignedReviewers = (req: any) => ({
-    quan_ly: { id: req.manager_id, name: reviewers.find(r => r.user_id === req.manager_id)?.full_name },
-    quan_ly_chung: { id: req.global_manager_id, name: reviewers.find(r => r.user_id === req.global_manager_id)?.full_name },
-    phap_ly: { id: req.legal_reviewer_id, name: reviewers.find(r => r.user_id === req.legal_reviewer_id)?.full_name },
-    ke_toan: { id: req.accountant_reviewer_id, name: reviewers.find(r => r.user_id === req.accountant_reviewer_id)?.full_name },
-    tai_chinh: { id: req.finance_reviewer_id, name: reviewers.find(r => r.user_id === req.finance_reviewer_id)?.full_name }
-  });
+  const getAssignedReviewers = (req: any) => {
+    const globalMgrName = reviewers.find(r => r.user_id === globalManagerId)?.full_name || "Quản lý chung";
+    return {
+      quan_ly: { id: req.manager_id, name: reviewers.find(r => r.user_id === req.manager_id)?.full_name },
+      quan_ly_chung: { id: globalManagerId || "", name: globalMgrName },
+      phap_ly: { id: "", name: "" },
+      ke_toan: { id: "", name: "" },
+      tai_chinh: { id: "", name: "" }
+    };
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
