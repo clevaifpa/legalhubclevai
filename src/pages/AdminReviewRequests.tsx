@@ -1044,7 +1044,7 @@ const AdminReviewRequests = () => {
                     assignedReviewers={getAssignedReviewers(req)}
                     skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")}
                     assignable={isAdmin}
-                    reviewers={reviewers}
+                    reviewers={[...reviewers, ...globalManagers]}
                     onAssignReviewer={(dept, reviewerId) => handleAssignReviewer(req.id, dept, reviewerId)}
                   />
                 )}
