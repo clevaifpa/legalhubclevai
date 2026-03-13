@@ -105,19 +105,19 @@ const AdminReviewRequests = () => {
   const isFinance = role === "finance";
   const isDirectSubmit = isAdmin || isAccountant || isFinance || isManager;
 
-  const [globalManagerId, setGlobalManagerId] = useState<string | null>(null);
+  const [globalManagers, setGlobalManagers] = useState<any[]>([]);
 
-  // Fetch global manager user_id on mount
+  // Fetch all global managers on mount
   useEffect(() => {
-    const fetchGlobalManager = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("user_id")
-        .eq("email", GLOBAL_MANAGER_EMAIL)
-        .single();
-      if (data) setGlobalManagerId(data.user_id);
+    const fetchGlobalManagers = async () => {
+      const { data, error } = await (supabase.rpc as any)("get_users_by_roles", { _roles: ["manager_chung"] });
+      if (!error && Array.isArray(data)) {
+        setGlobalManagers(data);
+      } else {
+        console.error("Error fetching global managers:", error);
+      }
     };
-    fetchGlobalManager();
+    fetchGlobalManagers();
   }, []);
 
   const [requests, setRequests] = useState<any[]>([]);
@@ -131,6 +131,10 @@ const AdminReviewRequests = () => {
   const [adminNotes, setAdminNotes] = useState("");
   const [legalReviewDocLink, setLegalReviewDocLink] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const [legalReviewerId, setLegalReviewerId] = useState("");
+  const [accountantReviewerId, setAccountantReviewerId] = useState("");
+  const [financeReviewerId, setFinanceReviewerId] = useState("");
 
   const [managers, setManagers] = useState<any[]>([]);
   const [reviewers, setReviewers] = useState<any[]>([]);
@@ -155,6 +159,7 @@ const AdminReviewRequests = () => {
     contract_type_category: "",
     tax_code: "",
     manager_id: "",
+    global_manager_id: "",
   });
 
   const [paymentPhases, setPaymentPhases] = useState<PaymentPhase[]>([
@@ -194,6 +199,13 @@ const AdminReviewRequests = () => {
   useEffect(() => {
     if (form.department) fetchManagers(form.department);
   }, [form.department]);
+
+  // Auto assign global_manager_id if there's exactly 1
+  useEffect(() => {
+    if (globalManagers.length === 1 && !form.global_manager_id) {
+      setForm((prev) => ({ ...prev, global_manager_id: globalManagers[0].user_id }));
+    }
+  }, [globalManagers, form.global_manager_id]);
 
   useEffect(() => {
     fetchReviewers();
@@ -339,6 +351,7 @@ const AdminReviewRequests = () => {
         contract_type_category: form.contract_type_category,
         tax_code: form.tax_code,
         manager_id: isDirectSubmit ? null : (form.manager_id || null),
+        global_manager_id: isDirectSubmit ? (form.global_manager_id || null) : null,
       }).eq("id", editingReqId);
       submitError = error;
 
@@ -367,8 +380,8 @@ const AdminReviewRequests = () => {
         approved_pe_number: form.approved_pe_number.trim() || null,
         contract_type_category: form.contract_type_category,
         tax_code: form.tax_code,
-        manager_id: isDirectSubmit ? (globalManagerId || null) : (form.manager_id || null),
-        global_manager_id: globalManagerId || null,
+        manager_id: isDirectSubmit ? null : (form.manager_id || null),
+        global_manager_id: isDirectSubmit ? (form.global_manager_id || null) : null,
         status: initialStatus as any,
         admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Quản lý — chuyển thẳng cho Quản lý chung duyệt." : null,
       } as any).select().single();
@@ -443,7 +456,7 @@ const AdminReviewRequests = () => {
 
   const resetFormData = () => {
     setEditingReqId(null);
-    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "" });
+    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "", global_manager_id: "" });
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
   };
 
@@ -473,6 +486,7 @@ const AdminReviewRequests = () => {
       contract_type_category: req.contract_type_category || "",
       tax_code: req.tax_code || "",
       manager_id: req.manager_id || "",
+      global_manager_id: req.global_manager_id || (globalManagers.length === 1 ? globalManagers[0].user_id : ""),
     });
 
     if (schedules.length > 0) {
@@ -656,8 +670,12 @@ const AdminReviewRequests = () => {
     if (!req) return false;
     if (isAdmin) return true;
     if (isManager && req.status === 'cho_quan_ly') return true;
-    // Global manager (hiennd) can act on cho_quan_ly_chung
-    if (isManager && req.status === 'cho_quan_ly_chung' && user?.email === GLOBAL_MANAGER_EMAIL) return true;
+    // Global manager can act on cho_quan_ly_chung if assigned, or if not assigned and they are a global manager
+    if (isManager && req.status === 'cho_quan_ly_chung') {
+      const isGlobalManager = globalManagers.some(m => m.user_id === user?.id);
+      if (req.global_manager_id) return req.global_manager_id === user?.id; // Must match assignment
+      return isGlobalManager; // Anyone can pick it up if not assigned
+    }
     if (isAccountant && req.status === 'cho_ke_toan') return true;
     if (isFinance && req.status === 'cho_tai_chinh') return true;
     return false;
@@ -679,11 +697,11 @@ const AdminReviewRequests = () => {
   const getAssignedReviewers = (req: any) => {
     const findName = (id: string | null) => {
       if (!id) return "";
-      return reviewers.find(r => r.user_id === id)?.full_name || "";
+      return reviewers.find(r => r.user_id === id)?.full_name || globalManagers.find(m => m.user_id === id)?.full_name || "";
     };
     return {
       quan_ly: { id: req.manager_id || "", name: findName(req.manager_id) },
-      quan_ly_chung: { id: req.global_manager_id || globalManagerId || "", name: findName(req.global_manager_id) || findName(globalManagerId) || "Quản lý chung" },
+      quan_ly_chung: { id: req.global_manager_id || "", name: findName(req.global_manager_id) || "Quản lý chung" },
       phap_ly: { id: req.legal_reviewer_id || "", name: findName(req.legal_reviewer_id) },
       ke_toan: { id: req.accountant_reviewer_id || "", name: findName(req.accountant_reviewer_id) },
       tai_chinh: { id: req.finance_reviewer_id || "", name: findName(req.finance_reviewer_id) },
@@ -744,6 +762,22 @@ const AdminReviewRequests = () => {
                     </div>
                   )}
                 </div>
+                {isAdmin && globalManagers.length > 1 && (
+                  <div className="grid grid-cols-1 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <Label>Quản lý chung</Label>
+                      <Select value={form.global_manager_id || "none"} onValueChange={(v) => setForm({ ...form, global_manager_id: v === "none" ? "" : v })}>
+                        <SelectTrigger><SelectValue placeholder="Chọn quản lý chung" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">-- Tự động xếp hoặc Gán sau --</SelectItem>
+                          {globalManagers.map((m) => (
+                            <SelectItem key={m.user_id} value={m.user_id}>{m.full_name || m.email || "Chưa đặt tên"}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Loại hợp đồng *</Label>

@@ -94,7 +94,7 @@ const UserDashboard = () => {
   const [notes, setNotes] = useState<Record<string, any[]>>({});
   const [paymentSchedules, setPaymentSchedules] = useState<Record<string, any[]>>({});
   const [managers, setManagers] = useState<any[]>([]);
-  const [globalManagerId, setGlobalManagerId] = useState<string | null>(null);
+  const [globalManagers, setGlobalManagers] = useState<any[]>([]);
   const [reviewers, setReviewers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -119,6 +119,7 @@ const UserDashboard = () => {
     contract_type_category: "",
     tax_code: "",
     manager_id: "",
+    global_manager_id: "",
   });
 
   const [paymentPhases, setPaymentPhases] = useState<PaymentPhase[]>([
@@ -159,17 +160,25 @@ const UserDashboard = () => {
     if (form.department) fetchManagers(form.department);
   }, [form.department]);
 
-  // Fetch global manager user_id on mount
+  // Auto assign global_manager_id if there's exactly 1
   useEffect(() => {
-    const fetchGlobalManager = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("user_id")
-        .eq("email", GLOBAL_MANAGER_EMAIL)
-        .single();
-      if (data) setGlobalManagerId(data.user_id);
+    if (globalManagers.length === 1 && !form.global_manager_id) {
+      setForm((prev) => ({ ...prev, global_manager_id: globalManagers[0].user_id }));
+    }
+  }, [globalManagers, form.global_manager_id]);
+
+  // Fetch all global managers on mount
+  useEffect(() => {
+    const fetchGlobalManagers = async () => {
+      // Bypassing strict RPC typing for the new RPC if it's not yet in types.ts
+      const { data, error } = await (supabase.rpc as any)("get_users_by_roles", { _roles: ["manager_chung"] });
+      if (!error && Array.isArray(data)) {
+        setGlobalManagers(data);
+      } else {
+        console.error("Error fetching global managers:", error);
+      }
     };
-    fetchGlobalManager();
+    fetchGlobalManagers();
     fetchReviewers();
   }, []);
 
@@ -263,6 +272,7 @@ const UserDashboard = () => {
         contract_type_category: form.contract_type_category,
         tax_code: form.tax_code,
         manager_id: isDirectSubmit ? null : (form.manager_id || null),
+        global_manager_id: isDirectSubmit ? (form.global_manager_id || null) : null,
       }).eq("id", editingReqId);
       submitError = error;
 
@@ -290,8 +300,8 @@ const UserDashboard = () => {
         approved_pe_number: form.approved_pe_number.trim() || null,
         contract_type_category: form.contract_type_category,
         tax_code: form.tax_code,
-        manager_id: isDirectSubmit ? (globalManagerId || null) : (form.manager_id || null),
-        global_manager_id: globalManagerId || null,
+        manager_id: isDirectSubmit ? null : (form.manager_id || null),
+        global_manager_id: isDirectSubmit ? (form.global_manager_id || null) : null,
         status: initialStatus as any,
         admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Tài chính — chuyển thẳng cho Quản lý chung duyệt." : null,
       }).select().single();
@@ -361,7 +371,7 @@ const UserDashboard = () => {
 
   const resetFormData = () => {
     setEditingReqId(null);
-    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "" });
+    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "", global_manager_id: "" });
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
   };
 
@@ -391,6 +401,7 @@ const UserDashboard = () => {
       contract_type_category: req.contract_type_category || "",
       tax_code: req.tax_code || "",
       manager_id: req.manager_id || "",
+      global_manager_id: req.global_manager_id || (globalManagers.length === 1 ? globalManagers[0].user_id : ""),
     });
 
     if (schedules.length > 0) {
@@ -427,11 +438,11 @@ const UserDashboard = () => {
   const getAssignedReviewers = (req: any) => {
     const findName = (id: string | null) => {
       if (!id) return "";
-      return reviewers.find(r => r.user_id === id)?.full_name || "";
+      return reviewers.find(r => r.user_id === id)?.full_name || globalManagers.find(m => m.user_id === id)?.full_name || "";
     };
     return {
       quan_ly: { id: req.manager_id || "", name: findName(req.manager_id) },
-      quan_ly_chung: { id: req.global_manager_id || globalManagerId || "", name: findName(req.global_manager_id) || findName(globalManagerId) || "Quản lý chung" },
+      quan_ly_chung: { id: req.global_manager_id || "", name: findName(req.global_manager_id) || "Quản lý chung" },
       phap_ly: { id: req.legal_reviewer_id || "", name: findName(req.legal_reviewer_id) },
       ke_toan: { id: req.accountant_reviewer_id || "", name: findName(req.accountant_reviewer_id) },
       tai_chinh: { id: req.finance_reviewer_id || "", name: findName(req.finance_reviewer_id) },
