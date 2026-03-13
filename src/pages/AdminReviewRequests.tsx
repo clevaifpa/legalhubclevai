@@ -377,6 +377,31 @@ const AdminReviewRequests = () => {
       if (insertedReq) finalReqId = insertedReq.id;
 
       if (insertedReq) {
+        // Auto-assign reviewers for steps with only 1 person
+        const autoAssign: Record<string, string> = {};
+        const roleStepMap: Record<string, string> = {
+          admin: "legal_reviewer_id",
+          accountant: "accountant_reviewer_id",
+          finance: "finance_reviewer_id",
+        };
+        for (const [roleKey, col] of Object.entries(roleStepMap)) {
+          const candidates = reviewers.filter(r => r.role === roleKey);
+          if (candidates.length === 1) {
+            autoAssign[col] = candidates[0].user_id;
+          }
+        }
+        // Auto-assign global manager if only 1 manager
+        const managerCandidates = reviewers.filter(r => r.role === "manager");
+        if (managerCandidates.length === 1) {
+          autoAssign["global_manager_id"] = managerCandidates[0].user_id;
+        } else if (globalManagerId) {
+          autoAssign["global_manager_id"] = globalManagerId;
+        }
+
+        if (Object.keys(autoAssign).length > 0) {
+          await supabase.from("review_requests").update(autoAssign as any).eq("id", insertedReq.id);
+        }
+
         await createWorkflowNotifications({
           reviewRequestId: insertedReq.id,
           contractTitle: form.contract_title,
