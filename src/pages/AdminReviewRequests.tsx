@@ -363,6 +363,27 @@ const AdminReviewRequests = () => {
       // Logic tạo mới (Create)
       const initialStatus = isDirectSubmit ? "cho_quan_ly_chung" : "cho_quan_ly";
 
+      // PRE-CALCULATE AUTO ASSIGNMENTS TO SAVE DB REQUESTS
+      const autoAssign: Record<string, string> = {};
+      const roleStepMap: Record<string, string> = {
+        admin: "legal_reviewer_id",
+        accountant: "accountant_reviewer_id",
+        finance: "finance_reviewer_id",
+      };
+      for (const [roleKey, col] of Object.entries(roleStepMap)) {
+        const candidates = reviewers.filter(r => r.role === roleKey);
+        if (candidates.length === 1) {
+          autoAssign[col] = candidates[0].user_id;
+        }
+      }
+      // Auto-assign global manager if only 1 manager
+      const managerCandidates = reviewers.filter(r => r.role === "manager");
+      if (managerCandidates.length === 1) {
+        autoAssign["global_manager_id"] = managerCandidates[0].user_id;
+      } else if (globalManagers.length === 1) {
+        autoAssign["global_manager_id"] = globalManagers[0].user_id;
+      }
+
       const { data: insertedReq, error } = await supabase.from("review_requests").insert({
         requester_id: user.id,
         requester_name: employeeName || profile.full_name || user.email || "",
@@ -381,7 +402,10 @@ const AdminReviewRequests = () => {
         contract_type_category: form.contract_type_category,
         tax_code: form.tax_code,
         manager_id: isDirectSubmit ? null : (form.manager_id || null),
-        global_manager_id: isDirectSubmit ? (form.global_manager_id || null) : null,
+        global_manager_id: isDirectSubmit ? (form.global_manager_id || autoAssign.global_manager_id || null) : (autoAssign.global_manager_id || null),
+        legal_reviewer_id: autoAssign.legal_reviewer_id || null,
+        accountant_reviewer_id: autoAssign.accountant_reviewer_id || null,
+        finance_reviewer_id: autoAssign.finance_reviewer_id || null,
         status: initialStatus as any,
         admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Quản lý — chuyển thẳng cho Quản lý chung duyệt." : null,
       } as any).select().single();
@@ -390,31 +414,6 @@ const AdminReviewRequests = () => {
       if (insertedReq) finalReqId = insertedReq.id;
 
       if (insertedReq) {
-        // Auto-assign reviewers for steps with only 1 person
-        const autoAssign: Record<string, string> = {};
-        const roleStepMap: Record<string, string> = {
-          admin: "legal_reviewer_id",
-          accountant: "accountant_reviewer_id",
-          finance: "finance_reviewer_id",
-        };
-        for (const [roleKey, col] of Object.entries(roleStepMap)) {
-          const candidates = reviewers.filter(r => r.role === roleKey);
-          if (candidates.length === 1) {
-            autoAssign[col] = candidates[0].user_id;
-          }
-        }
-        // Auto-assign global manager if only 1 manager
-        const managerCandidates = reviewers.filter(r => r.role === "manager");
-        if (managerCandidates.length === 1) {
-          autoAssign["global_manager_id"] = managerCandidates[0].user_id;
-        } else if (globalManagerId) {
-          autoAssign["global_manager_id"] = globalManagerId;
-        }
-
-        if (Object.keys(autoAssign).length > 0) {
-          await supabase.from("review_requests").update(autoAssign as any).eq("id", insertedReq.id);
-        }
-
         await createWorkflowNotifications({
           reviewRequestId: insertedReq.id,
           contractTitle: form.contract_title,
