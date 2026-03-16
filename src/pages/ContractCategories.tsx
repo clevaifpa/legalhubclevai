@@ -242,12 +242,9 @@ const ContractCategories = () => {
     setUploading(true);
 
     try {
-      // Map UI status het_hieu_luc_chua_hoan_thanh to DB status het_hieu_luc
-      const dbStatus = form.status === "het_hieu_luc_chua_hoan_thanh" ? "het_hieu_luc" : form.status;
-
       const { data: insertedContract, error } = await supabase.from("contracts").insert({
         title: form.title.trim(), partner_name: form.partner_name.trim(),
-        contract_type: form.contract_type as any, status: dbStatus as any,
+        contract_type: form.contract_type as any, status: form.status as any,
         value: parseInt(form.value) || 0, effective_date: form.effective_date || null,
         expiry_date: form.expiry_date, department: form.department,
         risk_level: form.risk_level as any, category_id: selectedCategory.id,
@@ -268,24 +265,7 @@ const ContractCategories = () => {
             payment_due_date: p.payment_due_date || null,
           }));
 
-          if (form.status === "het_hieu_luc_chua_hoan_thanh") {
-            schedules.push({
-              contract_id: insertedContract.id,
-              phase_name: "[HIDDEN] CHUA_HOAN_THANH",
-              payment_amount: 0,
-              payment_due_date: null,
-            });
-          }
-
           await supabase.from("contract_payment_schedules").insert(schedules as any);
-        } else if (form.status === "het_hieu_luc_chua_hoan_thanh") {
-          // If no valid phases, but they chose this status, we MUST create the hidden flag
-          await supabase.from("contract_payment_schedules").insert({
-            contract_id: insertedContract.id,
-            phase_name: "[HIDDEN] CHUA_HOAN_THANH",
-            payment_amount: 0,
-            payment_due_date: null,
-          } as any);
         }
 
         // Notify Admins
@@ -338,10 +318,9 @@ const ContractCategories = () => {
     );
   });
 
-  // Get nearest obligation date for a contract
   const getNearestObligation = (contractId: string) => {
     const payments = contractPayments[contractId] || [];
-    const unpaid = payments.filter((p: any) => p.payment_status !== "da_thanh_toan" && p.payment_due_date && p.phase_name !== "[HIDDEN] CHUA_HOAN_THANH");
+    const unpaid = payments.filter((p: any) => p.payment_status !== "da_thanh_toan" && p.payment_due_date);
     if (unpaid.length === 0) return null;
     unpaid.sort((a: any, b: any) => new Date(a.payment_due_date).getTime() - new Date(b.payment_due_date).getTime());
     return unpaid[0];
@@ -503,14 +482,7 @@ const ContractCategories = () => {
                 {filteredContracts.map((c) => {
                   const nearestObl = getNearestObligation(c.id);
                   const payments = contractPayments[c.id] || [];
-                  const visiblePayments = payments.filter((p: any) => p.phase_name !== "[HIDDEN] CHUA_HOAN_THANH");
-
-                  // Compute reliable UI status
-                  const hasHiddenFlag = payments.some((p: any) => p.phase_name === "[HIDDEN] CHUA_HOAN_THANH");
-                  const hasUnpaidVisible = visiblePayments.some((p: any) => p.payment_status !== "da_thanh_toan");
-                  const derivedStatus = (c.status === "het_hieu_luc" && (hasHiddenFlag || hasUnpaidVisible))
-                    ? "het_hieu_luc_chua_hoan_thanh"
-                    : c.status;
+                  const visiblePayments = payments;
 
                   return (
                     <TableRow key={c.id} className="hover:bg-muted/30 transition-colors">
@@ -522,12 +494,10 @@ const ContractCategories = () => {
                       <TableCell>
                         {canEditContract(c) ? (
                           <Select
-                            value={derivedStatus}
+                            value={c.status}
                             onValueChange={async (newStatus) => {
                               const oldStatus = c.status;
-                              // Map back to DB enum
-                              const dbStatusToSave = newStatus === "het_hieu_luc_chua_hoan_thanh" ? "het_hieu_luc" : newStatus;
-                              const { error } = await supabase.from("contracts").update({ status: dbStatusToSave as any }).eq("id", c.id);
+                              const { error } = await supabase.from("contracts").update({ status: newStatus as any }).eq("id", c.id);
                               if (error) {
                                 toast.error("Lỗi cập nhật trạng thái", { description: error.message });
                               } else {
@@ -538,25 +508,8 @@ const ContractCategories = () => {
                                     editor_name: profile.full_name || user.email || "",
                                     record_id: c.id,
                                     table_name: "contracts",
-                                    changes: { field: "status", old: oldStatus, new: dbStatusToSave },
+                                    changes: { field: "status", old: oldStatus, new: newStatus },
                                   } as any);
-                                }
-
-                                // Manage hidden flag for state retention
-                                if (newStatus === "het_hieu_luc_chua_hoan_thanh") {
-                                  if (!hasHiddenFlag) {
-                                    await supabase.from("contract_payment_schedules").insert({
-                                      contract_id: c.id,
-                                      phase_name: "[HIDDEN] CHUA_HOAN_THANH",
-                                      payment_amount: 0,
-                                      payment_due_date: null,
-                                    } as any);
-                                  }
-                                } else {
-                                  const flagPhase = payments.find((p: any) => p.phase_name === "[HIDDEN] CHUA_HOAN_THANH");
-                                  if (flagPhase) {
-                                    await supabase.from("contract_payment_schedules").delete().eq("id", flagPhase.id);
-                                  }
                                 }
 
                                 toast.success("Đã cập nhật trạng thái");
@@ -566,7 +519,7 @@ const ContractCategories = () => {
                           >
                             <SelectTrigger className="h-7 w-32 text-xs">
                               <SelectValue placeholder={
-                                STATUS_LABELS[derivedStatus] || derivedStatus
+                                STATUS_LABELS[c.status] || c.status
                               } />
                             </SelectTrigger>
                             <SelectContent>
@@ -578,7 +531,7 @@ const ContractCategories = () => {
                           </Select>
                         ) : (
                           <Badge variant="secondary">
-                            {STATUS_LABELS[derivedStatus] || derivedStatus}
+                            {STATUS_LABELS[c.status] || c.status}
                           </Badge>
                         )}
                       </TableCell>
@@ -670,12 +623,7 @@ const ContractCategories = () => {
         {contractIdParam && contracts.find(c => c.id === contractIdParam) && (() => {
           const detailContract = contracts.find(c => c.id === contractIdParam)!;
           const payments = contractPayments[detailContract.id] || [];
-          const visiblePayments = payments.filter((p: any) => p.phase_name !== "[HIDDEN] CHUA_HOAN_THANH");
-          const hasHiddenFlag = payments.some((p: any) => p.phase_name === "[HIDDEN] CHUA_HOAN_THANH");
-          const hasUnpaidVisible = visiblePayments.some((p: any) => p.payment_status !== "da_thanh_toan");
-          const derivedStatus = (detailContract.status === "het_hieu_luc" && (hasHiddenFlag || hasUnpaidVisible))
-            ? "het_hieu_luc_chua_hoan_thanh"
-            : detailContract.status;
+          const visiblePayments = payments;
 
           return (
             <Dialog open={true} onOpenChange={(open) => {
@@ -692,7 +640,7 @@ const ContractCategories = () => {
                   <div>
                     <h3 className="font-bold text-lg">{detailContract.title}</h3>
                     <Badge className="mt-2" variant="secondary">
-                      {STATUS_LABELS[derivedStatus] || derivedStatus}
+                      {STATUS_LABELS[detailContract.status] || detailContract.status}
                     </Badge>
                   </div>
 
