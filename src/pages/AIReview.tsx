@@ -42,27 +42,53 @@ const AIReview = () => {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [history, setHistory] = useState<AIReviewHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const loadHistory = async () => {
+  const PAGE_SIZE = 20;
+
+  const loadHistory = async (pageNumber = 1) => {
     try {
-      setLoadingHistory(true);
-      const { data, error } = await supabase
+      if (pageNumber === 1) setLoadingHistory(true);
+      else setLoadingMore(true);
+
+      const from = (pageNumber - 1) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      const { data, error, count } = await supabase
         .from("ai_review_history")
-        .select("id, contract_text, summary, risk_level, issues, missing_clauses, recommendations, created_at")
+        .select("id, contract_text, summary, risk_level, issues, missing_clauses, recommendations, created_at", { count: "exact" })
         .order("created_at", { ascending: false })
-        .limit(20);
+        .range(from, to);
 
       if (error) throw error;
-      setHistory((data || []) as unknown as AIReviewHistoryItem[]);
+
+      const newItems = (data || []) as unknown as AIReviewHistoryItem[];
+
+      if (pageNumber === 1) {
+        setHistory(newItems);
+      } else {
+        setHistory((prev) => [...prev, ...newItems]);
+      }
+
+      setHasMore(count !== null ? from + newItems.length < count : newItems.length === PAGE_SIZE);
     } catch (e: any) {
       toast.error("Không tải được lịch sử AI kiểm tra", { description: e.message });
     } finally {
       setLoadingHistory(false);
+      setLoadingMore(false);
     }
   };
 
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    loadHistory(nextPage);
+  };
+
   useEffect(() => {
-    loadHistory();
+    loadHistory(1);
   }, []);
 
   const saveHistory = async (payload: AnalysisResult, text: string) => {
@@ -109,7 +135,8 @@ const AIReview = () => {
 
       try {
         await saveHistory(analysisResult, contractText.trim());
-        await loadHistory();
+        setPage(1);
+        await loadHistory(1);
       } catch (saveError: any) {
         toast.error("Phân tích xong nhưng lưu lịch sử thất bại", { description: saveError.message });
       }
@@ -309,7 +336,7 @@ const AIReview = () => {
             <CardHeader>
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
                 <History className="h-5 w-5 text-accent" />
-                Lịch sử AI kiểm tra (20 bản ghi gần nhất)
+                Lịch sử AI kiểm tra
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -344,6 +371,23 @@ const AIReview = () => {
                       </div>
                     );
                   })}
+
+                  {hasMore && history.length > 0 && (
+                    <div className="flex justify-center pt-4">
+                      <Button
+                        variant="outline"
+                        onClick={handleLoadMore}
+                        disabled={loadingMore}
+                        className="w-full sm:w-auto"
+                      >
+                        {loadingMore ? (
+                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang tải...</>
+                        ) : (
+                          "Tải thêm"
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
