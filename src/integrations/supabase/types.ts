@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_review_history: {
+        Row: {
+          contract_text: string
+          created_at: string
+          id: string
+          issues: Json | null
+          missing_clauses: string[] | null
+          recommendations: string[] | null
+          risk_level: string
+          summary: string
+          user_id: string
+        }
+        Insert: {
+          contract_text: string
+          created_at?: string
+          id?: string
+          issues?: Json | null
+          missing_clauses?: string[] | null
+          recommendations?: string[] | null
+          risk_level: string
+          summary: string
+          user_id: string
+        }
+        Update: {
+          contract_text?: string
+          created_at?: string
+          id?: string
+          issues?: Json | null
+          missing_clauses?: string[] | null
+          recommendations?: string[] | null
+          risk_level?: string
+          summary?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       clauses: {
         Row: {
           content: string
