@@ -14,42 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      ai_review_history: {
-        Row: {
-          contract_text: string
-          created_at: string
-          id: string
-          issues: Json
-          missing_clauses: string[]
-          recommendations: string[]
-          risk_level: Database["public"]["Enums"]["risk_level"]
-          summary: string
-          user_id: string
-        }
-        Insert: {
-          contract_text: string
-          created_at?: string
-          id?: string
-          issues?: Json
-          missing_clauses?: string[]
-          recommendations?: string[]
-          risk_level: Database["public"]["Enums"]["risk_level"]
-          summary: string
-          user_id: string
-        }
-        Update: {
-          contract_text?: string
-          created_at?: string
-          id?: string
-          issues?: Json
-          missing_clauses?: string[]
-          recommendations?: string[]
-          risk_level?: Database["public"]["Enums"]["risk_level"]
-          summary?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       clauses: {
         Row: {
           content: string
