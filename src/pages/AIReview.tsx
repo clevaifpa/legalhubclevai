@@ -56,9 +56,9 @@ const AIReview = () => {
       const from = (pageNumber - 1) * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
-      const { data, error, count } = await supabase
+      const { data, error } = await supabase
         .from("ai_review_history")
-        .select("id, contract_text, summary, risk_level, issues, missing_clauses, recommendations, created_at", { count: "exact" })
+        .select("id, contract_text, summary, risk_level, issues, missing_clauses, recommendations, created_at")
         .order("created_at", { ascending: false })
         .range(from, to);
 
@@ -72,7 +72,7 @@ const AIReview = () => {
         setHistory((prev) => [...prev, ...newItems]);
       }
 
-      setHasMore(count !== null ? from + newItems.length < count : newItems.length === PAGE_SIZE);
+      setHasMore(newItems.length === PAGE_SIZE);
     } catch (e: any) {
       toast.error("Không tải được lịch sử AI kiểm tra", { description: e.message });
     } finally {
