@@ -96,12 +96,12 @@ const AIReview = () => {
     const user = authData?.user;
     if (!user) return;
 
-    const { error } = await supabase.from("ai_review_history").insert({
+    const { error } = await (supabase.from("ai_review_history") as any).insert({
       user_id: user.id,
       contract_text: text,
       summary: payload.summary,
       risk_level: payload.riskLevel,
-      issues: payload.issues as any,
+      issues: payload.issues,
       missing_clauses: payload.missingClauses,
       recommendations: payload.recommendations,
     });
