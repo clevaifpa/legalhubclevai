@@ -19,10 +19,10 @@ export type Database = {
           contract_text: string
           created_at: string
           id: string
-          issues: Json
-          missing_clauses: string[]
-          recommendations: string[]
-          risk_level: Database["public"]["Enums"]["risk_level"]
+          issues: Json | null
+          missing_clauses: string[] | null
+          recommendations: string[] | null
+          risk_level: string
           summary: string
           user_id: string
         }
@@ -30,10 +30,10 @@ export type Database = {
           contract_text: string
           created_at?: string
           id?: string
-          issues?: Json
-          missing_clauses?: string[]
-          recommendations?: string[]
-          risk_level: Database["public"]["Enums"]["risk_level"]
+          issues?: Json | null
+          missing_clauses?: string[] | null
+          recommendations?: string[] | null
+          risk_level: string
           summary: string
           user_id: string
         }
@@ -41,10 +41,10 @@ export type Database = {
           contract_text?: string
           created_at?: string
           id?: string
-          issues?: Json
-          missing_clauses?: string[]
-          recommendations?: string[]
-          risk_level?: Database["public"]["Enums"]["risk_level"]
+          issues?: Json | null
+          missing_clauses?: string[] | null
+          recommendations?: string[] | null
+          risk_level?: string
           summary?: string
           user_id?: string
         }
