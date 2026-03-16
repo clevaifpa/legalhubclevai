@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
 
 interface AnalysisResult {
   summary: string;
@@ -45,6 +46,32 @@ const AIReview = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+
+  const toggleExpand = (id: string) => {
+    setExpandedItems(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const deleteHistoryItem = async (id: string) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa bản ghi lịch sử này không?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("ai_review_history")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setHistory(prev => prev.filter(item => item.id !== id));
+      toast.success("Đã xóa bản ghi lịch sử");
+    } catch (e: any) {
+      toast.error("Không thể xóa bản ghi", { description: e.message });
+    }
+  };
 
   const PAGE_SIZE = 20;
 
@@ -348,25 +375,114 @@ const AIReview = () => {
                 <div className="space-y-4">
                   {history.map((item) => {
                     const ItemIcon = RISK_ICONS[item.risk_level] || Shield;
+                    const isExpanded = expandedItems[item.id] || false;
+
                     return (
-                      <div key={item.id} className="border rounded-lg p-4 space-y-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(item.created_at).toLocaleString("vi-VN")}
+                      <div key={item.id} className="border rounded-lg p-4 space-y-4 bg-card">
+                        <div className="flex items-center justify-between gap-3 border-b pb-3">
+                          <div className="flex items-center gap-2">
+                            <History className="h-4 w-4 text-muted-foreground" />
+                            <div className="text-sm font-medium">
+                              {new Date(item.created_at).toLocaleString("vi-VN", {
+                                dateStyle: "medium", timeStyle: "short"
+                              })}
+                            </div>
                           </div>
-                          <Badge className={RISK_COLORS[item.risk_level] || ""}>
-                            <ItemIcon className="h-3 w-3 mr-1" />
-                            {RISK_LABELS[item.risk_level] || item.risk_level}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge className={RISK_COLORS[item.risk_level] || ""}>
+                              <ItemIcon className="h-3 w-3 mr-1" />
+                              {RISK_LABELS[item.risk_level] || item.risk_level}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                              onClick={() => deleteHistoryItem(item.id)}
+                              title="Xóa bản ghi này"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Nội dung hợp đồng</p>
-                          <p className="text-sm line-clamp-4 whitespace-pre-wrap">{item.contract_text}</p>
-                        </div>
-                        <Separator />
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Kết luận AI</p>
-                          <p className="text-sm">{item.summary}</p>
+
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-foreground">
+                              <Brain className="h-4 w-4 text-accent" /> Kết luận chung
+                            </p>
+                            <p className="text-sm bg-muted/50 p-3 rounded-md">{item.summary}</p>
+                          </div>
+
+                          {item.issues && item.issues.length > 0 && (
+                            <div>
+                              <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-warning">
+                                <AlertTriangle className="h-4 w-4" /> Điều khoản có rủi ro ({item.issues.length})
+                              </p>
+                              <div className="space-y-2">
+                                {item.issues.map((issue, idx) => (
+                                  <div key={idx} className="text-sm p-3 rounded-md border border-warning/20 bg-warning/5 space-y-1.5">
+                                    <div className="font-medium flex justify-between">
+                                      <span>{issue.clause}</span>
+                                      <Badge variant="outline" className={`shrink-0 ${RISK_COLORS[issue.riskLevel] || ""}`}>
+                                        {RISK_LABELS[issue.riskLevel] || issue.riskLevel}
+                                      </Badge>
+                                    </div>
+                                    <div className="text-muted-foreground"><span className="font-medium text-destructive">Lý do:</span> {issue.reason}</div>
+                                    <div className="text-muted-foreground"><span className="font-medium text-success">Gợi ý:</span> {issue.suggestion}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {item.missing_clauses && item.missing_clauses.length > 0 && (
+                            <div>
+                              <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-info">
+                                <FileText className="h-4 w-4" /> Điều khoản thiếu ({item.missing_clauses.length})
+                              </p>
+                              <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+                                {item.missing_clauses.map((clause, idx) => (
+                                  <li key={idx}>{clause}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {item.recommendations && item.recommendations.length > 0 && (
+                            <div>
+                              <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-success">
+                                <Lightbulb className="h-4 w-4" /> Khuyến nghị chung
+                              </p>
+                              <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+                                {item.recommendations.map((rec, idx) => (
+                                  <li key={idx}>{rec}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          <Separator className="my-2" />
+
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-sm font-semibold text-foreground">Nội dung hợp đồng đã phân tích</p>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleExpand(item.id)}
+                                className="h-7 text-xs px-2"
+                              >
+                                {isExpanded ? (
+                                  <><ChevronUp className="h-3 w-3 mr-1" /> Thu gọn</>
+                                ) : (
+                                  <><ChevronDown className="h-3 w-3 mr-1" /> Xem toàn bộ</>
+                                )}
+                              </Button>
+                            </div>
+                            <div className={`text-sm whitespace-pre-wrap bg-muted/30 p-3 rounded-md border ${isExpanded ? '' : 'line-clamp-4'}`}>
+                              {item.contract_text}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
