@@ -78,13 +78,11 @@ const ContractCategories = () => {
   const [form, setForm] = useState({
     title: "", partner_name: "", contract_type: "khac", status: "da_ky",
     value: "", effective_date: "", expiry_date: "", department: "",
-    risk_level: "thap", approved_pe_number: "", tax_code: "",
+    risk_level: "thap", tax_code: "", file_link: "",
   });
   const [paymentPhases, setPaymentPhases] = useState<PaymentPhase[]>([
     { phase_name: "Đợt 01", payment_amount: "", payment_due_date: "" },
   ]);
-  const [docFile, setDocFile] = useState<File | null>(null);
-  const [signedPdfFile, setSignedPdfFile] = useState<File | null>(null);
 
   const addPaymentPhase = () => {
     const num = paymentPhases.length + 1;
@@ -235,30 +233,15 @@ const ContractCategories = () => {
   const handleUploadContract = async () => {
     if (!form.title.trim() || !selectedCategory || !form.expiry_date) return;
 
-    // Mandatory file attachment validation
-    if (!docFile && !signedPdfFile) {
-      toast.error("Bắt buộc phải đính kèm file hợp đồng.", {
-        description: "Vui lòng tải lên file .doc/.docx hoặc file PDF đã ký.",
-      });
+    // Mandatory link
+    if (!form.file_link.trim()) {
+      toast.error("Bắt buộc phải điền Link hợp đồng.");
       return;
     }
 
     setUploading(true);
 
     try {
-      let fileUrl: string | null = null;
-      let signedFileUrl: string | null = null;
-      const timestamp = Date.now();
-
-      if (docFile) {
-        const path = `${user?.id}/${timestamp}_doc_${sanitizeFileName(docFile.name)}`;
-        fileUrl = await uploadFile(docFile, path);
-      }
-      if (signedPdfFile) {
-        const path = `${user?.id}/${timestamp}_signed_${sanitizeFileName(signedPdfFile.name)}`;
-        signedFileUrl = await uploadFile(signedPdfFile, path);
-      }
-
       // Map UI status het_hieu_luc_chua_hoan_thanh to DB status het_hieu_luc
       const dbStatus = form.status === "het_hieu_luc_chua_hoan_thanh" ? "het_hieu_luc" : form.status;
 
@@ -268,8 +251,7 @@ const ContractCategories = () => {
         value: parseInt(form.value) || 0, effective_date: form.effective_date || null,
         expiry_date: form.expiry_date, department: form.department,
         risk_level: form.risk_level as any, category_id: selectedCategory.id,
-        created_by: user?.id, file_url: fileUrl, signed_file_url: signedFileUrl,
-        approved_pe_number: form.approved_pe_number.trim() || null,
+        created_by: user?.id, file_url: form.file_link.trim(),
         tax_code: form.tax_code.trim(),
       } as any).select().single();
 
@@ -338,10 +320,8 @@ const ContractCategories = () => {
   };
 
   const resetForm = () => {
-    setForm({ title: "", partner_name: "", contract_type: "khac", status: "da_ky", value: "", effective_date: "", expiry_date: "", department: "", risk_level: "thap", approved_pe_number: "", tax_code: "" });
+    setForm({ title: "", partner_name: "", contract_type: "khac", status: "da_ky", value: "", effective_date: "", expiry_date: "", department: "", risk_level: "thap", tax_code: "", file_link: "" });
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "" }]);
-    setDocFile(null);
-    setSignedPdfFile(null);
   };
 
   if (loading) {
@@ -442,8 +422,8 @@ const ContractCategories = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Số PE đã duyệt *</Label>
-                    <Input value={form.approved_pe_number} onChange={(e) => setForm({ ...form, approved_pe_number: e.target.value })} placeholder="PE-2026-001" />
+                    <Label>Link hợp đồng *</Label>
+                    <Input value={form.file_link} onChange={(e) => setForm({ ...form, file_link: e.target.value })} placeholder="Dán link Google Drive, SharePoint..." />
                   </div>
                 </div>
 
@@ -487,19 +467,11 @@ const ContractCategories = () => {
                   ))}
                 </div>
 
-                <div className="space-y-2">
-                  <Label>File .doc / .docx</Label>
-                  <Input type="file" accept=".doc,.docx" onChange={(e) => setDocFile(e.target.files?.[0] || null)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>File PDF đã ký & scan</Label>
-                  <Input type="file" accept=".pdf" onChange={(e) => setSignedPdfFile(e.target.files?.[0] || null)} />
-                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => { setUploadDialogOpen(false); resetForm(); }}>Hủy</Button>
-                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleUploadContract} disabled={uploading || !form.title.trim() || !form.approved_pe_number.trim() || !form.expiry_date}>
-                  {uploading ? "Đang upload..." : "Upload"}
+                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleUploadContract} disabled={uploading || !form.title.trim() || !form.file_link.trim() || !form.expiry_date}>
+                  {uploading ? "Đang lưu..." : "Lưu hợp đồng"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -523,8 +495,7 @@ const ContractCategories = () => {
                   <TableHead>Hết hiệu lực</TableHead>
                   <TableHead>Nghĩa vụ tiếp theo</TableHead>
                   <TableHead>Đơn vị</TableHead>
-                  <TableHead>Số PE</TableHead>
-                  <TableHead>Files</TableHead>
+                  <TableHead>Link</TableHead>
                   {canEdit && <TableHead>Thao tác</TableHead>}
                 </TableRow>
               </TableHeader>
@@ -628,26 +599,37 @@ const ContractCategories = () => {
                         ) : "—"}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{c.department || "—"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{c.approved_pe_number || "—"}</TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          {c.file_url && (
-                            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openFile(c.file_url)}>DOC</Button>
-                          )}
-                          {c.signed_file_url && (
-                            <Button variant="ghost" size="sm" className="h-7 text-xs text-success" onClick={() => openFile(c.signed_file_url)}>PDF</Button>
-                          )}
-                          {c.liquidation_file_url && (
-                            <Button variant="ghost" size="sm" className="h-7 text-xs text-info" onClick={() => openFile(c.liquidation_file_url)}>TL</Button>
-                          )}
-                          {(c.status === "het_hieu_luc" || c.status === "da_ky") && !c.liquidation_file_url && canEditContract(c) && (
-                            <label className="cursor-pointer">
-                              <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) handleUploadLiquidation(c.id, file);
-                              }} />
-                              <Button variant="ghost" size="sm" className="h-7 text-xs text-warning" asChild><span>+TL</span></Button>
-                            </label>
+                        {c.file_url ? (
+                          <a href={c.file_url.startsWith('http') ? c.file_url : `https://${c.file_url}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-xs break-all line-clamp-2" title={c.file_url}>
+                            {c.file_url}
+                          </a>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 items-center">
+                          {c.liquidation_file_url ? (
+                            <a href={c.liquidation_file_url.startsWith('http') ? c.liquidation_file_url : `https://${c.liquidation_file_url}`} target="_blank" rel="noopener noreferrer" className="text-info hover:underline text-xs break-all line-clamp-1" title={c.liquidation_file_url}>
+                              Thanh lý
+                            </a>
+                          ) : (
+                            (c.status === "het_hieu_luc" || c.status === "da_ky") && canEditContract(c) && (
+                              <label className="cursor-pointer whitespace-nowrap">
+                                <span className="text-xs text-warning hover:underline cursor-pointer border px-2 py-1 rounded-md" onClick={() => {
+                                  const url = prompt("Nhập link biên bản thanh lý:");
+                                  if (url) {
+                                    supabase.from("contracts").update({ liquidation_file_url: url } as any).eq("id", c.id)
+                                      .then(({ error }) => {
+                                        if (error) toast.error("Lỗi cập nhật link thanh lý", { description: error.message });
+                                        else {
+                                          toast.success("Đã cập nhật link thanh lý");
+                                          if (selectedCategory) fetchContracts(selectedCategory.id);
+                                        }
+                                      });
+                                  }
+                                }}>+ Link TL</span>
+                              </label>
+                            )
                           )}
                         </div>
                       </TableCell>
@@ -718,7 +700,7 @@ const ContractCategories = () => {
                     <div><span className="text-muted-foreground mr-2">Đối tác:</span> <span className="font-medium">{detailContract.partner_name || "—"}</span></div>
                     <div><span className="text-muted-foreground mr-2">MST:</span> <span>{detailContract.tax_code || "—"}</span></div>
                     <div><span className="text-muted-foreground mr-2">Phòng ban:</span> <span>{detailContract.department || "—"}</span></div>
-                    <div><span className="text-muted-foreground mr-2">Số PE:</span> <span>{detailContract.approved_pe_number || "—"}</span></div>
+                    <div><span className="text-muted-foreground mr-2">Cập nhật:</span> <span>{detailContract.created_at ? formatDate(detailContract.created_at) : "—"}</span></div>
                     <div><span className="text-muted-foreground mr-2">Hết hiệu lực:</span> <span>{detailContract.expiry_date ? formatDate(detailContract.expiry_date) : "—"}</span></div>
                   </div>
 
@@ -737,12 +719,27 @@ const ContractCategories = () => {
                   </div>
 
                   <div>
-                    <h4 className="font-semibold text-sm mb-3">Tài liệu đính kèm</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {detailContract.file_url && <Button variant="outline" size="sm" onClick={() => openFile(detailContract.file_url)}>📄 File DOC gốc</Button>}
-                      {detailContract.signed_file_url && <Button variant="outline" size="sm" className="text-success border-success/30 hover:bg-success/10" onClick={() => openFile(detailContract.signed_file_url)}>📝 File PDF đã ký</Button>}
-                      {detailContract.liquidation_file_url && <Button variant="outline" size="sm" className="text-info border-info/30 hover:bg-info/10" onClick={() => openFile(detailContract.liquidation_file_url)}>✅ File Thanh lý</Button>}
-                      {!detailContract.file_url && !detailContract.signed_file_url && !detailContract.liquidation_file_url && <span className="text-sm text-muted-foreground italic">Không có file đính kèm</span>}
+                    <h4 className="font-semibold text-sm mb-3">Liên kết hợp đồng</h4>
+                    <div className="flex flex-col gap-2">
+                      {detailContract.file_url && (
+                        <div>
+                          <span className="text-xs text-muted-foreground mb-1 block">Link hợp đồng:</span>
+                          <a href={detailContract.file_url.startsWith('http') ? detailContract.file_url : `https://${detailContract.file_url}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline break-all text-sm block bg-muted/20 p-2 rounded border">
+                            {detailContract.file_url}
+                          </a>
+                        </div>
+                      )}
+
+                      {detailContract.liquidation_file_url && (
+                        <div className="mt-2">
+                          <span className="text-xs text-muted-foreground mb-1 block">Link biên bản thanh lý:</span>
+                          <a href={detailContract.liquidation_file_url.startsWith('http') ? detailContract.liquidation_file_url : `https://${detailContract.liquidation_file_url}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline break-all text-sm block bg-muted/20 p-2 rounded border">
+                            {detailContract.liquidation_file_url}
+                          </a>
+                        </div>
+                      )}
+
+                      {!detailContract.file_url && !detailContract.liquidation_file_url && <span className="text-sm text-muted-foreground italic">Không có link đính kèm</span>}
                     </div>
                   </div>
                 </div>
