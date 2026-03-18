@@ -39,6 +39,12 @@ const sanitizeFileName = (name: string): string => {
   return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
 };
 
+const isValidPdfLink = (url: string) => {
+  if (!url) return false;
+  const lowerUrl = url.toLowerCase();
+  return lowerUrl.includes('.pdf') || lowerUrl.includes('drive.google.com/file/d/');
+};
+
 const STATUS_LABELS: Record<string, string> = {
   da_ky: "Đã ký",
   het_hieu_luc: "Đã hết hạn",
@@ -239,6 +245,11 @@ const ContractCategories = () => {
       return;
     }
 
+    if (!isValidPdfLink(form.file_link.trim())) {
+      toast.error("Chỉ chấp nhận file PDF");
+      return;
+    }
+
     setUploading(true);
 
     try {
@@ -423,7 +434,15 @@ const ContractCategories = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Link hợp đồng *</Label>
-                    <Input value={form.file_link} onChange={(e) => setForm({ ...form, file_link: e.target.value })} placeholder="Dán link Google Drive, SharePoint..." />
+                    <Input
+                      value={form.file_link}
+                      onChange={(e) => setForm({ ...form, file_link: e.target.value })}
+                      placeholder="Dán link Google Drive, SharePoint..."
+                      className={form.file_link && !isValidPdfLink(form.file_link) ? "border-destructive focus-visible:ring-destructive" : ""}
+                    />
+                    {form.file_link && !isValidPdfLink(form.file_link) && (
+                      <p className="text-xs text-destructive mt-1">Chỉ chấp nhận file PDF</p>
+                    )}
                   </div>
                 </div>
 
@@ -470,7 +489,7 @@ const ContractCategories = () => {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => { setUploadDialogOpen(false); resetForm(); }}>Hủy</Button>
-                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleUploadContract} disabled={uploading || !form.title.trim() || !form.file_link.trim() || !form.expiry_date}>
+                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleUploadContract} disabled={uploading || !form.title.trim() || !form.file_link.trim() || !isValidPdfLink(form.file_link) || !form.expiry_date}>
                   {uploading ? "Đang lưu..." : "Lưu hợp đồng"}
                 </Button>
               </DialogFooter>
