@@ -800,7 +800,7 @@ const UserDashboard = () => {
                   <div className="space-y-1">
                     {req.legal_review_doc_link && (
                       <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
-                        Xem tài liệu đã review (Pháp chế)
+                        Xem tài liệu đã review
                       </a>
                     )}
                     {req.file_url && (
@@ -955,7 +955,7 @@ const UserDashboard = () => {
                     <div className="space-y-1">
                       {req.legal_review_doc_link && (
                         <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
-                          Xem tài liệu đã review (Pháp chế)
+                          Xem tài liệu đã review
                         </a>
                       )}
                       {req.file_url && (

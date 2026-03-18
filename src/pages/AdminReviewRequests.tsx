@@ -512,8 +512,8 @@ const AdminReviewRequests = () => {
   const handleApproveStep = async () => {
     if (!selectedReq || !user) return;
 
-    // Block legal step if no valid review doc link
-    if (isAdmin && selectedReq.status === "cho_phap_che" && !isValidGoogleDocUrl(legalReviewDocLink)) {
+    // Block general management step if no valid review doc link
+    if (selectedReq.status === "cho_quan_ly_chung" && !isValidGoogleDocUrl(legalReviewDocLink)) {
       toast.error("Bắt buộc nhập link Google Doc review", { description: "Vui lòng nhập link Google Docs đã review trước khi chuyển bước." });
       return;
     }
@@ -538,8 +538,8 @@ const AdminReviewRequests = () => {
     // Build update
     const updateData: any = { status: nextStatus as any };
 
-    // Admin (Legal) can set legal_review_doc_link
-    if (isAdmin && legalReviewDocLink && currentStatus === "cho_phap_che") {
+    // General Manager (Bước 2) can set legal_review_doc_link
+    if (legalReviewDocLink && currentStatus === "cho_quan_ly_chung") {
       updateData.legal_review_doc_link = legalReviewDocLink;
     }
 
@@ -1139,7 +1139,7 @@ const AdminReviewRequests = () => {
                       )}
                       {req.legal_review_doc_link && (
                         <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
-                          Xem tài liệu đã review (Pháp chế)
+                          Xem tài liệu đã review
                         </a>
                       )}
                     </>
@@ -1148,10 +1148,10 @@ const AdminReviewRequests = () => {
                     <>
                       {req.legal_review_doc_link ? (
                         <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
-                          Xem tài liệu review
+                          Xem tài liệu đã review
                         </a>
                       ) : (
-                        <p className="text-xs text-muted-foreground italic">Pháp chế chưa upload tài liệu review</p>
+                        <p className="text-xs text-muted-foreground italic">Chưa có tài liệu review</p>
                       )}
                     </>
                   )}
@@ -1271,10 +1271,10 @@ const AdminReviewRequests = () => {
 
             <Separator />
 
-            {/* Legal Review Doc Link - only for admin at legal review step */}
-            {isAdmin && selectedReq?.status === "cho_phap_che" && (
+            {/* Legal Review Doc Link - for general manager at step 2 */}
+            {canActOnRequest(selectedReq) && selectedReq?.status === "cho_quan_ly_chung" && (
               <div className="space-y-2">
-                <Label>Link Google Doc review (Pháp chế) *</Label>
+                <Label>Link Google Doc review *</Label>
                 <Input
                   type="url"
                   value={legalReviewDocLink}
@@ -1289,7 +1289,7 @@ const AdminReviewRequests = () => {
                   <p className="text-xs text-destructive">Link không hợp lệ. Vui lòng nhập link Google Docs đúng định dạng.</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Upload link Google Doc đã review. Link này sẽ được gửi cho Kế toán và Tài chính.
+                  Upload link Google Doc đã nhận xét tóm tắt. Link này sẽ được gửi cho Pháp chế, Kế toán và Tài chính.
                 </p>
               </div>
             )}
@@ -1414,7 +1414,7 @@ const AdminReviewRequests = () => {
                         )}
                         {req.legal_review_doc_link && (
                           <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline block mt-2">
-                            Xem tài liệu đã review (Pháp chế)
+                            Xem tài liệu đã review
                           </a>
                         )}
                       </>
