@@ -116,7 +116,8 @@ export function DepartmentReviewTracker({
                         ke_toan: 'accountant',
                         tai_chinh: 'finance',
                     };
-                    const availableReviewers = reviewers.filter(r => r.role === roleFilterMap[dept]);
+                    const availableReviewersRaw = reviewers.filter(r => r.role === roleFilterMap[dept]);
+                    const availableReviewers = Array.from(new Map(availableReviewersRaw.map(r => [r.user_id, r])).values());
                     const currentAssignedId = assignedReviewers[dept]?.id || "none";
 
                     return (

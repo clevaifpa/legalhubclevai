@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { toast } from "sonner";
 
-type AppRole = "admin" | "user" | "accountant" | "finance" | "manager";
+type AppRole = "admin" | "user" | "accountant" | "finance" | "manager" | "manager_chung";
 
 interface AuthContextType {
   user: User | null;
@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (currentUser) {
         const name = currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || "User";
         const dept = currentUser.user_metadata?.department || "";
-        
+
         const { error: rpcError } = await (supabase.rpc as any)('recreate_user_profile', {
           _user_id: currentUser.id,
           _email: currentUser.email,
@@ -79,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const allRoles = newRolesRes.data.map((r: any) => r.role as AppRole);
             setRoles(allRoles);
             if (allRoles.includes("admin")) setRole("admin");
+            else if (allRoles.includes("manager_chung")) setRole("manager_chung");
             else if (allRoles.includes("manager")) setRole("manager");
             else if (allRoles.includes("accountant")) setRole("accountant");
             else if (allRoles.includes("finance")) setRole("finance");
@@ -107,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const allRoles = rolesRes.data.map((r: any) => r.role as AppRole);
       setRoles(allRoles);
       if (allRoles.includes("admin")) setRole("admin");
+      else if (allRoles.includes("manager_chung")) setRole("manager_chung");
       else if (allRoles.includes("manager")) setRole("manager");
       else if (allRoles.includes("accountant")) setRole("accountant");
       else if (allRoles.includes("finance")) setRole("finance");

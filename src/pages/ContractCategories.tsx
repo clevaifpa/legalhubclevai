@@ -64,8 +64,8 @@ const ContractCategories = () => {
   const categoryIdParam = searchParams.get('categoryId');
   const contractIdParam = searchParams.get('contractId');
   const isAdmin = role === "admin";
-  const canEdit = role === "admin" || role === "accountant" || role === "finance" || role === "manager";
-  const canEditContract = (c: any) => isAdmin || ((role === "accountant" || role === "finance" || role === "manager") && c.created_by === user?.id);
+  const canEdit = role === "admin" || role === "accountant" || role === "finance" || role === "manager" || role === "manager_chung";
+  const canEditContract = (c: any) => isAdmin || ((role === "accountant" || role === "finance" || role === "manager" || role === "manager_chung") && c.created_by === user?.id);
   const isViewOnly = false; // Manager is no longer view only for their own contracts
   const [categories, setCategories] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
