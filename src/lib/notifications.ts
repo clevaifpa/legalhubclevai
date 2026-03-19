@@ -86,48 +86,48 @@ export async function createWorkflowNotifications(params: NotifyParams) {
   // Always notify the assigned manager if provided
   if (managerId) recipientIds.add(managerId);
 
-  // Notify relevant roles based on new status
-  const rolesToNotify: string[] = ["admin"]; // admins always get notified
+  // 1. Lấy thông tin review_request để biết chính xác người duyệt được phân công
+  const { data: request } = await supabase
+    .from("review_requests")
+    .select("manager_id, global_manager_id, legal_reviewer_id, accountant_reviewer_id, finance_reviewer_id")
+    .eq("id", reviewRequestId)
+    .single();
 
-  if (newStatus === "cho_quan_ly_chung") {
-    // Notify global manager (hiennd) specifically
-    const { data: globalMgr } = await supabase
-      .from("profiles")
-      .select("user_id")
-      .eq("email", "hiennd@clevai.edu.vn")
-      .single();
-    if (globalMgr) recipientIds.add(globalMgr.user_id);
-  }
-  if (newStatus === "cho_ke_toan") rolesToNotify.push("accountant");
-  if (newStatus === "cho_tai_chinh") rolesToNotify.push("finance");
-  if (newStatus === "hoan_tat" || newStatus === "tu_choi") {
-    rolesToNotify.push("accountant", "finance");
-  }
-
-  // Fetch user IDs for global roles using RPC
-  const { data: roleUsers, error: rpcError } = await (supabase.rpc as any)(
-    "get_users_by_roles",
-    { _roles: rolesToNotify }
-  );
-
-  if (rpcError) {
-    console.warn("Lỗi khi lấy danh sách roles qua RPC:", rpcError);
+  if (request) {
+    if (newStatus === "cho_quan_ly" && request.manager_id) {
+      recipientIds.add(request.manager_id);
+    } else if (newStatus === "cho_quan_ly_chung" && request.global_manager_id) {
+      recipientIds.add(request.global_manager_id);
+    } else if (newStatus === "cho_phap_che" && request.legal_reviewer_id) {
+      recipientIds.add(request.legal_reviewer_id);
+    } else if (newStatus === "cho_ke_toan" && request.accountant_reviewer_id) {
+      recipientIds.add(request.accountant_reviewer_id);
+    } else if (newStatus === "cho_tai_chinh" && request.finance_reviewer_id) {
+      recipientIds.add(request.finance_reviewer_id);
+    }
   }
 
-  if (roleUsers) {
-    (roleUsers as any[]).forEach((ru: any) => recipientIds.add(ru.user_id));
+  // 2. Admin chỉ nhận thông báo khi Mới tạo hoặc Hoàn tất toàn bộ quy trình
+  if (oldStatus === "moi_tao" || newStatus === "hoan_tat") {
+    const { data: adminUsers, error: rpcError } = await (supabase.rpc as any)(
+      "get_users_by_roles",
+      { _roles: ["admin"] }
+    );
+    if (!rpcError && adminUsers) {
+      (adminUsers as any[]).forEach((ru: any) => recipientIds.add(ru.user_id));
+    }
   }
 
-  // Notify department-specific managers
-  if (newStatus === "cho_quan_ly" || newStatus === "hoan_tat" || newStatus === "tu_choi") {
-    if (dept) {
-      const { data: deptManagers, error: deptError } = await (supabase.rpc as any)(
-        "get_managers_by_department",
-        { _department: dept }
-      );
-      if (!deptError && deptManagers) {
-        (deptManagers as any[]).forEach((m: any) => recipientIds.add(m.user_id));
-      }
+  // 3. Khi bị từ chối / yêu cầu chỉnh sửa: Gửi cho toàn bộ những người đã tham gia duyệt trước đó
+  if (newStatus === "tu_choi" || newStatus === "yeu_cau_chinh_sua") {
+    const { data: notes } = await supabase
+      .from("review_notes")
+      .select("author_id")
+      .eq("review_request_id", reviewRequestId);
+    if (notes) {
+      notes.forEach((n: any) => {
+        if (n.author_id) recipientIds.add(n.author_id);
+      });
     }
   }
 
