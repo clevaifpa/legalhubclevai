@@ -66,7 +66,7 @@ function ProtectedRoutes() {
   }
 
   // Manager → view-only Dashboard + ContractCategories + review (read-only)
-  if (role === "manager") {
+  if (role === "manager" || role === "manager_chung") {
     return (
       <Routes>
         <Route element={<AppLayout />}>

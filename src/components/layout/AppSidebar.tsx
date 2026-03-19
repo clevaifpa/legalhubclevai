@@ -9,8 +9,9 @@ import {
   FileCheck,
   Bot,
   Users,
-  FileText } from
-"lucide-react";
+  FileText
+} from
+  "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -20,37 +21,38 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarHeader } from
-"@/components/ui/sidebar";
+  SidebarHeader
+} from
+  "@/components/ui/sidebar";
 
 const adminMenuItems = [
-{ title: "Tổng quan", url: "/", icon: LayoutDashboard },
-{ title: "Kho điều khoản", url: "/dieu-khoan", icon: BookOpen },
-{ title: "Tổng hợp đồng", url: "/tong-hop-dong", icon: Files },
-{ title: "Yêu cầu review", url: "/yeu-cau-review", icon: FileCheck },
-{ title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Bot }];
+  { title: "Tổng quan", url: "/", icon: LayoutDashboard },
+  { title: "Kho điều khoản", url: "/dieu-khoan", icon: BookOpen },
+  { title: "Tổng hợp đồng", url: "/tong-hop-dong", icon: Files },
+  { title: "Yêu cầu review", url: "/yeu-cau-review", icon: FileCheck },
+  { title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Bot }];
 
 
 const advancedMenuItems = [
-{ title: "Quản lý nhân viên", url: "/quan-ly-nhan-vien", icon: Users }];
+  { title: "Quản lý nhân viên", url: "/quan-ly-nhan-vien", icon: Users }];
 
 
 const reviewerMenuItems = [
-{ title: "Tổng quan", url: "/", icon: LayoutDashboard },
-{ title: "Tổng hợp đồng", url: "/tong-hop-dong", icon: Files },
-{ title: "Yêu cầu review", url: "/yeu-cau-review", icon: FileCheck },
-{ title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Bot }];
+  { title: "Tổng quan", url: "/", icon: LayoutDashboard },
+  { title: "Tổng hợp đồng", url: "/tong-hop-dong", icon: Files },
+  { title: "Yêu cầu review", url: "/yeu-cau-review", icon: FileCheck },
+  { title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Bot }];
 
 
 const userMenuItems = [
-{ title: "Yêu cầu của tôi", url: "/", icon: FileText },
-{ title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Bot }];
+  { title: "Yêu cầu của tôi", url: "/", icon: FileText },
+  { title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Bot }];
 
 
 export function AppSidebar() {
   const { role } = useAuth();
   const isAdmin = role === "admin";
-  const isReviewer = role === "manager" || role === "accountant" || role === "finance";
+  const isReviewer = role === "manager" || role === "manager_chung" || role === "accountant" || role === "finance";
 
   const getMenuItems = () => {
     if (isAdmin) return adminMenuItems;
@@ -61,6 +63,7 @@ export function AppSidebar() {
   const getRoleLabel = () => {
     if (isAdmin) return "Admin";
     if (role === "manager") return "Người quản lý";
+    if (role === "manager_chung") return "Quản lý chung";
     if (role === "accountant") return "Kế toán";
     if (role === "finance") return "Tài chính";
     return "Nhân viên";
@@ -92,24 +95,24 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {getMenuItems().map((item, index) =>
-              <React.Fragment key={item.title}>
+                <React.Fragment key={item.title}>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild tooltip={item.title}>
                       <NavLink
-                      to={item.url}
-                      end={item.url === "/"}
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
-                      
+                        to={item.url}
+                        end={item.url === "/"}
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
+
                         <item.icon className="w-4 h-4 mr-2" />
                         <span>{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   {index === 0 &&
-                <SidebarMenuItem>
+                    <SidebarMenuItem>
                       <NotificationBell />
                     </SidebarMenuItem>
-                }
+                  }
                 </React.Fragment>
               )}
             </SidebarMenu>
@@ -117,23 +120,23 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {isAdmin &&
-        <SidebarGroup>
+          <SidebarGroup>
             <SidebarGroupLabel className="uppercase text-xs font-semibold tracking-wider text-muted-foreground">NÂNG CAO</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {advancedMenuItems.map((item) =>
-              <SidebarMenuItem key={item.title}>
+                  <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild tooltip={item.title}>
                       <NavLink
-                    to={item.url}
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
-                    
+                        to={item.url}
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
+
                         <item.icon className="w-4 h-4 mr-2" />
                         <span>{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-              )}
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
