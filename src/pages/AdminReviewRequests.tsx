@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
-import { createWorkflowNotifications } from "@/lib/notifications";
+import { createWorkflowNotifications, notifyReviewerAssigned } from "@/lib/notifications";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -293,6 +293,19 @@ const AdminReviewRequests = () => {
       if (selectedReq && selectedReq.id === reqId) {
         setSelectedReq({ ...selectedReq, [col]: val });
       }
+
+      // Fire and forget assignment notification
+      if (val) {
+        const req = requests.find((r) => r.id === reqId);
+        if (req) {
+          notifyReviewerAssigned(
+            reqId,
+            req.contract_title,
+            val,
+            req.status
+          ).catch((err) => console.error("Assignment notification failed:", err));
+        }
+      }
     }
   };
 
@@ -404,7 +417,8 @@ const AdminReviewRequests = () => {
       if (insertedReq) finalReqId = insertedReq.id;
 
       if (insertedReq) {
-        await createWorkflowNotifications({
+        // Remove await so it doesn't block UI
+        createWorkflowNotifications({
           reviewRequestId: insertedReq.id,
           contractTitle: form.contract_title,
           oldStatus: "moi_tao",
@@ -413,7 +427,7 @@ const AdminReviewRequests = () => {
           requesterId: user.id,
           managerId: form.manager_id || null,
           department: form.department || profile?.department || "",
-        });
+        }).catch((err) => console.error("Notification error:", err));
       }
     }
 
@@ -561,8 +575,8 @@ const AdminReviewRequests = () => {
       });
     }
 
-    // Send notifications (in-app + email)
-    await createWorkflowNotifications({
+    // Send notifications (in-app + email) without await to avoid lag
+    createWorkflowNotifications({
       reviewRequestId: selectedReq.id,
       contractTitle: selectedReq.contract_title,
       oldStatus: currentStatus,
@@ -571,7 +585,7 @@ const AdminReviewRequests = () => {
       requesterId: selectedReq.requester_id,
       managerId: selectedReq.manager_id,
       department: selectedReq.department || "",
-    });
+    }).catch(console.error);
 
     setSaving(false);
     setSelectedReq(null);
@@ -625,8 +639,8 @@ const AdminReviewRequests = () => {
       });
     }
 
-    // Send notifications (in-app + email)
-    await createWorkflowNotifications({
+    // Send notifications (in-app + email) without await
+    createWorkflowNotifications({
       reviewRequestId: selectedReq.id,
       contractTitle: selectedReq.contract_title,
       oldStatus: currentStatus,
@@ -635,7 +649,7 @@ const AdminReviewRequests = () => {
       requesterId: selectedReq.requester_id,
       managerId: selectedReq.manager_id,
       department: selectedReq.department || "",
-    });
+    }).catch(console.error);
 
     setSaving(false);
     setSelectedReq(null);

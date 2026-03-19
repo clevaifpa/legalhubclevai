@@ -319,7 +319,7 @@ const UserDashboard = () => {
 
       // Send notifications for new request (no extra DB query for assignment)
       if (data) {
-        await createWorkflowNotifications({
+        createWorkflowNotifications({
           reviewRequestId: data.id,
           contractTitle: form.contract_title,
           oldStatus: "moi_tao",
@@ -328,7 +328,7 @@ const UserDashboard = () => {
           requesterId: user.id,
           managerId: form.manager_id || null,
           department: form.department || profile?.department || "",
-        });
+        }).catch(console.error);
       }
     }
 

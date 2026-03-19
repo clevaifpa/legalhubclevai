@@ -301,3 +301,50 @@ export async function notifyAdminsOnContractDeletion(
 
   await supabase.from("notification_logs").insert(logs as any);
 }
+
+/**
+ * Gọi khi Admin gán 1 người cụ thể vào vị trí duyệt đang trống.
+ * Dùng đúng template của thông báo gửi yêu cầu (moi_tao).
+ */
+export async function notifyReviewerAssigned(
+  reviewRequestId: string,
+  contractTitle: string,
+  reviewerId: string,
+  currentStatus: string,
+) {
+  // Lấy thông tin người tạo từ DB để ghép đúng mẫu
+  const { data: request } = await supabase
+    .from("review_requests")
+    .select("requester_name, department")
+    .eq("id", reviewRequestId)
+    .single();
+
+  const requesterName = request?.requester_name || "—";
+  const dept = request?.department || "—";
+
+  const title = `Yêu cầu review: ${contractTitle}`;
+  const content = [
+    `• Tên hợp đồng: ${contractTitle}`,
+    `• Người yêu cầu: ${requesterName}`,
+    `• Phòng ban: ${dept}`,
+    `• Trạng thái: ${STATUS_LABELS[currentStatus] || currentStatus}`,
+    `\n<!--REQUEST_ID:${reviewRequestId}-->`
+  ].join("\n");
+
+  await supabase.from("notifications").insert([{
+    user_id: reviewerId,
+    title,
+    content,
+    review_request_id: reviewRequestId,
+    is_read: false,
+  }] as any);
+
+  await supabase.from("notification_logs").insert([{
+    notification_type: "in_app",
+    review_request_id: reviewRequestId,
+    recipient_user_id: reviewerId,
+    title,
+    content,
+    status: "sent",
+  }] as any);
+}
