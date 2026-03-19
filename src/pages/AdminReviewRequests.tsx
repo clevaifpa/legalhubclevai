@@ -99,10 +99,11 @@ const AdminReviewRequests = () => {
   const reqIdParam = searchParams.get('id');
   const { user, profile, role, roles, managerDepartment } = useAuth();
   const isAdmin = role === "admin";
-  const isManager = role === "manager" || role === "manager_chung";
+  const isManager = role === "manager";
+  const isGlobalManager = role === "manager_chung";
   const isAccountant = role === "accountant";
   const isFinance = role === "finance";
-  const isDirectSubmit = isAdmin || isAccountant || isFinance || isManager;
+  const isDirectSubmit = isAdmin || isAccountant || isFinance || isManager || isGlobalManager;
 
 
   const [requests, setRequests] = useState<any[]>([]);
@@ -675,13 +676,14 @@ const AdminReviewRequests = () => {
   const canActOnRequest = (req: any): boolean => {
     if (!req) return false;
     if (isAdmin) return true;
-    if (isManager && req.status === 'cho_quan_ly') return true;
-    // Global manager can act on cho_quan_ly_chung if assigned, or if not assigned and they are a global manager
-    if (isManager && req.status === 'cho_quan_ly_chung') {
-      const globalManagers = reviewers.filter(r => r.role === 'manager_chung');
-      const isGlobalManager = globalManagers.some(m => m.user_id === user?.id);
-      if (req.global_manager_id) return req.global_manager_id === user?.id; // Must match assignment
-      return isGlobalManager; // Anyone can pick it up if not assigned
+    if (isManager && req.status === 'cho_quan_ly') {
+      if (req.manager_id) return req.manager_id === user?.id;
+      return true;
+    }
+    // Global manager can act on cho_quan_ly_chung
+    if (isGlobalManager && req.status === 'cho_quan_ly_chung') {
+      if (req.global_manager_id) return req.global_manager_id === user?.id;
+      return true;
     }
     if (isAccountant && req.status === 'cho_ke_toan') return true;
     if (isFinance && req.status === 'cho_tai_chinh') return true;
