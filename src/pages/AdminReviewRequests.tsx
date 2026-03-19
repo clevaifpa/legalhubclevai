@@ -99,10 +99,11 @@ const AdminReviewRequests = () => {
   const reqIdParam = searchParams.get('id');
   const { user, profile, role, roles, managerDepartment } = useAuth();
   const isAdmin = role === "admin";
-  const isManager = role === "manager" || role === "manager_chung";
+  const isManager = role === "manager";
+  const isGlobalManager = role === "manager_chung";
   const isAccountant = role === "accountant";
   const isFinance = role === "finance";
-  const isDirectSubmit = isAdmin || isAccountant || isFinance || isManager;
+  const isDirectSubmit = isAdmin || isAccountant || isFinance || isManager || isGlobalManager;
 
 
   const [requests, setRequests] = useState<any[]>([]);
