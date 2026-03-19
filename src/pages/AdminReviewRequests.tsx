@@ -36,7 +36,6 @@ import {
   getCurrentStep,
   getNextStatus,
   WORKFLOW_STATUSES,
-  GLOBAL_MANAGER_EMAIL,
 } from "@/types/reviewDepartments";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -105,20 +104,6 @@ const AdminReviewRequests = () => {
   const isFinance = role === "finance";
   const isDirectSubmit = isAdmin || isAccountant || isFinance || isManager;
 
-  const [globalManagers, setGlobalManagers] = useState<any[]>([]);
-
-  // Fetch all global managers on mount
-  useEffect(() => {
-    const fetchGlobalManagers = async () => {
-      const { data, error } = await (supabase.rpc as any)("get_users_by_roles", { _roles: ["manager_chung"] });
-      if (!error && Array.isArray(data)) {
-        setGlobalManagers(data);
-      } else {
-        console.error("Error fetching global managers:", error);
-      }
-    };
-    fetchGlobalManagers();
-  }, []);
 
   const [requests, setRequests] = useState<any[]>([]);
   const [notes, setNotes] = useState<Record<string, any[]>>({});
@@ -205,10 +190,11 @@ const AdminReviewRequests = () => {
 
   // Auto assign global_manager_id if there's exactly 1
   useEffect(() => {
+    const globalManagers = reviewers.filter(r => r.role === 'manager_chung');
     if (globalManagers.length === 1 && !form.global_manager_id) {
       setForm((prev) => ({ ...prev, global_manager_id: globalManagers[0].user_id }));
     }
-  }, [globalManagers, form.global_manager_id]);
+  }, [reviewers, form.global_manager_id]);
 
   useEffect(() => {
     fetchReviewers();
@@ -381,10 +367,11 @@ const AdminReviewRequests = () => {
       }
       // Auto-assign global manager if only 1 manager
       const managerCandidates = reviewers.filter(r => r.role === "manager");
+      const gManagers = reviewers.filter(r => r.role === 'manager_chung');
       if (managerCandidates.length === 1) {
         autoAssign["global_manager_id"] = managerCandidates[0].user_id;
-      } else if (globalManagers.length === 1) {
-        autoAssign["global_manager_id"] = globalManagers[0].user_id;
+      } else if (gManagers.length === 1) {
+        autoAssign["global_manager_id"] = gManagers[0].user_id;
       }
 
       const { data: insertedReq, error } = await supabase.from("review_requests").insert({
@@ -677,6 +664,7 @@ const AdminReviewRequests = () => {
     if (isManager && req.status === 'cho_quan_ly') return true;
     // Global manager can act on cho_quan_ly_chung if assigned, or if not assigned and they are a global manager
     if (isManager && req.status === 'cho_quan_ly_chung') {
+      const globalManagers = reviewers.filter(r => r.role === 'manager_chung');
       const isGlobalManager = globalManagers.some(m => m.user_id === user?.id);
       if (req.global_manager_id) return req.global_manager_id === user?.id; // Must match assignment
       return isGlobalManager; // Anyone can pick it up if not assigned
@@ -695,13 +683,16 @@ const AdminReviewRequests = () => {
     return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Đang tải...</p></div>;
   }
 
-  const roleLabel = isAdmin ? "Pháp chế" : isManager ? "Quản lý" : isAccountant ? "Kế toán" : isFinance ? "Tài chính" : "";
-  const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
-
   // Group reviewers by role for the UI
+  const globalManagers = reviewers.filter(r => r.role === 'manager_chung');
   const legalReviewers = reviewers.filter(r => r.role === 'admin');
   const accountantReviewers = reviewers.filter(r => r.role === 'accountant');
   const financeReviewers = reviewers.filter(r => r.role === 'finance');
+
+  const hasAllReviewerRoles = globalManagers.length > 0 && legalReviewers.length > 0 && accountantReviewers.length > 0 && financeReviewers.length > 0;
+
+  const roleLabel = isAdmin ? "Pháp chế" : isManager ? "Quản lý" : isAccountant ? "Kế toán" : isFinance ? "Tài chính" : "";
+  const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date) && hasAllReviewerRoles;
 
   // Helper for tracking props
   const getAssignedReviewers = (req: any) => {

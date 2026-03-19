@@ -24,7 +24,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTracker";
-import { extractDeptReviews, decodeDeptReview, WORKFLOW_STATUSES, GLOBAL_MANAGER_EMAIL } from "@/types/reviewDepartments";
+import { extractDeptReviews, decodeDeptReview, WORKFLOW_STATUSES } from "@/types/reviewDepartments";
 
 const isValidGoogleDocUrl = (url: string): boolean => {
   if (!url) return false;
@@ -94,7 +94,6 @@ const UserDashboard = () => {
   const [notes, setNotes] = useState<Record<string, any[]>>({});
   const [paymentSchedules, setPaymentSchedules] = useState<Record<string, any[]>>({});
   const [managers, setManagers] = useState<any[]>([]);
-  const [globalManagers, setGlobalManagers] = useState<any[]>([]);
   const [reviewers, setReviewers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -163,25 +162,7 @@ const UserDashboard = () => {
     if (form.department) fetchManagers(form.department);
   }, [form.department]);
 
-  // Auto assign global_manager_id if there's exactly 1
   useEffect(() => {
-    if (globalManagers.length === 1 && !form.global_manager_id) {
-      setForm((prev) => ({ ...prev, global_manager_id: globalManagers[0].user_id }));
-    }
-  }, [globalManagers, form.global_manager_id]);
-
-  // Fetch all global managers on mount
-  useEffect(() => {
-    const fetchGlobalManagers = async () => {
-      // Bypassing strict RPC typing for the new RPC if it's not yet in types.ts
-      const { data, error } = await (supabase.rpc as any)("get_users_by_roles", { _roles: ["manager_chung"] });
-      if (!error && Array.isArray(data)) {
-        setGlobalManagers(data);
-      } else {
-        console.error("Error fetching global managers:", error);
-      }
-    };
-    fetchGlobalManagers();
     fetchReviewers();
   }, []);
 
@@ -456,12 +437,15 @@ const UserDashboard = () => {
     };
   };
 
-  const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date);
-
   // Group reviewers by role for the UI
+  const globalManagers = reviewers.filter(r => r.role === 'manager_chung');
   const legalReviewers = reviewers.filter(r => r.role === 'admin');
   const accountantReviewers = reviewers.filter(r => r.role === 'accountant');
   const financeReviewers = reviewers.filter(r => r.role === 'finance');
+
+  const hasAllReviewerRoles = globalManagers.length > 0 && legalReviewers.length > 0 && accountantReviewers.length > 0 && financeReviewers.length > 0;
+
+  const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date) && hasAllReviewerRoles;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -486,6 +470,11 @@ const UserDashboard = () => {
               <DialogTitle>{editingReqId ? "Chỉnh sửa yêu cầu review hợp đồng" : "Tạo yêu cầu review hợp đồng"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              {!hasAllReviewerRoles && (
+                <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-md border border-destructive/20 mb-4">
+                  Hệ thống chưa cấu hình đủ người duyệt (Quản lý chung, Pháp chế, Kế toán, Tài chính). Vui lòng liên hệ Admin để thêm đủ người vào các vai trò này trước khi tạo yêu cầu.
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Phòng ban *</Label>

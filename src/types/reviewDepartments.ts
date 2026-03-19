@@ -50,10 +50,6 @@ export const REVIEW_DEPARTMENTS: Record<ReviewDepartment, {
         requiredRole: 'finance',
     },
 };
-
-// Global manager email constant
-export const GLOBAL_MANAGER_EMAIL = 'hiennd@clevai.edu.vn';
-
 // Workflow status mapping
 export const WORKFLOW_STATUSES: Record<string, { label: string; nextStep: ReviewDepartment | null; prevStep: ReviewDepartment | null }> = {
     cho_quan_ly: { label: 'Chờ Quản lý xác nhận', nextStep: 'quan_ly', prevStep: null },
