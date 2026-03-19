@@ -379,12 +379,9 @@ const AdminReviewRequests = () => {
           autoAssign[col] = candidates[0].user_id;
         }
       }
-      // Auto-assign global manager if only 1 manager
-      const managerCandidates = reviewers.filter(r => r.role === "manager");
+      // Auto-assign global manager if only 1 manager_chung
       const gManagers = reviewers.filter(r => r.role === 'manager_chung');
-      if (managerCandidates.length === 1) {
-        autoAssign["global_manager_id"] = managerCandidates[0].user_id;
-      } else if (gManagers.length === 1) {
+      if (gManagers.length === 1) {
         autoAssign["global_manager_id"] = gManagers[0].user_id;
       }
 

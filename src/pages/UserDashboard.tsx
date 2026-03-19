@@ -281,11 +281,9 @@ const UserDashboard = () => {
           autoAssign[col] = candidates[0].user_id;
         }
       }
-      const managerCandidates = reviewers.filter(r => r.role === "manager");
-      if (managerCandidates.length === 1) {
-        autoAssign["global_manager_id"] = managerCandidates[0].user_id; // wait, this logic is legacy but harmless
-      } else if (globalManagers.length === 1) {
-        autoAssign["global_manager_id"] = globalManagers[0].user_id;
+      const gManagers = reviewers.filter(r => r.role === 'manager_chung');
+      if (gManagers.length === 1) {
+        autoAssign["global_manager_id"] = gManagers[0].user_id;
       }
 
       const { data, error } = await supabase.from("review_requests").insert({
