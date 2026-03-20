@@ -365,7 +365,7 @@ const AdminReviewRequests = () => {
         contract_title: form.contract_title,
         partner_name: form.partner_name,
         contract_value: form.contract_value_na ? 0 : (parseInt(form.contract_value) || 0),
-        request_deadline: form.request_deadline,
+        request_deadline: form.review_deadline,
         contract_start_date: form.contract_start_date || null,
         contract_end_date: form.contract_end_date || null,
         review_deadline: form.review_deadline || null,
@@ -414,7 +414,7 @@ const AdminReviewRequests = () => {
         contract_title: form.contract_title,
         partner_name: form.partner_name,
         contract_value: form.contract_value_na ? 0 : (parseInt(form.contract_value) || 0),
-        request_deadline: form.request_deadline,
+        request_deadline: form.review_deadline,
         contract_start_date: form.contract_start_date || null,
         contract_end_date: form.contract_end_date || null,
         review_deadline: form.review_deadline || null,
@@ -748,7 +748,7 @@ const AdminReviewRequests = () => {
   const hasAllReviewerRoles = globalManagers.length > 0 && legalReviewers.length > 0 && accountantReviewers.length > 0 && financeReviewers.length > 0;
 
   const roleLabel = isAdmin ? "Pháp chế" : isManager ? "Quản lý" : isAccountant ? "Kế toán" : isFinance ? "Tài chính" : "";
-  const isFormValid = form.contract_title && form.request_deadline && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date) && hasAllReviewerRoles;
+  const isFormValid = form.contract_title && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date) && hasAllReviewerRoles;
 
   // Helper for tracking props
   const getAssignedReviewers = (req: any) => {
@@ -950,11 +950,7 @@ const AdminReviewRequests = () => {
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Thời hạn yêu cầu *</Label>
-                    <Input type="date" value={form.request_deadline} onChange={(e) => setForm({ ...form, request_deadline: e.target.value })} />
-                  </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 col-span-2 sm:col-span-1">
                     <Label>Hạn review *</Label>
                     <Input type="date" value={form.review_deadline} onChange={(e) => setForm({ ...form, review_deadline: e.target.value })} />
                   </div>
