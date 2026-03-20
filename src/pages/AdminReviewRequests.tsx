@@ -317,7 +317,7 @@ const AdminReviewRequests = () => {
     if (!user || !profile) return;
 
     if (!form.google_doc_url || !isValidGoogleDocUrl(form.google_doc_url)) {
-      toast.error("Link Google Doc bắt buộc", { description: "Vui lòng nhập đúng link Google Docs (docs.google.com/document/d/...)" });
+      toast.error("Link không hợp lệ", { description: "Vui lòng cấu hình link Google Docs có quyền chỉnh sửa." });
       return;
     }
 
@@ -334,6 +334,24 @@ const AdminReviewRequests = () => {
     }
 
     setSubmitting(true);
+
+    try {
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-google-doc', {
+        body: { url: form.google_doc_url }
+      });
+
+      if (verifyError) {
+        console.error("verifyError:", verifyError);
+      } else if (verifyData && verifyData.isEditable === false) {
+        toast.error("Link không có quyền Chỉnh sửa (Editor)", {
+          description: "Vui lòng cấp mức quyền 'Editor' hoặc 'Người chỉnh sửa' trên Google Docs."
+        });
+        setSubmitting(false);
+        return;
+      }
+    } catch (err: any) {
+      console.error("Exception verifying Google Doc:", err);
+    }
 
     const employeeName = getEmployeeName(user.email);
     let submitError = null;
@@ -516,8 +534,30 @@ const AdminReviewRequests = () => {
 
     // Block general management step if no valid review doc link
     if (selectedReq.status === "cho_quan_ly_chung" && !isValidGoogleDocUrl(legalReviewDocLink)) {
-      toast.error("Bắt buộc nhập link Google Doc review", { description: "Vui lòng nhập link Google Docs đã review trước khi chuyển bước." });
+      toast.error("Bắt buộc nhập link Google Doc review", { description: "Vui lòng nhập link Google Docs hợp lệ trước khi chuyển bước." });
       return;
+    }
+
+    if (legalReviewDocLink && isValidGoogleDocUrl(legalReviewDocLink)) {
+      setSaving(true);
+      try {
+        const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-google-doc', {
+          body: { url: legalReviewDocLink }
+        });
+
+        if (verifyError) {
+          console.error("verifyError:", verifyError);
+        } else if (verifyData && verifyData.isEditable === false) {
+          toast.error("Link không có quyền Chỉnh sửa (Editor)", {
+            description: "Vui lòng cấp mức quyền 'Editor' hoặc 'Người chỉnh sửa' trên Google Docs."
+          });
+          setSaving(false);
+          return;
+        }
+      } catch (err: any) {
+        console.error("Exception verifying Google Doc:", err);
+      }
+      setSaving(false);
     }
 
     setSaving(true);
@@ -1080,7 +1120,7 @@ const AdminReviewRequests = () => {
                 </div>
               </CardHeader>
               <CardContent className="pt-0 space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3 rounded-lg bg-muted/40">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 p-3 rounded-lg bg-muted/40">
                   <div>
                     <p className="text-xs text-muted-foreground">Đối tác</p>
                     <p className="text-sm font-medium">{req.partner_name || "—"}</p>
@@ -1096,6 +1136,10 @@ const AdminReviewRequests = () => {
                   <div>
                     <p className="text-xs text-muted-foreground">Hạn review</p>
                     <p className="text-sm font-medium">{req.review_deadline ? formatDate(req.review_deadline) : "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Ngày tạo yêu cầu</p>
+                    <p className="text-sm font-medium">{req.created_at ? formatDate(req.created_at) : "—"}</p>
                   </div>
                 </div>
 
@@ -1366,7 +1410,7 @@ const AdminReviewRequests = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-4 space-y-4 bg-background">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3 rounded-lg bg-muted/40">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 p-3 rounded-lg bg-muted/40">
                     <div>
                       <p className="text-xs text-muted-foreground">Đối tác</p>
                       <p className="text-sm font-medium">{req.partner_name || "—"}</p>
@@ -1382,6 +1426,10 @@ const AdminReviewRequests = () => {
                     <div>
                       <p className="text-xs text-muted-foreground">Hạn review</p>
                       <p className="text-sm font-medium">{req.review_deadline ? formatDate(req.review_deadline) : "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Ngày tạo yêu cầu</p>
+                      <p className="text-sm font-medium">{req.created_at ? formatDate(req.created_at) : "—"}</p>
                     </div>
                   </div>
 

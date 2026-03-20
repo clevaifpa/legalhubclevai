@@ -218,7 +218,7 @@ const UserDashboard = () => {
     if (!user || !profile) return;
 
     if (!form.google_doc_url || !isValidGoogleDocUrl(form.google_doc_url)) {
-      toast.error("Link Google Doc bắt buộc", { description: "Vui lòng nhập đúng link Google Docs (docs.google.com/document/d/...)" });
+      toast.error("Link Google Doc không hợp lệ", { description: "Vui lòng nhập đúng link Google Docs có quyền chỉnh sửa." });
       return;
     }
 
@@ -235,6 +235,25 @@ const UserDashboard = () => {
     }
 
     setSubmitting(true);
+
+    // Verify Google Doc Link via API
+    try {
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-google-doc', {
+        body: { url: form.google_doc_url }
+      });
+
+      if (verifyError) {
+        console.error("verifyError:", verifyError);
+      } else if (verifyData && verifyData.isEditable === false) {
+        toast.error("Link không có quyền Chỉnh sửa (Editor)", {
+          description: "Vui lòng cấp mức quyền 'Editor' hoặc 'Người chỉnh sửa' trên Google Docs."
+        });
+        setSubmitting(false);
+        return;
+      }
+    } catch (err: any) {
+      console.error("Exception verifying Google Doc:", err);
+    }
 
     const employeeName = getEmployeeName(user.email);
 
@@ -744,7 +763,7 @@ const UserDashboard = () => {
                 </div>
               </CardHeader>
               <CardContent className="pt-0 space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3 rounded-lg bg-muted/40">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 p-3 rounded-lg bg-muted/40">
                   <div>
                     <p className="text-xs text-muted-foreground">Đối tác</p>
                     <p className="text-sm font-medium">{req.partner_name || "—"}</p>
@@ -760,6 +779,10 @@ const UserDashboard = () => {
                   <div>
                     <p className="text-xs text-muted-foreground">Hạn review</p>
                     <p className="text-sm font-medium">{req.review_deadline ? formatDate(req.review_deadline) : "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Ngày tạo yêu cầu</p>
+                    <p className="text-sm font-medium">{req.created_at ? formatDate(req.created_at) : "—"}</p>
                   </div>
                 </div>
 
