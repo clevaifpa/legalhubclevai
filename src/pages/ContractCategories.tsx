@@ -245,7 +245,6 @@ const ContractCategories = () => {
   const handleUploadContract = async () => {
     if (!form.title.trim() || !selectedCategory || !form.expiry_date) return;
 
-    // Mandatory link
     if (!form.file_link.trim()) {
       toast.error("Bắt buộc phải điền Link hợp đồng.");
       return;
@@ -253,6 +252,16 @@ const ContractCategories = () => {
 
     if (!isValidPdfLink(form.file_link.trim())) {
       toast.error("Chỉ chấp nhận file PDF");
+      return;
+    }
+
+    if (!form.partner_name.trim()) {
+      toast.error("Bắt buộc nhập Tên đối tác.");
+      return;
+    }
+
+    if (!form.department) {
+      toast.error("Bắt buộc chọn Đơn vị phụ trách.");
       return;
     }
 
@@ -305,9 +314,13 @@ const ContractCategories = () => {
           } as any);
         }
 
-        // Notify Admins
-        const uploaderName = user?.email ? getEmployeeName(user.email) || profile?.full_name || user.email : "Người dùng";
-        await notifyAdminsOnContractUpload(form.title.trim(), uploaderName, profile?.department || "", insertedContract.id, selectedCategory.id);
+        // Notify Admins safely without breaking the local UI flow
+        try {
+          const uploaderName = user?.email ? getEmployeeName(user.email) || profile?.full_name || user.email : "Người dùng";
+          await notifyAdminsOnContractUpload(form.title.trim(), uploaderName, profile?.department || "", insertedContract.id, selectedCategory.id);
+        } catch (notifErr) {
+          console.warn("Lỗi gửi thông báo admin, upload vẫn thành công:", notifErr);
+        }
       }
 
       toast.success("Đã thêm hợp đồng thành công");
