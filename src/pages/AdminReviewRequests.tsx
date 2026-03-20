@@ -1330,30 +1330,32 @@ const AdminReviewRequests = () => {
                   )}
                 </div>
 
-                {user?.id === req.requester_id && ["cho_xu_ly", "cho_quan_ly", "cho_quan_ly_chung", "cho_phap_che", "dang_review"].includes(req.status) && (
+                {(isAdmin || (user?.id === req.requester_id && ["cho_xu_ly", "cho_quan_ly", "cho_quan_ly_chung", "cho_phap_che", "dang_review"].includes(req.status))) && (
                   <>
                     <Separator />
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" size="sm" className="text-xs" onClick={() => handleEdit(req)}>
                         Chỉnh sửa
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10">
-                            Xóa yêu cầu
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
-                            <AlertDialogDescription>Yêu cầu review "{req.contract_title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Hủy</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(req.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      {user?.id === req.requester_id && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10">
+                              Xóa yêu cầu
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
+                              <AlertDialogDescription>Yêu cầu review "{req.contract_title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Hủy</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(req.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
                   </>
                 )}
@@ -1439,6 +1441,11 @@ const AdminReviewRequests = () => {
             )}
           </div>
           <DialogFooter>
+            {isAdmin && selectedReq && (
+              <Button variant="outline" onClick={() => { setSelectedReq(null); handleEdit(selectedReq); }}>
+                Chỉnh sửa
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setSelectedReq(null)}>Đóng</Button>
             {canActOnRequest(selectedReq) && (
               <>
