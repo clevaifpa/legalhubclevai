@@ -131,6 +131,30 @@ const UserDashboard = () => {
     { phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false },
   ]);
 
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setFormErrors(prev => {
+      if (Object.keys(prev).length === 0) return prev;
+      const newErrors = { ...prev };
+      if (form.department) delete newErrors.department;
+      if (form.contract_type_category) delete newErrors.contract_type_category;
+      if (form.contract_title.trim()) delete newErrors.contract_title;
+      if (form.partner_name.trim()) delete newErrors.partner_name;
+      if (form.tax_code.trim()) delete newErrors.tax_code;
+      if (form.contract_value_na || (form.contract_value && parseInt(form.contract_value) > 0)) delete newErrors.contract_value;
+      if (form.review_deadline) delete newErrors.review_deadline;
+      if (form.contract_start_date) delete newErrors.contract_start_date;
+      if (form.contract_end_date) delete newErrors.contract_end_date;
+      if (form.google_doc_url && isValidGoogleDocUrl(form.google_doc_url)) delete newErrors.google_doc_url;
+
+      const prevKeys = Object.keys(prev);
+      const newKeys = Object.keys(newErrors);
+      if (prevKeys.length === newKeys.length && prevKeys.every(k => newErrors[k] === prev[k])) return prev;
+      return newErrors;
+    });
+  }, [form]);
+
   const addPaymentPhase = () => {
     const num = paymentPhases.length + 1;
     setPaymentPhases([...paymentPhases, { phase_name: `Đợt ${String(num).padStart(2, "0")}`, payment_amount: "", payment_due_date: "", is_na: false }]);
@@ -217,8 +241,30 @@ const UserDashboard = () => {
   const handleSubmit = async () => {
     if (!user || !profile) return;
 
+    const errors: Record<string, string> = {};
+    if (!form.department) errors.department = "Vui lòng chọn phòng ban";
+    if (!form.contract_type_category) errors.contract_type_category = "Vui lòng chọn loại hợp đồng";
+    if (!form.contract_title.trim()) errors.contract_title = "Vui lòng nhập tên hợp đồng";
+    if (!form.partner_name.trim()) errors.partner_name = "Vui lòng nhập tên đối tác";
+    if (!form.tax_code.trim()) errors.tax_code = "Vui lòng nhập mã số thuế đối tác";
+    if (!form.contract_value_na && (!form.contract_value || parseInt(form.contract_value) <= 0)) {
+      errors.contract_value = "Vui lòng nhập giá trị hợp đồng hoặc chọn N/A";
+    }
+    if (!form.review_deadline) errors.review_deadline = "Vui lòng nhập hạn review";
+    if (!form.contract_start_date) errors.contract_start_date = "Vui lòng nhập ngày bắt đầu HĐ";
+    if (!form.contract_end_date) errors.contract_end_date = "Vui lòng nhập ngày kết thúc HĐ";
     if (!form.google_doc_url || !isValidGoogleDocUrl(form.google_doc_url)) {
-      toast.error("Link Google Doc không hợp lệ", { description: "Vui lòng nhập đúng link Google Docs có quyền chỉnh sửa." });
+      errors.google_doc_url = "Vui lòng nhập link Google Docs có quyền chỉnh sửa";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toast.error("Thiếu thông tin bắt buộc", { description: "Vui lòng điền đầy đủ các trường báo đỏ." });
+      const firstError = Object.keys(errors)[0];
+      const element = document.getElementById(`field-${firstError}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
 
@@ -496,16 +542,17 @@ const UserDashboard = () => {
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Phòng ban *</Label>
+                <div className="space-y-2" id="field-department">
+                  <Label className={formErrors.department ? "text-destructive" : ""}>Phòng ban *</Label>
                   <Select value={form.department} onValueChange={(v) => setForm({ ...form, department: v, manager_id: "" })}>
-                    <SelectTrigger><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
+                    <SelectTrigger className={formErrors.department ? "border-destructive focus:ring-destructive" : ""}><SelectValue placeholder="Chọn phòng ban" /></SelectTrigger>
                     <SelectContent>
                       {DEPARTMENTS.map((dept) => (
                         <SelectItem key={dept.id} value={dept.id}>{dept.id} - {dept.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {formErrors.department && <p className="text-xs text-destructive">{formErrors.department}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label>Người quản lý *</Label>
@@ -560,16 +607,17 @@ const UserDashboard = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Loại hợp đồng *</Label>
+                <div className="space-y-2" id="field-contract_type_category">
+                  <Label className={formErrors.contract_type_category ? "text-destructive" : ""}>Loại hợp đồng *</Label>
                   <Select value={form.contract_type_category} onValueChange={(v) => setForm({ ...form, contract_type_category: v })}>
-                    <SelectTrigger><SelectValue placeholder="Chọn loại" /></SelectTrigger>
+                    <SelectTrigger className={formErrors.contract_type_category ? "border-destructive focus:ring-destructive" : ""}><SelectValue placeholder="Chọn loại" /></SelectTrigger>
                     <SelectContent>
                       {CONTRACT_TYPE_CATEGORIES.map((t) => (
                         <SelectItem key={t} value={t}>{t}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {formErrors.contract_type_category && <p className="text-xs text-destructive">{formErrors.contract_type_category}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label>Mức độ ưu tiên *</Label>
@@ -583,61 +631,66 @@ const UserDashboard = () => {
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Tên hợp đồng *</Label>
-                <Input value={form.contract_title} onChange={(e) => setForm({ ...form, contract_title: e.target.value })} placeholder="VD: Hợp đồng mua bán thiết bị" />
+              <div className="space-y-2" id="field-contract_title">
+                <Label className={formErrors.contract_title ? "text-destructive" : ""}>Tên hợp đồng *</Label>
+                <Input className={formErrors.contract_title ? "border-destructive focus-visible:ring-destructive" : ""} value={form.contract_title} onChange={(e) => setForm({ ...form, contract_title: e.target.value })} placeholder="VD: Hợp đồng mua bán thiết bị" />
+                {formErrors.contract_title && <p className="text-xs text-destructive">{formErrors.contract_title}</p>}
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Tên đối tác *</Label>
-                  <Input value={form.partner_name} onChange={(e) => setForm({ ...form, partner_name: e.target.value })} placeholder="Tên công ty đối tác" />
+                <div className="space-y-2" id="field-partner_name">
+                  <Label className={formErrors.partner_name ? "text-destructive" : ""}>Tên đối tác *</Label>
+                  <Input className={formErrors.partner_name ? "border-destructive focus-visible:ring-destructive" : ""} value={form.partner_name} onChange={(e) => setForm({ ...form, partner_name: e.target.value })} placeholder="Tên công ty đối tác" />
+                  {formErrors.partner_name && <p className="text-xs text-destructive">{formErrors.partner_name}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label>Mã số thuế đối tác *</Label>
-                  <Input value={form.tax_code} onChange={(e) => setForm({ ...form, tax_code: e.target.value })} placeholder="VD: 0123456789" />
+                <div className="space-y-2" id="field-tax_code">
+                  <Label className={formErrors.tax_code ? "text-destructive" : ""}>Mã số thuế đối tác *</Label>
+                  <Input className={formErrors.tax_code ? "border-destructive focus-visible:ring-destructive" : ""} value={form.tax_code} onChange={(e) => setForm({ ...form, tax_code: e.target.value })} placeholder="VD: 0123456789" />
+                  {formErrors.tax_code && <p className="text-xs text-destructive">{formErrors.tax_code}</p>}
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" id="field-contract_value">
                 <div className="flex items-center gap-3">
-                  <Label>Giá trị hợp đồng (VNĐ) *</Label>
+                  <Label className={formErrors.contract_value ? "text-destructive" : ""}>Giá trị hợp đồng (VNĐ) *</Label>
                   <div className="flex items-center gap-1.5">
                     <Checkbox checked={form.contract_value_na} onCheckedChange={(v) => setForm({ ...form, contract_value_na: !!v, contract_value: "" })} id="value-na" />
                     <label htmlFor="value-na" className="text-xs text-muted-foreground cursor-pointer">N/A</label>
                   </div>
                 </div>
                 {!form.contract_value_na && (
-                  <Input type="number" value={form.contract_value} onChange={(e) => setForm({ ...form, contract_value: e.target.value })} placeholder="0" />
+                  <Input className={formErrors.contract_value ? "border-destructive focus-visible:ring-destructive" : ""} type="number" value={form.contract_value} onChange={(e) => setForm({ ...form, contract_value: e.target.value })} placeholder="0" />
                 )}
+                {formErrors.contract_value && <p className="text-xs text-destructive">{formErrors.contract_value}</p>}
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 col-span-2 sm:col-span-1">
-                  <Label>Hạn review *</Label>
-                  <Input type="date" value={form.review_deadline} onChange={(e) => setForm({ ...form, review_deadline: e.target.value })} />
+                <div className="space-y-2 col-span-2 sm:col-span-1" id="field-review_deadline">
+                  <Label className={formErrors.review_deadline ? "text-destructive" : ""}>Hạn review *</Label>
+                  <Input className={formErrors.review_deadline ? "border-destructive focus-visible:ring-destructive" : ""} type="date" value={form.review_deadline} onChange={(e) => setForm({ ...form, review_deadline: e.target.value })} />
+                  {formErrors.review_deadline && <p className="text-xs text-destructive">{formErrors.review_deadline}</p>}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Ngày bắt đầu HĐ *</Label>
-                  <Input type="date" value={form.contract_start_date} onChange={(e) => setForm({ ...form, contract_start_date: e.target.value })} />
+                <div className="space-y-2" id="field-contract_start_date">
+                  <Label className={formErrors.contract_start_date ? "text-destructive" : ""}>Ngày bắt đầu HĐ *</Label>
+                  <Input className={formErrors.contract_start_date ? "border-destructive focus-visible:ring-destructive" : ""} type="date" value={form.contract_start_date} onChange={(e) => setForm({ ...form, contract_start_date: e.target.value })} />
+                  {formErrors.contract_start_date && <p className="text-xs text-destructive">{formErrors.contract_start_date}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label>Ngày kết thúc HĐ *</Label>
-                  <Input type="date" value={form.contract_end_date} onChange={(e) => setForm({ ...form, contract_end_date: e.target.value })} />
+                <div className="space-y-2" id="field-contract_end_date">
+                  <Label className={formErrors.contract_end_date ? "text-destructive" : ""}>Ngày kết thúc HĐ *</Label>
+                  <Input className={formErrors.contract_end_date ? "border-destructive focus-visible:ring-destructive" : ""} type="date" value={form.contract_end_date} onChange={(e) => setForm({ ...form, contract_end_date: e.target.value })} />
+                  {formErrors.contract_end_date && <p className="text-xs text-destructive">{formErrors.contract_end_date}</p>}
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Link Google Doc *</Label>
+              <div className="space-y-2" id="field-google_doc_url">
+                <Label className={formErrors.google_doc_url ? "text-destructive" : ""}>Link Google Doc *</Label>
                 <Input
                   type="url"
                   value={form.google_doc_url}
                   onChange={(e) => setForm({ ...form, google_doc_url: e.target.value })}
                   placeholder="Dán link Google Doc (đã cấp quyền chỉnh sửa)"
-                  className={form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url) ? "border-destructive focus-visible:ring-destructive" : ""}
+                  className={formErrors.google_doc_url ? "border-destructive focus-visible:ring-destructive" : ""}
                   title="Link phải cho phép người được phân công có quyền edit"
                 />
-                {form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url) && (
-                  <p className="text-xs text-destructive">Link Google Doc phải có quyền chỉnh sửa (edit) và không được là link chỉ xem (view/preview).</p>
-                )}
+                {formErrors.google_doc_url && <p className="text-xs text-destructive">{formErrors.google_doc_url}</p>}
                 <p className="text-xs text-muted-foreground">
                   ⚠️ Vui lòng cấp quyền <strong>Editor (Chỉnh sửa)</strong> cho tất cả reviewer trước khi gửi.
                 </p>
@@ -701,14 +754,15 @@ const UserDashboard = () => {
                 ))}
               </div>
 
-              <div className="space-y-2">
-                <Label>Mô tả chi tiết *</Label>
-                <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả thêm về hợp đồng cần review..." rows={3} />
+              <div className="space-y-2" id="field-description">
+                <Label className={formErrors.description ? "text-destructive" : ""}>Mô tả chi tiết *</Label>
+                <Textarea className={formErrors.description ? "border-destructive focus-visible:ring-destructive" : ""} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả thêm về hợp đồng cần review..." rows={3} />
+                {formErrors.description && <p className="text-xs text-destructive">{formErrors.description}</p>}
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={handleResetForm}>Hủy</Button>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSubmit} disabled={submitting || !isFormValid}>
+              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleSubmit} disabled={submitting}>
                 {submitting ? "Đang xử lý..." : (editingReqId ? "Cập nhật yêu cầu" : "Gửi yêu cầu")}
               </Button>
             </DialogFooter>
