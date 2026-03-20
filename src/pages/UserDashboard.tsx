@@ -150,6 +150,9 @@ const UserDashboard = () => {
       if (form.contract_start_date) delete newErrors.contract_start_date;
       if (form.contract_end_date) delete newErrors.contract_end_date;
       if (form.google_doc_url && isValidGoogleDocUrl(form.google_doc_url)) delete newErrors.google_doc_url;
+      if (form.description.trim()) delete newErrors.description;
+      if (form.approved_pe_number.trim()) delete newErrors.approved_pe_number;
+      if (!isDirectSubmit && form.manager_id) delete newErrors.manager_id;
 
       const prevKeys = Object.keys(prev);
       const newKeys = Object.keys(newErrors);
@@ -259,6 +262,9 @@ const UserDashboard = () => {
     if (!form.google_doc_url || !isValidGoogleDocUrl(form.google_doc_url)) {
       errors.google_doc_url = "Vui lòng nhập link Google Docs có quyền chỉnh sửa";
     }
+    if (!form.approved_pe_number.trim()) errors.approved_pe_number = "Vui lòng nhập số PE đã duyệt";
+    if (!form.description.trim()) errors.description = "Vui lòng nhập mô tả chi tiết";
+    if (!isDirectSubmit && !form.manager_id) errors.manager_id = "Vui lòng chọn người quản lý";
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -557,16 +563,17 @@ const UserDashboard = () => {
                   </Select>
                   {formErrors.department && <p className="text-xs text-destructive">{formErrors.department}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label>Người quản lý *</Label>
+                <div className="space-y-2" id="field-manager_id">
+                  <Label className={formErrors.manager_id ? "text-destructive" : ""}>Người quản lý *</Label>
                   <Select value={form.manager_id} onValueChange={(v) => setForm({ ...form, manager_id: v })}>
-                    <SelectTrigger><SelectValue placeholder={managers.length === 0 ? "Chọn phòng ban trước" : "Chọn quản lý"} /></SelectTrigger>
+                    <SelectTrigger className={formErrors.manager_id ? "border-destructive focus:ring-destructive" : ""}><SelectValue placeholder={managers.length === 0 ? "Chọn phòng ban trước" : "Chọn quản lý"} /></SelectTrigger>
                     <SelectContent>
                       {managers.map((m) => (
                         <SelectItem key={m.user_id} value={m.user_id}>{m.full_name || "Chưa đặt tên"}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {formErrors.manager_id && <p className="text-xs text-destructive">{formErrors.manager_id}</p>}
                 </div>
               </div>
 
@@ -698,9 +705,10 @@ const UserDashboard = () => {
                   ⚠️ Vui lòng cấp quyền <strong>Editor (Chỉnh sửa)</strong> cho tất cả reviewer trước khi gửi.
                 </p>
               </div>
-              <div className="space-y-2">
-                <Label>Số PE đã duyệt *</Label>
-                <Input value={form.approved_pe_number} onChange={(e) => setForm({ ...form, approved_pe_number: e.target.value })} placeholder="VD: PE-2026-001" />
+              <div className="space-y-2" id="field-approved_pe_number">
+                <Label className={formErrors.approved_pe_number ? "text-destructive" : ""}>Số PE đã duyệt *</Label>
+                <Input className={formErrors.approved_pe_number ? "border-destructive focus-visible:ring-destructive" : ""} value={form.approved_pe_number} onChange={(e) => setForm({ ...form, approved_pe_number: e.target.value })} placeholder="VD: PE-2026-001" />
+                {formErrors.approved_pe_number && <p className="text-xs text-destructive">{formErrors.approved_pe_number}</p>}
               </div>
 
               {/* Payment Schedule Section */}
