@@ -294,7 +294,10 @@ const AdminReviewRequests = () => {
   }, []);
 
   const filtered = requests.filter((req) => {
-    if (routeReqId) return req.id === routeReqId;
+    // If we have an activeReqId but the dialog was closed, don't single it out forever
+    if (activeReqId && !closedRouteIds.has(activeReqId)) {
+      // We still show the full list. We rely on the useEffect below to launch the popup!
+    }
     const matchSearch = search === "" ||
       req.contract_title.toLowerCase().includes(search.toLowerCase()) ||
       req.partner_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -304,6 +307,16 @@ const AdminReviewRequests = () => {
     const matchStatus = statusFilter === "all" || req.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  // Deep link auto-open logic
+  useEffect(() => {
+    if (activeReqId && requests.length > 0) {
+      if (!selectedReq && !closedRouteIds.has(activeReqId)) {
+        const req = requests.find(r => r.id === activeReqId);
+        if (req) openDetail(req);
+      }
+    }
+  }, [activeReqId, requests, closedRouteIds, selectedReq]);
 
   const openDetail = (req: any) => {
     setSelectedReq(req);
@@ -1372,7 +1385,16 @@ const AdminReviewRequests = () => {
       )}
 
       {/* Detail / Approve Dialog */}
-      <Dialog open={!!selectedReq} onOpenChange={(open) => !open && setSelectedReq(null)}>
+      <Dialog open={!!selectedReq} onOpenChange={(open) => {
+        if (!open) {
+          if (routeReqId && activeReqId === routeReqId) {
+            setClosedRouteIds(prev => new Set(prev).add(routeReqId));
+          }
+          searchParams.delete('id');
+          setSearchParams(searchParams);
+          setSelectedReq(null);
+        }
+      }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -1460,125 +1482,7 @@ const AdminReviewRequests = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {activeReqId && requests.find(r => r.id === activeReqId) && (() => {
-        const req = requests.find(r => r.id === activeReqId)!;
-        const deptReviews = extractDeptReviews(notes[req.id] || []);
-        const reqPayments = paymentSchedules[req.id] || [];
 
-        return (
-          <Dialog open={true} onOpenChange={(open) => {
-            if (!open) {
-              if (routeReqId && activeReqId === routeReqId) {
-                setClosedRouteIds(prev => new Set(prev).add(routeReqId));
-              }
-              searchParams.delete('id');
-              setSearchParams(searchParams);
-            }
-          }}>
-            <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0 border-none bg-transparent shadow-none">
-              <Card className="border shadow-lg">
-                <CardHeader className="pb-3 bg-background sticky top-0 z-10 border-b">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <DialogTitle className="text-base font-semibold">{req.contract_title}</DialogTitle>
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        Yêu cầu bởi <span className="font-medium text-foreground">{req.requester_name}</span> — {req.department}
-                        {req.contract_type_category && <> — {req.contract_type_category}</>}
-                        {req.tax_code && <> — MST: {req.tax_code}</>}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                        <DepartmentReviewTracker deptReviews={deptReviews} assignedReviewers={getAssignedReviewers(req)} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
-                      )}
-                      <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-4 bg-background">
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 p-3 rounded-lg bg-muted/40">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Đối tác</p>
-                      <p className="text-sm font-medium">{req.partner_name || "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Giá trị</p>
-                      <p className="text-sm font-medium">{req.contract_value > 0 ? formatCurrency(req.contract_value) : "N/A"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Thời hạn HĐ</p>
-                      <p className="text-sm font-medium">{req.contract_start_date && req.contract_end_date ? `${formatDate(req.contract_start_date)} - ${formatDate(req.contract_end_date)}` : "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Hạn review</p>
-                      <p className="text-sm font-medium">{req.review_deadline ? formatDate(req.review_deadline) : "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Ngày tạo yêu cầu</p>
-                      <p className="text-sm font-medium">{req.created_at ? formatDate(req.created_at) : "—"}</p>
-                    </div>
-                  </div>
-
-                  <div className="p-3 rounded-lg bg-muted/20 border space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground">Mô tả chi tiết</p>
-                    <p className="text-sm whitespace-pre-wrap">{req.description || "Không có mô tả"}</p>
-                  </div>
-
-                  {reqPayments.length > 0 && (
-                    <div className="p-3 rounded-lg bg-muted/30 space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">Đợt thanh toán</p>
-                      <div className="space-y-1">
-                        {reqPayments.map((ps: any) => (
-                          <div key={ps.id} className="flex items-center justify-between text-sm">
-                            <span className="font-medium">{ps.phase_name}</span>
-                            <span>{ps.payment_amount > 0 ? formatCurrency(ps.payment_amount) : "N/A"} — {ps.payment_due_date ? formatDate(ps.payment_due_date) : "—"}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                    <DepartmentReviewTracker deptReviews={deptReviews} assignedReviewers={getAssignedReviewers(req)} skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
-                  )}
-
-                  <div className="space-y-1">
-                    {isAdmin && (
-                      <>
-                        {req.file_url && (
-                          <button
-                            onClick={() => {
-                              window.open(req.file_url as string, "_blank");
-                            }}
-                            className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
-                          >
-                            Xem tài liệu ban đầu
-                          </button>
-                        )}
-                        {req.legal_review_doc_link && (
-                          <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline block mt-2">
-                            Xem tài liệu đã review
-                          </a>
-                        )}
-                      </>
-                    )}
-                    {isManager && req.file_url && (
-                      <button
-                        onClick={() => {
-                          window.open(req.file_url as string, "_blank");
-                        }}
-                        className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
-                      >
-                        Xem tài liệu
-                      </button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </DialogContent>
-          </Dialog>
-        );
-      })()}
     </div>
   );
 };

@@ -1087,6 +1087,38 @@ const UserDashboard = () => {
                       </div>
                     </div>
                   )}
+
+                  {["cho_xu_ly", "cho_quan_ly", "cho_quan_ly_chung", "cho_phap_che", "dang_review"].includes(req.status) && (
+                    <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                      <Button variant="outline" size="sm" className="text-xs" onClick={() => {
+                        handleEdit(req);
+                        // Note: deep link dialog should ideally close when editing, but opening edit on top is fine too
+                      }}>
+                        Chỉnh sửa
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10">
+                            Xóa yêu cầu
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="z-[100]">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
+                            <AlertDialogDescription>Yêu cầu review "{req.contract_title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Hủy</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => {
+                              handleDelete(req.id);
+                              searchParams.delete('id');
+                              setSearchParams(searchParams);
+                            }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </DialogContent>

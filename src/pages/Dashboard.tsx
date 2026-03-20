@@ -223,7 +223,7 @@ const Dashboard = () => {
                   return (
                     <div
                       key={r.id}
-                      onClick={() => navigate(user?.role === 'admin' ? `/admin-request/${r.id}` : `/request/${r.id}`)}
+                      onClick={() => navigate(user?.role === 'user' ? `/request/${r.id}` : `/admin-request/${r.id}`)}
                       className={`flex items-center justify-between p-3 rounded-lg transition-colors cursor-pointer ${isOverdue ? 'bg-destructive/10 hover:bg-destructive/20' : 'bg-muted/50 hover:bg-muted'}`}
                     >
                       <div className="flex-1 min-w-0">
