@@ -28,7 +28,10 @@ import { extractDeptReviews, decodeDeptReview, WORKFLOW_STATUSES } from "@/types
 
 const isValidGoogleDocUrl = (url: string): boolean => {
   if (!url) return false;
-  return /^https:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\/d\//.test(url);
+  if (!/^https:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\/d\//.test(url)) return false;
+  if (url.includes('/view') || url.includes('/preview')) return false;
+  if (!url.includes('/edit')) return false;
+  return true;
 };
 
 const DEPARTMENTS = [
@@ -613,14 +616,15 @@ const UserDashboard = () => {
                   type="url"
                   value={form.google_doc_url}
                   onChange={(e) => setForm({ ...form, google_doc_url: e.target.value })}
-                  placeholder="https://docs.google.com/document/d/..."
+                  placeholder="Dán link Google Doc (đã cấp quyền chỉnh sửa)"
                   className={form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url) ? "border-destructive focus-visible:ring-destructive" : ""}
+                  title="Link phải cho phép người được phân công có quyền edit"
                 />
                 {form.google_doc_url && !isValidGoogleDocUrl(form.google_doc_url) && (
-                  <p className="text-xs text-destructive">Link không hợp lệ. Vui lòng nhập link Google Docs đúng định dạng.</p>
+                  <p className="text-xs text-destructive">Link Google Doc phải có quyền chỉnh sửa (edit) và không được là link chỉ xem (view/preview).</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  ⚠️ Vui lòng cấp quyền <strong>Comment</strong> cho tất cả reviewer trước khi gửi.
+                  ⚠️ Vui lòng cấp quyền <strong>Editor (Chỉnh sửa)</strong> cho tất cả reviewer trước khi gửi.
                 </p>
               </div>
               <div className="space-y-2">
