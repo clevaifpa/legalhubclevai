@@ -86,7 +86,7 @@ const Dashboard = () => {
 
   const stats = [
     { title: "Tổng hợp đồng", value: total, link: "/tong-hop-dong" },
-    { title: "Sắp hết hạn (60 ngày)", value: expiring60, link: "/tong-hop-dong" },
+    { title: "Hợp đồng sắp hết hạn (60 ngày)", value: expiring60, link: "/tong-hop-dong" },
     { title: "Chờ review", value: reviewCount, link: "/yeu-cau-review" },
     { title: "Sắp hết hạn review (5 ngày)", value: expiringReviewCount, link: "/yeu-cau-review" },
   ];
@@ -137,7 +137,7 @@ const Dashboard = () => {
 
           <Card className="border-none shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle className="text-lg font-semibold">Sắp hết hạn (60 ngày)</CardTitle>
+              <CardTitle className="text-lg font-semibold">Hợp đồng sắp hết hạn (60 ngày)</CardTitle>
               <Link to="/tong-hop-dong"><Button variant="ghost" size="sm" className="text-accent hover:text-accent/80">Xem tất cả →</Button></Link>
             </CardHeader>
             <CardContent>
