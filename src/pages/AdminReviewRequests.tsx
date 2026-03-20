@@ -181,12 +181,21 @@ const AdminReviewRequests = () => {
       if (form.approved_pe_number.trim()) delete newErrors.approved_pe_number;
       if (!isDirectSubmit && form.manager_id) delete newErrors.manager_id;
 
+      paymentPhases.forEach((p, idx) => {
+        if (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) {
+          delete newErrors[`payment_amount_${idx}`];
+        }
+        if (p.payment_due_date) {
+          delete newErrors[`payment_due_date_${idx}`];
+        }
+      });
+
       const prevKeys = Object.keys(prev);
       const newKeys = Object.keys(newErrors);
       if (prevKeys.length === newKeys.length && prevKeys.every(k => newErrors[k] === prev[k])) return prev;
       return newErrors;
     });
-  }, [form]);
+  }, [form, paymentPhases]);
 
   const addPaymentPhase = () => {
     const num = paymentPhases.length + 1;
@@ -366,6 +375,15 @@ const AdminReviewRequests = () => {
     if (!form.description.trim()) errors.description = "Vui lòng nhập mô tả chi tiết";
     if (!isDirectSubmit && !form.manager_id) errors.manager_id = "Vui lòng chọn người quản lý";
 
+    paymentPhases.forEach((p, idx) => {
+      if (!p.is_na && (!p.payment_amount || parseInt(p.payment_amount) <= 0)) {
+        errors[`payment_amount_${idx}`] = "Vui lòng nhập giá trị thanh toán hoặc chọn N/A";
+      }
+      if (!p.payment_due_date) {
+        errors[`payment_due_date_${idx}`] = "Vui lòng nhập ngày thanh toán";
+      }
+    });
+
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       toast.error("Thiếu thông tin bắt buộc", { description: "Vui lòng điền đầy đủ các trường báo đỏ." });
@@ -373,19 +391,11 @@ const AdminReviewRequests = () => {
       const element = document.getElementById(`field-${firstError}`);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        // Fallback for payment fields which might not have field- IDs
+        const container = document.getElementById("payment-schedules-section");
+        if (container) container.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-      return;
-    }
-
-    const invalidPhases = paymentPhases.some(p => !p.is_na && (!p.payment_amount || parseInt(p.payment_amount) <= 0));
-    if (invalidPhases) {
-      toast.error("Vui lòng nhập giá trị thanh toán hoặc chọn N/A cho tất cả các đợt");
-      return;
-    }
-
-    const missingDates = paymentPhases.some(p => !p.payment_due_date);
-    if (missingDates) {
-      toast.error("Vui lòng nhập ngày thanh toán cho tất cả các đợt");
       return;
     }
 
@@ -988,13 +998,15 @@ const AdminReviewRequests = () => {
                   {formErrors.contract_title && <p className="text-xs text-destructive">{formErrors.contract_title}</p>}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Tên đối tác *</Label>
-                    <Input value={form.partner_name} onChange={(e) => setForm({ ...form, partner_name: e.target.value })} placeholder="Tên công ty đối tác" />
+                  <div className="space-y-2" id="field-partner_name">
+                    <Label className={formErrors.partner_name ? "text-destructive" : ""}>Tên đối tác *</Label>
+                    <Input className={formErrors.partner_name ? "border-destructive focus-visible:ring-destructive" : ""} value={form.partner_name} onChange={(e) => setForm({ ...form, partner_name: e.target.value })} placeholder="Tên công ty đối tác" />
+                    {formErrors.partner_name && <p className="text-xs text-destructive">{formErrors.partner_name}</p>}
                   </div>
-                  <div className="space-y-2">
-                    <Label>Mã số thuế đối tác *</Label>
-                    <Input value={form.tax_code} onChange={(e) => setForm({ ...form, tax_code: e.target.value })} placeholder="VD: 0123456789" />
+                  <div className="space-y-2" id="field-tax_code">
+                    <Label className={formErrors.tax_code ? "text-destructive" : ""}>Mã số thuế đối tác *</Label>
+                    <Input className={formErrors.tax_code ? "border-destructive focus-visible:ring-destructive" : ""} value={form.tax_code} onChange={(e) => setForm({ ...form, tax_code: e.target.value })} placeholder="VD: 0123456789" />
+                    {formErrors.tax_code && <p className="text-xs text-destructive">{formErrors.tax_code}</p>}
                   </div>
                 </div>
                 <div className="space-y-2" id="field-contract_value">
@@ -1051,7 +1063,7 @@ const AdminReviewRequests = () => {
                 </div>
 
                 {/* Payment Schedule Section */}
-                <div className="space-y-3 p-4 rounded-lg border bg-muted/20">
+                <div className="space-y-3 p-4 rounded-lg border bg-muted/20" id="payment-schedules-section">
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-semibold">Đợt thanh toán *</Label>
                     <Button type="button" variant="outline" size="sm" onClick={addPaymentPhase}>
@@ -1076,7 +1088,7 @@ const AdminReviewRequests = () => {
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs text-muted-foreground">Giá trị (VNĐ)</span>
+                            <span className={formErrors[`payment_amount_${idx}`] ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>Giá trị (VNĐ)</span>
                             <div className="flex items-center gap-1">
                               <Checkbox checked={phase.is_na} onCheckedChange={(v) => updatePaymentPhase(idx, "is_na", !!v)} />
                               <span className="text-xs text-muted-foreground">N/A</span>
@@ -1085,19 +1097,23 @@ const AdminReviewRequests = () => {
                           {!phase.is_na && (
                             <Input
                               type="number"
+                              className={formErrors[`payment_amount_${idx}`] ? "border-destructive focus-visible:ring-destructive" : ""}
                               value={phase.payment_amount}
                               onChange={(e) => updatePaymentPhase(idx, "payment_amount", e.target.value)}
                               placeholder="0"
                             />
                           )}
+                          {formErrors[`payment_amount_${idx}`] && <p className="text-xs text-destructive mt-1">{formErrors[`payment_amount_${idx}`]}</p>}
                         </div>
                         <div>
-                          <span className="text-xs text-muted-foreground">Ngày thanh toán *</span>
+                          <span className={formErrors[`payment_due_date_${idx}`] ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>Ngày thanh toán *</span>
                           <Input
                             type="date"
+                            className={formErrors[`payment_due_date_${idx}`] ? "border-destructive focus-visible:ring-destructive" : ""}
                             value={phase.payment_due_date}
                             onChange={(e) => updatePaymentPhase(idx, "payment_due_date", e.target.value)}
                           />
+                          {formErrors[`payment_due_date_${idx}`] && <p className="text-xs text-destructive mt-1">{formErrors[`payment_due_date_${idx}`]}</p>}
                         </div>
                       </div>
                     </div>
