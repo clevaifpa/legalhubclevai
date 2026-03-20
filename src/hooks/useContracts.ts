@@ -49,10 +49,13 @@ export function useContractStats() {
     return exp >= today && exp <= in30Days;
   }).length;
 
+  const expiredUnfulfilled = contracts.filter((c) => c.status === ("het_hieu_luc_chua_hoan_thanh" as any)).length;
+
   const byStatus = [
     { name: "Đã ký", value: signed, fill: "hsl(var(--success))" },
     { name: "Hết hiệu lực", value: expired, fill: "hsl(var(--destructive))" },
     { name: "Đã thanh lý", value: liquidated, fill: "hsl(var(--muted-foreground))" },
+    { name: "Hết hiệu lực - CHTNV", value: expiredUnfulfilled, fill: "hsl(var(--warning))" },
   ];
 
   return {
