@@ -108,13 +108,15 @@ export async function createWorkflowNotifications(params: NotifyParams) {
   }
 
   // 2. Admin chỉ nhận thông báo khi Mới tạo hoặc Hoàn tất toàn bộ quy trình
+  // Bổ sung: Kế toán và Tài chính nhận thông báo khi Hoàn tất
   if (oldStatus === "moi_tao" || newStatus === "hoan_tat") {
-    const { data: adminUsers, error: rpcError } = await (supabase.rpc as any)(
+    const rolesToFetch = newStatus === "hoan_tat" ? ["admin", "accountant", "finance"] : ["admin"];
+    const { data: usersByRole, error: rpcError } = await (supabase.rpc as any)(
       "get_users_by_roles",
-      { _roles: ["admin"] }
+      { _roles: rolesToFetch }
     );
-    if (!rpcError && adminUsers) {
-      (adminUsers as any[]).forEach((ru: any) => recipientIds.add(ru.user_id));
+    if (!rpcError && usersByRole) {
+      (usersByRole as any[]).forEach((ru: any) => recipientIds.add(ru.user_id));
     }
   }
 
