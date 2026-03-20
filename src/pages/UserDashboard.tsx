@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { createWorkflowNotifications } from "@/lib/notifications";
@@ -87,7 +87,10 @@ interface PaymentPhase {
 
 const UserDashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { id: routeReqId } = useParams();
+  const [closedRouteIds, setClosedRouteIds] = useState<Set<string>>(new Set());
   const reqIdParam = searchParams.get('id');
+  const activeReqId = (routeReqId && !closedRouteIds.has(routeReqId)) ? routeReqId : reqIdParam;
   const { user, profile, role } = useAuth();
   const isPhapc = role === "admin"; // Pháp chế = admin role
   const isAccountant = role === "accountant";
@@ -789,7 +792,7 @@ const UserDashboard = () => {
 
       {/* Request List */}
       <div className="space-y-4">
-        {requests.map((req, i) => {
+        {requests.filter(req => routeReqId ? req.id === routeReqId : true).map((req, i) => {
           const deptReviews = extractDeptReviews(notes[req.id] || []);
 
           return (
@@ -945,13 +948,16 @@ const UserDashboard = () => {
         </div>
       )}
       {/* Modal View for specific request */}
-      {reqIdParam && requests.find(r => r.id === reqIdParam) && (() => {
-        const req = requests.find(r => r.id === reqIdParam)!;
+      {activeReqId && requests.find(r => r.id === activeReqId) && (() => {
+        const req = requests.find(r => r.id === activeReqId)!;
         const deptReviews = extractDeptReviews(notes[req.id] || []);
 
         return (
           <Dialog open={true} onOpenChange={(open) => {
             if (!open) {
+              if (routeReqId && activeReqId === routeReqId) {
+                setClosedRouteIds(prev => new Set(prev).add(routeReqId));
+              }
               searchParams.delete('id');
               setSearchParams(searchParams);
             }

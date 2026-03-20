@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { createWorkflowNotifications, notifyReviewerAssigned } from "@/lib/notifications";
@@ -99,7 +99,10 @@ interface PaymentPhase {
 
 const AdminReviewRequests = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { id: routeReqId } = useParams();
+  const [closedRouteIds, setClosedRouteIds] = useState<Set<string>>(new Set());
   const reqIdParam = searchParams.get('id');
+  const activeReqId = (routeReqId && !closedRouteIds.has(routeReqId)) ? routeReqId : reqIdParam;
   const { user, profile, role, roles, managerDepartment } = useAuth();
   const isAdmin = role === "admin";
   const isManager = role === "manager";
@@ -279,6 +282,7 @@ const AdminReviewRequests = () => {
   }, []);
 
   const filtered = requests.filter((req) => {
+    if (routeReqId) return req.id === routeReqId;
     const matchSearch = search === "" ||
       req.contract_title.toLowerCase().includes(search.toLowerCase()) ||
       req.partner_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -1425,14 +1429,17 @@ const AdminReviewRequests = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {reqIdParam && requests.find(r => r.id === reqIdParam) && (() => {
-        const req = requests.find(r => r.id === reqIdParam)!;
+      {activeReqId && requests.find(r => r.id === activeReqId) && (() => {
+        const req = requests.find(r => r.id === activeReqId)!;
         const deptReviews = extractDeptReviews(notes[req.id] || []);
         const reqPayments = paymentSchedules[req.id] || [];
 
         return (
           <Dialog open={true} onOpenChange={(open) => {
             if (!open) {
+              if (routeReqId && activeReqId === routeReqId) {
+                setClosedRouteIds(prev => new Set(prev).add(routeReqId));
+              }
               searchParams.delete('id');
               setSearchParams(searchParams);
             }

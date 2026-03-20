@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,8 +61,11 @@ interface PaymentPhase {
 const ContractCategories = () => {
   const { user, role, profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { contractId: routeContractId } = useParams();
+  const [closedRouteIds, setClosedRouteIds] = useState<Set<string>>(new Set());
   const categoryIdParam = searchParams.get('categoryId');
-  const contractIdParam = searchParams.get('contractId');
+  const contractIdParamSearch = searchParams.get('contractId');
+  const activeContractId = (routeContractId && !closedRouteIds.has(routeContractId)) ? routeContractId : contractIdParamSearch;
   const isAdmin = role === "admin";
   const canEdit = role === "admin" || role === "accountant" || role === "finance" || role === "manager" || role === "manager_chung";
   const canEditContract = (c: any) => isAdmin || ((role === "accountant" || role === "finance" || role === "manager" || role === "manager_chung") && c.created_by === user?.id);
@@ -142,24 +145,27 @@ const ContractCategories = () => {
   };
 
   useEffect(() => { fetchCategories(); }, []);
-  useEffect(() => { if (selectedCategory) fetchContracts(selectedCategory.id); }, [selectedCategory, contractIdParam]);
+  useEffect(() => { if (selectedCategory) fetchContracts(selectedCategory.id); }, [selectedCategory, activeContractId]);
 
   useEffect(() => {
     const resolveDeepLink = async () => {
       if (categories.length === 0) return;
 
-      if (contractIdParam) {
+      if (activeContractId) {
         // If contractId is in URL, we must ensure the correct category is selected
         // First check if it's already in the currently selected category's fetched contracts
-        const currentContract = contracts.find(c => c.id === contractIdParam);
+        const currentContract = contracts.find(c => c.id === activeContractId);
         if (selectedCategory && currentContract) {
           return; // Already selected, and we have the contract data, nothing to do
         }
 
         // Fetch just the category_id of this contract
-        const { data: contract, error } = await supabase.from("contracts").select("category_id").eq("id", contractIdParam).single();
+        const { data: contract, error } = await supabase.from("contracts").select("category_id").eq("id", activeContractId).single();
         if (error && error.code === 'PGRST116') {
           toast.error("Hợp đồng không còn tồn tại");
+          if (routeContractId && activeContractId === routeContractId) {
+            setClosedRouteIds(prev => new Set(prev).add(routeContractId));
+          }
           searchParams.delete('contractId');
           setSearchParams(searchParams);
           return;
@@ -179,7 +185,7 @@ const ContractCategories = () => {
       }
     };
     resolveDeepLink();
-  }, [categoryIdParam, contractIdParam, categories]);
+  }, [categoryIdParam, activeContractId, categories, routeContractId, searchParams, setSearchParams]);
 
   const handleAddCategory = async () => {
     if (!newCatName.trim()) return;
@@ -340,6 +346,7 @@ const ContractCategories = () => {
   }
 
   const filteredContracts = contracts.filter((c) => {
+    if (routeContractId) return c.id === routeContractId;
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (
@@ -685,8 +692,8 @@ const ContractCategories = () => {
         )}
 
         {/* Contract Detail Modal via URL Params */}
-        {contractIdParam && contracts.find(c => c.id === contractIdParam) && (() => {
-          const detailContract = contracts.find(c => c.id === contractIdParam)!;
+        {activeContractId && contracts.find(c => c.id === activeContractId) && (() => {
+          const detailContract = contracts.find(c => c.id === activeContractId)!;
           const payments = contractPayments[detailContract.id] || [];
           const visiblePayments = payments.filter((p: any) => p.phase_name !== "[HIDDEN] CHUA_HOAN_THANH");
           const hasHiddenFlag = payments.some((p: any) => p.phase_name === "[HIDDEN] CHUA_HOAN_THANH");
@@ -697,6 +704,9 @@ const ContractCategories = () => {
           return (
             <Dialog open={true} onOpenChange={(open) => {
               if (!open) {
+                if (routeContractId && activeContractId === routeContractId) {
+                  setClosedRouteIds(prev => new Set(prev).add(routeContractId));
+                }
                 searchParams.delete('contractId');
                 setSearchParams(searchParams);
               }

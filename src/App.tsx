@@ -37,9 +37,12 @@ function ProtectedRoutes() {
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/request/:id" element={<Dashboard />} />
           <Route path="/dieu-khoan" element={<ClauseLibrary />} />
           <Route path="/tong-hop-dong" element={<ContractCategories />} />
+          <Route path="/contract/:contractId" element={<ContractCategories />} />
           <Route path="/yeu-cau-review" element={<AdminReviewRequests />} />
+          <Route path="/admin-request/:id" element={<AdminReviewRequests />} />
           <Route path="/ai-kiem-tra" element={<AIReview />} />
           <Route path="/quan-ly-nhan-vien" element={<EmployeeManagement />} />
           <Route path="/thong-bao" element={<Notifications />} />
@@ -55,8 +58,11 @@ function ProtectedRoutes() {
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/request/:id" element={<Dashboard />} />
           <Route path="/tong-hop-dong" element={<ContractCategories />} />
+          <Route path="/contract/:contractId" element={<ContractCategories />} />
           <Route path="/yeu-cau-review" element={<AdminReviewRequests />} />
+          <Route path="/admin-request/:id" element={<AdminReviewRequests />} />
           <Route path="/thong-bao" element={<Notifications />} />
           <Route path="/ai-kiem-tra" element={<AIReview />} />
         </Route>
@@ -71,8 +77,11 @@ function ProtectedRoutes() {
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/request/:id" element={<Dashboard />} />
           <Route path="/tong-hop-dong" element={<ContractCategories />} />
+          <Route path="/contract/:contractId" element={<ContractCategories />} />
           <Route path="/yeu-cau-review" element={<AdminReviewRequests />} />
+          <Route path="/admin-request/:id" element={<AdminReviewRequests />} />
           <Route path="/thong-bao" element={<Notifications />} />
           <Route path="/ai-kiem-tra" element={<AIReview />} />
         </Route>
@@ -86,6 +95,7 @@ function ProtectedRoutes() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/" element={<UserDashboard />} />
+        <Route path="/request/:id" element={<UserDashboard />} />
         <Route path="/thong-bao" element={<Notifications />} />
         <Route path="/ai-kiem-tra" element={<AIReview />} />
       </Route>

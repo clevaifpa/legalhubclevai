@@ -65,9 +65,9 @@ export default function Notifications() {
         if (targetId) {
             // Normal users go to Dashboard, others go to AdminReviewRequests
             if (!role || role === "user") {
-                navigate(`/?id=${targetId}`);
+                navigate(`/request/${targetId}`);
             } else {
-                navigate(`/yeu-cau-review?id=${targetId}`);
+                navigate(`/admin-request/${targetId}`);
             }
             return;
         }
@@ -77,11 +77,7 @@ export default function Notifications() {
         const categoryMatch = n.content.match(/<!--CATEGORY_ID:(.*?)-->/);
 
         if (contractMatch) {
-            let url = `/tong-hop-dong?contractId=${contractMatch[1]}`;
-            if (categoryMatch) {
-                url += `&categoryId=${categoryMatch[1]}`;
-            }
-            navigate(url);
+            navigate(`/contract/${contractMatch[1]}`);
             return;
         }
 
