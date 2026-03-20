@@ -45,8 +45,8 @@ const Dashboard = () => {
     supabase
       .from("review_requests")
       .select("id, contract_title, requester_name, department, request_deadline, status")
-      .in("status", ["cho_quan_ly", "cho_phap_che", "cho_ke_toan", "cho_tai_chinh"] as any)
-      .lt("request_deadline", today)
+      .in("status", ["cho_quan_ly", "cho_quan_ly_chung", "cho_phap_che", "cho_ke_toan", "cho_tai_chinh", "yeu_cau_chinh_sua", "dang_review", "cho_xu_ly"] as any)
+      .lte("request_deadline", in5Days.toISOString().split("T")[0])
       .order("request_deadline", { ascending: true })
       .limit(10)
       .then(({ data }) => { if (data) setOverdueReviews(data); });
@@ -206,29 +206,33 @@ const Dashboard = () => {
         <div className="space-y-6">
           <Card className="border-none shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle className="text-lg font-semibold">Review quá hạn</CardTitle>
+              <CardTitle className="text-lg font-semibold">Sắp hết hạn review (5 ngày)</CardTitle>
               <Link to="/yeu-cau-review"><Button variant="ghost" size="sm" className="text-accent hover:text-accent/80">Xem tất cả →</Button></Link>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {overdueReviews.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Không có yêu cầu review quá hạn</p>}
+                {overdueReviews.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Không có yêu cầu review nào cần xử lý gấp</p>}
                 {overdueReviews.map((r) => {
                   const todayDate = new Date();
                   todayDate.setHours(0, 0, 0, 0);
                   const deadlineDate = new Date(r.request_deadline.replace(/-/g, '/'));
                   deadlineDate.setHours(0, 0, 0, 0);
-                  const daysOverdue = Math.round((todayDate.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60 * 24));
+                  const daysLeft = Math.round((deadlineDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+                  const isOverdue = daysLeft < 0;
+
                   return (
                     <div
                       key={r.id}
                       onClick={() => navigate(user?.role === 'admin' ? `/admin-request/${r.id}` : `/request/${r.id}`)}
-                      className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 hover:bg-destructive/10 transition-colors cursor-pointer"
+                      className={`flex items-center justify-between p-3 rounded-lg transition-colors cursor-pointer ${isOverdue ? 'bg-destructive/10 hover:bg-destructive/20' : 'bg-muted/50 hover:bg-muted'}`}
                     >
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{r.contract_title}</p>
                         <p className="text-xs text-muted-foreground">{r.requester_name} — {r.department}</p>
                       </div>
-                      <Badge variant="destructive" className="ml-3 shrink-0">Quá {daysOverdue} ngày</Badge>
+                      <Badge variant={isOverdue ? "destructive" : "secondary"} className={`ml-3 shrink-0 ${!isOverdue && daysLeft <= 5 ? "bg-warning/10 text-warning border-warning/20" : ""}`}>
+                        {isOverdue ? `Quá ${Math.abs(daysLeft)} ngày` : `Còn ${daysLeft} ngày`}
+                      </Badge>
                     </div>
                   );
                 })}
