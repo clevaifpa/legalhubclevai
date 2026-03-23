@@ -904,6 +904,11 @@ const ContractCategories = () => {
                           <p className="text-sm text-muted-foreground truncate">{categoryCounts[cat.id] || 0} hợp đồng</p>
                         </div>
                         <div className="flex items-center gap-1">
+                          {canEdit && (
+                            <Button variant="outline" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-xs h-7" onClick={(e) => { e.stopPropagation(); setSelectedCategory(cat); setUploadDialogOpen(true); }}>
+                              Upload
+                            </Button>
+                          )}
                           {isAdmin && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
