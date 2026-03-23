@@ -126,9 +126,6 @@ const ContractCategories = () => {
 
   const fetchContracts = async (categoryId: string) => {
     let query = supabase.from("contracts").select("*").eq("category_id", categoryId).order("created_at", { ascending: false });
-    if (role === "manager") {
-      query = query.eq("department", profile?.department || "");
-    }
     const { data } = await query;
     if (data) {
       setContracts(data);
