@@ -71,15 +71,13 @@ function ProtectedRoutes() {
     );
   }
 
-  // Manager → view-only Dashboard + ContractCategories + review (read-only)
+  // Manager → view-only Dashboard + review (no contract summary access)
   if (role === "manager" || role === "manager_chung") {
     return (
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/request/:id" element={<Dashboard />} />
-          <Route path="/tong-hop-dong" element={<ContractCategories />} />
-          <Route path="/contract/:contractId" element={<ContractCategories />} />
           <Route path="/yeu-cau-review" element={<AdminReviewRequests />} />
           <Route path="/admin-request/:id" element={<AdminReviewRequests />} />
           <Route path="/thong-bao" element={<Notifications />} />

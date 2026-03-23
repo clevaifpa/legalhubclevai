@@ -39,6 +39,11 @@ const advancedMenuItems = [
 
 const reviewerMenuItems = [
   { title: "Tổng quan", url: "/", icon: LayoutDashboard },
+  { title: "Yêu cầu review", url: "/yeu-cau-review", icon: FileCheck },
+  { title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Bot }];
+
+const accountantFinanceMenuItems = [
+  { title: "Tổng quan", url: "/", icon: LayoutDashboard },
   { title: "Tổng hợp đồng", url: "/tong-hop-dong", icon: Files },
   { title: "Yêu cầu review", url: "/yeu-cau-review", icon: FileCheck },
   { title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Bot }];
@@ -52,11 +57,13 @@ const userMenuItems = [
 export function AppSidebar() {
   const { role } = useAuth();
   const isAdmin = role === "admin";
-  const isReviewer = role === "manager" || role === "manager_chung" || role === "accountant" || role === "finance";
+  const isManagerRole = role === "manager" || role === "manager_chung";
+  const isAccountantFinance = role === "accountant" || role === "finance";
 
   const getMenuItems = () => {
     if (isAdmin) return adminMenuItems;
-    if (isReviewer) return reviewerMenuItems;
+    if (isAccountantFinance) return accountantFinanceMenuItems;
+    if (isManagerRole) return reviewerMenuItems;
     return userMenuItems;
   };
 

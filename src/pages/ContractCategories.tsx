@@ -70,9 +70,9 @@ const ContractCategories = () => {
   const contractIdParamSearch = searchParams.get('contractId');
   const activeContractId = (routeContractId && !closedRouteIds.has(routeContractId)) ? routeContractId : contractIdParamSearch;
   const isAdmin = role === "admin";
-  const canEdit = role === "admin" || role === "accountant" || role === "finance" || role === "manager" || role === "manager_chung";
-  const canEditContract = (c: any) => isAdmin || ((role === "accountant" || role === "finance" || role === "manager" || role === "manager_chung") && c.created_by === user?.id);
-  const isViewOnly = false; // Manager is no longer view only for their own contracts
+  const canEdit = role === "admin" || role === "accountant" || role === "finance";
+  const canEditContract = (c: any) => isAdmin || ((role === "accountant" || role === "finance") && c.created_by === user?.id);
+  const isViewOnly = false;
   const [categories, setCategories] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
   const [contractPayments, setContractPayments] = useState<Record<string, any[]>>({});
@@ -87,6 +87,8 @@ const ContractCategories = () => {
   const [uploading, setUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [newCatEntity, setNewCatEntity] = useState("CHV");
+  const [addEntityDialogOpen, setAddEntityDialogOpen] = useState(false);
+  const [newEntityName, setNewEntityName] = useState("");
 
   const [form, setForm] = useState({
     title: "", partner_name: "", contract_type: "khac", status: "da_ky",
@@ -112,9 +114,6 @@ const ContractCategories = () => {
     if (data) {
       setCategories(data);
       let query = supabase.from("contracts").select("category_id");
-      if (role === "manager") {
-        query = query.eq("department", profile?.department || "");
-      }
       const { data: allContracts } = await query;
       if (allContracts) {
         const counts: Record<string, number> = {};
@@ -127,9 +126,6 @@ const ContractCategories = () => {
 
   const fetchContracts = async (categoryId: string) => {
     let query = supabase.from("contracts").select("*").eq("category_id", categoryId).order("created_at", { ascending: false });
-    if (role === "manager") {
-      query = query.eq("department", profile?.department || "");
-    }
     const { data } = await query;
     if (data) {
       setContracts(data);
@@ -797,17 +793,16 @@ const ContractCategories = () => {
   }
 
   // Category list view
-  const ENTITIES = ["CHV", "LKV", "LKO", "C2V"];
-  const ENTITY_LABELS: Record<string, string> = {
-    CHV: "CHV",
-    LKV: "LKV",
-    LKO: "LKO",
-    C2V: "C2V",
-  };
-  // newCatEntity state moved to top of component
+  const DEFAULT_ENTITIES = ["CHV", "LKV", "LKO", "C2V"];
 
   const extractEntity = (name: string) => {
-    for (const entity of ENTITIES) {
+    // Try to match "ENTITY - TypeName" or "ENTITY TypeName" pattern
+    const match = name.match(/^([A-Z0-9]+)\s*[-:]\s*(.+)$/i);
+    if (match) {
+      return { entity: match[1].toUpperCase(), typeName: match[2].trim() };
+    }
+    // Check if starts with any known entity
+    for (const entity of DEFAULT_ENTITIES) {
       if (name.toUpperCase().startsWith(entity)) {
         const typeName = name.substring(entity.length).replace(/^[\s-:]+/, '').trim() || name;
         return { entity, typeName };
@@ -816,6 +811,7 @@ const ContractCategories = () => {
     return { entity: "Khác", typeName: name };
   };
 
+  // Build grouped categories and discover all entities
   const groupedCategories = categories.reduce((acc, cat) => {
     const { entity, typeName } = extractEntity(cat.name);
     if (!acc[entity]) acc[entity] = [];
@@ -823,8 +819,10 @@ const ContractCategories = () => {
     return acc;
   }, {} as Record<string, any[]>);
 
-  // Sort groups: KNOWN entities first, "Khác" last.
-  const sortedEntities = Object.keys(groupedCategories).sort((a, b) => {
+  // Merge default + discovered entities
+  const allEntities = Array.from(new Set([...DEFAULT_ENTITIES, ...Object.keys(groupedCategories)]));
+
+  const sortedEntities = allEntities.sort((a, b) => {
     if (a === "Khác") return 1;
     if (b === "Khác") return -1;
     return a.localeCompare(b);
@@ -837,50 +835,82 @@ const ContractCategories = () => {
           <h1 className="text-2xl font-bold tracking-tight">Tổng hợp đồng</h1>
           <p className="text-muted-foreground">Kho lưu trữ hợp đồng tập trung theo loại</p>
         </div>
-        {canEdit && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">Tạo loại hợp đồng</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Tạo loại hợp đồng mới</DialogTitle></DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Pháp nhân *</Label>
-                  <Select value={newCatEntity} onValueChange={setNewCatEntity}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {ENTITIES.map(e => (
-                        <SelectItem key={e} value={e}>{e}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+        <div className="flex gap-2">
+          {isAdmin && (
+            <Dialog open={addEntityDialogOpen} onOpenChange={setAddEntityDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="shrink-0">+ Pháp nhân</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Thêm pháp nhân mới</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Tên pháp nhân (viết tắt) *</Label>
+                    <Input value={newEntityName} onChange={(e) => setNewEntityName(e.target.value.toUpperCase())} placeholder="VD: ABC" />
+                    <p className="text-xs text-muted-foreground">Sau khi thêm, bạn có thể tạo loại hợp đồng thuộc pháp nhân này.</p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Tên loại hợp đồng *</Label>
-                  <Input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="VD: Hợp đồng bảo hiểm" />
-                  <p className="text-xs text-muted-foreground">Tên sẽ được lưu: <strong>{newCatEntity} - {newCatName || "..."}</strong></p>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setAddEntityDialogOpen(false)}>Hủy</Button>
+                  <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => {
+                    if (!newEntityName.trim()) return;
+                    // Just create a placeholder category so entity shows up
+                    setNewCatEntity(newEntityName.trim());
+                    setAddEntityDialogOpen(false);
+                    setNewEntityName("");
+                    setDialogOpen(true);
+                  }} disabled={!newEntityName.trim()}>
+                    Tiếp tục
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+          {canEdit && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">Tạo loại hợp đồng</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Tạo loại hợp đồng mới</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Pháp nhân *</Label>
+                    <Select value={newCatEntity} onValueChange={setNewCatEntity}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {allEntities.filter(e => e !== "Khác").map(e => (
+                          <SelectItem key={e} value={e}>{e}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tên loại hợp đồng *</Label>
+                    <Input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="VD: Hợp đồng bảo hiểm" />
+                    <p className="text-xs text-muted-foreground">Tên sẽ được lưu: <strong>{newCatEntity} - {newCatName || "..."}</strong></p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Mô tả</Label>
+                    <Input value={newCatDesc} onChange={(e) => setNewCatDesc(e.target.value)} placeholder="Mô tả ngắn gọn" />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Mô tả</Label>
-                  <Input value={newCatDesc} onChange={(e) => setNewCatDesc(e.target.value)} placeholder="Mô tả ngắn gọn" />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
-                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleAddCategory} disabled={saving || !newCatName.trim()}>
-                  {saving ? "Đang tạo..." : "Tạo"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
+                  <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleAddCategory} disabled={saving || !newCatName.trim()}>
+                    {saving ? "Đang tạo..." : "Tạo"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
 
       <Accordion type="multiple" defaultValue={sortedEntities} className="w-full space-y-4">
         {sortedEntities.map(entity => {
-          const entityCategories = groupedCategories[entity];
-          const totalContracts = entityCategories.reduce((sum, cat) => sum + (categoryCounts[cat.id] || 0), 0);
+          const entityCategories = groupedCategories[entity] || [];
+          const totalContracts = entityCategories.reduce((sum: number, cat: any) => sum + (categoryCounts[cat.id] || 0), 0);
 
           return (
             <AccordionItem key={entity} value={entity} className="border rounded-lg bg-card shadow-sm px-4">
@@ -891,50 +921,54 @@ const ContractCategories = () => {
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-2 pb-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {entityCategories.map((cat, i) => (
-                    <Card
-                      key={cat.id}
-                      className="border shadow-sm hover:shadow-md transition-all cursor-pointer animate-slide-up group"
-                      style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
-                      onClick={() => setSelectedCategory(cat)}
-                    >
-                      <CardContent className="p-5 flex items-center gap-4">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold truncate">{cat.typeName}</p>
-                          <p className="text-sm text-muted-foreground truncate">{categoryCounts[cat.id] || 0} hợp đồng</p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {canEdit && (
-                            <Button variant="outline" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-xs h-7" onClick={(e) => { e.stopPropagation(); setSelectedCategory(cat); setUploadDialogOpen(true); }}>
-                              Upload
-                            </Button>
-                          )}
-                          {isAdmin && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive text-xs" onClick={(e) => e.stopPropagation()}>
-                                  Xóa
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
-                                  <AlertDialogDescription>Loại "{cat.name}" sẽ bị xóa.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Hủy</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteCategory(cat.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                          <span className="text-muted-foreground">→</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                {entityCategories.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic py-4 text-center">Chưa có loại hợp đồng nào. {canEdit ? 'Nhấn "Tạo loại hợp đồng" để thêm.' : ""}</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {entityCategories.map((cat: any, i: number) => (
+                      <Card
+                        key={cat.id}
+                        className="border shadow-sm hover:shadow-md transition-all cursor-pointer animate-slide-up group"
+                        style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
+                        onClick={() => setSelectedCategory(cat)}
+                      >
+                        <CardContent className="p-5 flex items-center gap-4">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold truncate">{cat.typeName}</p>
+                            <p className="text-sm text-muted-foreground truncate">{categoryCounts[cat.id] || 0} hợp đồng</p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {canEdit && (
+                              <Button variant="outline" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-xs h-7" onClick={(e) => { e.stopPropagation(); setSelectedCategory(cat); setUploadDialogOpen(true); }}>
+                                Upload
+                              </Button>
+                            )}
+                            {isAdmin && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive text-xs" onClick={(e) => e.stopPropagation()}>
+                                    Xóa
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
+                                    <AlertDialogDescription>Loại "{cat.name}" sẽ bị xóa.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Hủy</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteCategory(cat.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                            <span className="text-muted-foreground">→</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </AccordionContent>
             </AccordionItem>
           );
