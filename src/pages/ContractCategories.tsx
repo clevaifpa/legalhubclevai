@@ -909,8 +909,8 @@ const ContractCategories = () => {
 
       <Accordion type="multiple" defaultValue={sortedEntities} className="w-full space-y-4">
         {sortedEntities.map(entity => {
-          const entityCategories = groupedCategories[entity];
-          const totalContracts = entityCategories.reduce((sum, cat) => sum + (categoryCounts[cat.id] || 0), 0);
+          const entityCategories = groupedCategories[entity] || [];
+          const totalContracts = entityCategories.reduce((sum: number, cat: any) => sum + (categoryCounts[cat.id] || 0), 0);
 
           return (
             <AccordionItem key={entity} value={entity} className="border rounded-lg bg-card shadow-sm px-4">
