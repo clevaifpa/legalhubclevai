@@ -844,8 +844,20 @@ const ContractCategories = () => {
               <DialogHeader><DialogTitle>Tạo loại hợp đồng mới</DialogTitle></DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
+                  <Label>Pháp nhân *</Label>
+                  <Select value={newCatEntity} onValueChange={setNewCatEntity}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ENTITIES.map(e => (
+                        <SelectItem key={e} value={e}>{e}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>Tên loại hợp đồng *</Label>
                   <Input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="VD: Hợp đồng bảo hiểm" />
+                  <p className="text-xs text-muted-foreground">Tên sẽ được lưu: <strong>{newCatEntity} - {newCatName || "..."}</strong></p>
                 </div>
                 <div className="space-y-2">
                   <Label>Mô tả</Label>
