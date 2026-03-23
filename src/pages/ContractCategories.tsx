@@ -87,6 +87,8 @@ const ContractCategories = () => {
   const [uploading, setUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [newCatEntity, setNewCatEntity] = useState("CHV");
+  const [addEntityDialogOpen, setAddEntityDialogOpen] = useState(false);
+  const [newEntityName, setNewEntityName] = useState("");
 
   const [form, setForm] = useState({
     title: "", partner_name: "", contract_type: "khac", status: "da_ky",
