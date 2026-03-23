@@ -12,6 +12,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
@@ -792,6 +795,32 @@ const ContractCategories = () => {
   }
 
   // Category list view
+  const ENTITIES = ["CHV", "LKV", "LKO", "C2V"];
+
+  const extractEntity = (name: string) => {
+    for (const entity of ENTITIES) {
+      if (name.toUpperCase().startsWith(entity)) {
+        const typeName = name.substring(entity.length).replace(/^[\s-:]+/, '').trim() || name;
+        return { entity, typeName };
+      }
+    }
+    return { entity: "Khác", typeName: name };
+  };
+
+  const groupedCategories = categories.reduce((acc, cat) => {
+    const { entity, typeName } = extractEntity(cat.name);
+    if (!acc[entity]) acc[entity] = [];
+    acc[entity].push({ ...cat, typeName });
+    return acc;
+  }, {} as Record<string, any[]>);
+
+  // Sort groups: KNOWN entities first, "Khác" last.
+  const sortedEntities = Object.keys(groupedCategories).sort((a, b) => {
+    if (a === "Khác") return 1;
+    if (b === "Khác") return -1;
+    return a.localeCompare(b);
+  });
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -827,45 +856,64 @@ const ContractCategories = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categories.map((cat, i) => (
-          <Card
-            key={cat.id}
-            className="border shadow-sm hover:shadow-md transition-all cursor-pointer animate-slide-up group"
-            style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
-            onClick={() => setSelectedCategory(cat)}
-          >
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold truncate">{cat.name}</p>
-                <p className="text-sm text-muted-foreground truncate">{categoryCounts[cat.id] || 0} hợp đồng</p>
-              </div>
-              <div className="flex items-center gap-1">
-                {isAdmin && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive text-xs" onClick={(e) => e.stopPropagation()}>
-                        Xóa
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
-                        <AlertDialogDescription>Loại "{cat.name}" sẽ bị xóa.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Hủy</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDeleteCategory(cat.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
-                <span className="text-muted-foreground">→</span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Accordion type="multiple" defaultValue={sortedEntities} className="w-full space-y-4">
+        {sortedEntities.map(entity => {
+          const entityCategories = groupedCategories[entity];
+          const totalContracts = entityCategories.reduce((sum, cat) => sum + (categoryCounts[cat.id] || 0), 0);
+
+          return (
+            <AccordionItem key={entity} value={entity} className="border rounded-lg bg-card shadow-sm px-4">
+              <AccordionTrigger className="hover:no-underline py-4">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-lg">{entity}</span>
+                  <Badge variant="secondary" className="font-normal text-muted-foreground">{totalContracts} hợp đồng</Badge>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pt-2 pb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {entityCategories.map((cat, i) => (
+                    <Card
+                      key={cat.id}
+                      className="border shadow-sm hover:shadow-md transition-all cursor-pointer animate-slide-up group"
+                      style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
+                      onClick={() => setSelectedCategory(cat)}
+                    >
+                      <CardContent className="p-5 flex items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold truncate">{cat.typeName}</p>
+                          <p className="text-sm text-muted-foreground truncate">{categoryCounts[cat.id] || 0} hợp đồng</p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {isAdmin && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive text-xs" onClick={(e) => e.stopPropagation()}>
+                                  Xóa
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
+                                  <AlertDialogDescription>Loại "{cat.name}" sẽ bị xóa.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Hủy</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteCategory(cat.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                          <span className="text-muted-foreground">→</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
 
       {categories.length === 0 && (
         <div className="text-center py-12">
