@@ -193,10 +193,11 @@ const ContractCategories = () => {
   const handleAddCategory = async () => {
     if (!newCatName.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("contract_categories").insert({ name: newCatName.trim(), description: newCatDesc.trim(), created_by: user?.id });
+    const fullName = `${newCatEntity} - ${newCatName.trim()}`;
+    const { error } = await supabase.from("contract_categories").insert({ name: fullName, description: newCatDesc.trim(), created_by: user?.id });
     setSaving(false);
     if (error) toast.error("Lỗi", { description: error.message });
-    else { toast.success("Đã tạo loại hợp đồng mới"); setDialogOpen(false); setNewCatName(""); setNewCatDesc(""); fetchCategories(); }
+    else { toast.success("Đã tạo loại hợp đồng mới"); setDialogOpen(false); setNewCatName(""); setNewCatDesc(""); setNewCatEntity("CHV"); fetchCategories(); }
   };
 
   const handleDeleteCategory = async (catId: string) => {
