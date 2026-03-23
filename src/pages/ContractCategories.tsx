@@ -804,7 +804,7 @@ const ContractCategories = () => {
     LKO: "LKO",
     C2V: "C2V",
   };
-  const [newCatEntity, setNewCatEntity] = useState("CHV");
+  // newCatEntity state moved to top of component
 
   const extractEntity = (name: string) => {
     for (const entity of ENTITIES) {
