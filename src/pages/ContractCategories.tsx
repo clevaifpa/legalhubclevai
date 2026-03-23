@@ -86,6 +86,7 @@ const ContractCategories = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [newCatEntity, setNewCatEntity] = useState("CHV");
 
   const [form, setForm] = useState({
     title: "", partner_name: "", contract_type: "khac", status: "da_ky",
@@ -803,7 +804,7 @@ const ContractCategories = () => {
     LKO: "LKO",
     C2V: "C2V",
   };
-  const [newCatEntity, setNewCatEntity] = useState("CHV");
+  // newCatEntity state moved to top of component
 
   const extractEntity = (name: string) => {
     for (const entity of ENTITIES) {
