@@ -921,50 +921,54 @@ const ContractCategories = () => {
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-2 pb-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {entityCategories.map((cat, i) => (
-                    <Card
-                      key={cat.id}
-                      className="border shadow-sm hover:shadow-md transition-all cursor-pointer animate-slide-up group"
-                      style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
-                      onClick={() => setSelectedCategory(cat)}
-                    >
-                      <CardContent className="p-5 flex items-center gap-4">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold truncate">{cat.typeName}</p>
-                          <p className="text-sm text-muted-foreground truncate">{categoryCounts[cat.id] || 0} hợp đồng</p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {canEdit && (
-                            <Button variant="outline" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-xs h-7" onClick={(e) => { e.stopPropagation(); setSelectedCategory(cat); setUploadDialogOpen(true); }}>
-                              Upload
-                            </Button>
-                          )}
-                          {isAdmin && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive text-xs" onClick={(e) => e.stopPropagation()}>
-                                  Xóa
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
-                                  <AlertDialogDescription>Loại "{cat.name}" sẽ bị xóa.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Hủy</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteCategory(cat.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                          <span className="text-muted-foreground">→</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                {entityCategories.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic py-4 text-center">Chưa có loại hợp đồng nào. {canEdit ? 'Nhấn "Tạo loại hợp đồng" để thêm.' : ""}</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {entityCategories.map((cat: any, i: number) => (
+                      <Card
+                        key={cat.id}
+                        className="border shadow-sm hover:shadow-md transition-all cursor-pointer animate-slide-up group"
+                        style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
+                        onClick={() => setSelectedCategory(cat)}
+                      >
+                        <CardContent className="p-5 flex items-center gap-4">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold truncate">{cat.typeName}</p>
+                            <p className="text-sm text-muted-foreground truncate">{categoryCounts[cat.id] || 0} hợp đồng</p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {canEdit && (
+                              <Button variant="outline" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-xs h-7" onClick={(e) => { e.stopPropagation(); setSelectedCategory(cat); setUploadDialogOpen(true); }}>
+                                Upload
+                              </Button>
+                            )}
+                            {isAdmin && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive text-xs" onClick={(e) => e.stopPropagation()}>
+                                    Xóa
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
+                                    <AlertDialogDescription>Loại "{cat.name}" sẽ bị xóa.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Hủy</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteCategory(cat.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                            <span className="text-muted-foreground">→</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </AccordionContent>
             </AccordionItem>
           );
