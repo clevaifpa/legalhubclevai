@@ -198,9 +198,23 @@ const ContractCategories = () => {
   };
 
   const handleDeleteCategory = async (catId: string) => {
+    // Check if category has contracts
+    const count = categoryCounts[catId] || 0;
+    if (count > 0) {
+      toast.error("Không thể xóa", { description: `Loại hợp đồng này đang chứa ${count} hợp đồng. Vui lòng xóa hoặc chuyển hết hợp đồng trước khi xóa loại.` });
+      return;
+    }
     const { error } = await supabase.from("contract_categories").delete().eq("id", catId);
-    if (error) toast.error("Lỗi xóa", { description: error.message });
-    else { toast.success("Đã xóa loại hợp đồng"); fetchCategories(); }
+    if (error) {
+      if (error.message?.includes("foreign key")) {
+        toast.error("Không thể xóa", { description: "Loại hợp đồng này vẫn còn hợp đồng liên kết. Hãy xóa hết hợp đồng bên trong trước." });
+      } else {
+        toast.error("Lỗi xóa", { description: error.message });
+      }
+    } else {
+      toast.success("Đã xóa loại hợp đồng");
+      fetchCategories();
+    }
   };
 
   const handleDeleteContract = async (contract: any) => {
