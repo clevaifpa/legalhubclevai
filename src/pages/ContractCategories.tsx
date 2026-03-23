@@ -114,9 +114,6 @@ const ContractCategories = () => {
     if (data) {
       setCategories(data);
       let query = supabase.from("contracts").select("category_id");
-      if (role === "manager") {
-        query = query.eq("department", profile?.department || "");
-      }
       const { data: allContracts } = await query;
       if (allContracts) {
         const counts: Record<string, number> = {};
