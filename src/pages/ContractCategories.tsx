@@ -193,10 +193,11 @@ const ContractCategories = () => {
   const handleAddCategory = async () => {
     if (!newCatName.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("contract_categories").insert({ name: newCatName.trim(), description: newCatDesc.trim(), created_by: user?.id });
+    const fullName = `${newCatEntity} - ${newCatName.trim()}`;
+    const { error } = await supabase.from("contract_categories").insert({ name: fullName, description: newCatDesc.trim(), created_by: user?.id });
     setSaving(false);
     if (error) toast.error("Lỗi", { description: error.message });
-    else { toast.success("Đã tạo loại hợp đồng mới"); setDialogOpen(false); setNewCatName(""); setNewCatDesc(""); fetchCategories(); }
+    else { toast.success("Đã tạo loại hợp đồng mới"); setDialogOpen(false); setNewCatName(""); setNewCatDesc(""); setNewCatEntity("CHV"); fetchCategories(); }
   };
 
   const handleDeleteCategory = async (catId: string) => {
@@ -796,6 +797,13 @@ const ContractCategories = () => {
 
   // Category list view
   const ENTITIES = ["CHV", "LKV", "LKO", "C2V"];
+  const ENTITY_LABELS: Record<string, string> = {
+    CHV: "CHV",
+    LKV: "LKV",
+    LKO: "LKO",
+    C2V: "C2V",
+  };
+  const [newCatEntity, setNewCatEntity] = useState("CHV");
 
   const extractEntity = (name: string) => {
     for (const entity of ENTITIES) {
@@ -837,8 +845,20 @@ const ContractCategories = () => {
               <DialogHeader><DialogTitle>Tạo loại hợp đồng mới</DialogTitle></DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
+                  <Label>Pháp nhân *</Label>
+                  <Select value={newCatEntity} onValueChange={setNewCatEntity}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ENTITIES.map(e => (
+                        <SelectItem key={e} value={e}>{e}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>Tên loại hợp đồng *</Label>
                   <Input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="VD: Hợp đồng bảo hiểm" />
+                  <p className="text-xs text-muted-foreground">Tên sẽ được lưu: <strong>{newCatEntity} - {newCatName || "..."}</strong></p>
                 </div>
                 <div className="space-y-2">
                   <Label>Mô tả</Label>
@@ -884,6 +904,11 @@ const ContractCategories = () => {
                           <p className="text-sm text-muted-foreground truncate">{categoryCounts[cat.id] || 0} hợp đồng</p>
                         </div>
                         <div className="flex items-center gap-1">
+                          {canEdit && (
+                            <Button variant="outline" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-xs h-7" onClick={(e) => { e.stopPropagation(); setSelectedCategory(cat); setUploadDialogOpen(true); }}>
+                              Upload
+                            </Button>
+                          )}
                           {isAdmin && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
