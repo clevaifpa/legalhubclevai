@@ -70,9 +70,9 @@ const ContractCategories = () => {
   const contractIdParamSearch = searchParams.get('contractId');
   const activeContractId = (routeContractId && !closedRouteIds.has(routeContractId)) ? routeContractId : contractIdParamSearch;
   const isAdmin = role === "admin";
-  const canEdit = role === "admin" || role === "accountant" || role === "finance" || role === "manager" || role === "manager_chung";
-  const canEditContract = (c: any) => isAdmin || ((role === "accountant" || role === "finance" || role === "manager" || role === "manager_chung") && c.created_by === user?.id);
-  const isViewOnly = false; // Manager is no longer view only for their own contracts
+  const canEdit = role === "admin" || role === "accountant" || role === "finance";
+  const canEditContract = (c: any) => isAdmin || ((role === "accountant" || role === "finance") && c.created_by === user?.id);
+  const isViewOnly = false;
   const [categories, setCategories] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
   const [contractPayments, setContractPayments] = useState<Record<string, any[]>>({});
