@@ -841,44 +841,76 @@ const ContractCategories = () => {
           <h1 className="text-2xl font-bold tracking-tight">Tổng hợp đồng</h1>
           <p className="text-muted-foreground">Kho lưu trữ hợp đồng tập trung theo loại</p>
         </div>
-        {canEdit && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">Tạo loại hợp đồng</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Tạo loại hợp đồng mới</DialogTitle></DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Pháp nhân *</Label>
-                  <Select value={newCatEntity} onValueChange={setNewCatEntity}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {ENTITIES.map(e => (
-                        <SelectItem key={e} value={e}>{e}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+        <div className="flex gap-2">
+          {isAdmin && (
+            <Dialog open={addEntityDialogOpen} onOpenChange={setAddEntityDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="shrink-0">+ Pháp nhân</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Thêm pháp nhân mới</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Tên pháp nhân (viết tắt) *</Label>
+                    <Input value={newEntityName} onChange={(e) => setNewEntityName(e.target.value.toUpperCase())} placeholder="VD: ABC" />
+                    <p className="text-xs text-muted-foreground">Sau khi thêm, bạn có thể tạo loại hợp đồng thuộc pháp nhân này.</p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Tên loại hợp đồng *</Label>
-                  <Input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="VD: Hợp đồng bảo hiểm" />
-                  <p className="text-xs text-muted-foreground">Tên sẽ được lưu: <strong>{newCatEntity} - {newCatName || "..."}</strong></p>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setAddEntityDialogOpen(false)}>Hủy</Button>
+                  <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => {
+                    if (!newEntityName.trim()) return;
+                    // Just create a placeholder category so entity shows up
+                    setNewCatEntity(newEntityName.trim());
+                    setAddEntityDialogOpen(false);
+                    setNewEntityName("");
+                    setDialogOpen(true);
+                  }} disabled={!newEntityName.trim()}>
+                    Tiếp tục
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+          {canEdit && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">Tạo loại hợp đồng</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Tạo loại hợp đồng mới</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Pháp nhân *</Label>
+                    <Select value={newCatEntity} onValueChange={setNewCatEntity}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {allEntities.filter(e => e !== "Khác").map(e => (
+                          <SelectItem key={e} value={e}>{e}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tên loại hợp đồng *</Label>
+                    <Input value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="VD: Hợp đồng bảo hiểm" />
+                    <p className="text-xs text-muted-foreground">Tên sẽ được lưu: <strong>{newCatEntity} - {newCatName || "..."}</strong></p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Mô tả</Label>
+                    <Input value={newCatDesc} onChange={(e) => setNewCatDesc(e.target.value)} placeholder="Mô tả ngắn gọn" />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Mô tả</Label>
-                  <Input value={newCatDesc} onChange={(e) => setNewCatDesc(e.target.value)} placeholder="Mô tả ngắn gọn" />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
-                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleAddCategory} disabled={saving || !newCatName.trim()}>
-                  {saving ? "Đang tạo..." : "Tạo"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
+                  <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleAddCategory} disabled={saving || !newCatName.trim()}>
+                    {saving ? "Đang tạo..." : "Tạo"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
 
       <Accordion type="multiple" defaultValue={sortedEntities} className="w-full space-y-4">
