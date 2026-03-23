@@ -796,6 +796,13 @@ const ContractCategories = () => {
 
   // Category list view
   const ENTITIES = ["CHV", "LKV", "LKO", "C2V"];
+  const ENTITY_LABELS: Record<string, string> = {
+    CHV: "CHV",
+    LKV: "LKV",
+    LKO: "LKO",
+    C2V: "C2V",
+  };
+  const [newCatEntity, setNewCatEntity] = useState("CHV");
 
   const extractEntity = (name: string) => {
     for (const entity of ENTITIES) {
