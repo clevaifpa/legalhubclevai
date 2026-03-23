@@ -799,17 +799,16 @@ const ContractCategories = () => {
   }
 
   // Category list view
-  const ENTITIES = ["CHV", "LKV", "LKO", "C2V"];
-  const ENTITY_LABELS: Record<string, string> = {
-    CHV: "CHV",
-    LKV: "LKV",
-    LKO: "LKO",
-    C2V: "C2V",
-  };
-  // newCatEntity state moved to top of component
+  const DEFAULT_ENTITIES = ["CHV", "LKV", "LKO", "C2V"];
 
   const extractEntity = (name: string) => {
-    for (const entity of ENTITIES) {
+    // Try to match "ENTITY - TypeName" or "ENTITY TypeName" pattern
+    const match = name.match(/^([A-Z0-9]+)\s*[-:]\s*(.+)$/i);
+    if (match) {
+      return { entity: match[1].toUpperCase(), typeName: match[2].trim() };
+    }
+    // Check if starts with any known entity
+    for (const entity of DEFAULT_ENTITIES) {
       if (name.toUpperCase().startsWith(entity)) {
         const typeName = name.substring(entity.length).replace(/^[\s-:]+/, '').trim() || name;
         return { entity, typeName };
@@ -818,6 +817,7 @@ const ContractCategories = () => {
     return { entity: "Khác", typeName: name };
   };
 
+  // Build grouped categories and discover all entities
   const groupedCategories = categories.reduce((acc, cat) => {
     const { entity, typeName } = extractEntity(cat.name);
     if (!acc[entity]) acc[entity] = [];
@@ -825,8 +825,10 @@ const ContractCategories = () => {
     return acc;
   }, {} as Record<string, any[]>);
 
-  // Sort groups: KNOWN entities first, "Khác" last.
-  const sortedEntities = Object.keys(groupedCategories).sort((a, b) => {
+  // Merge default + discovered entities
+  const allEntities = Array.from(new Set([...DEFAULT_ENTITIES, ...Object.keys(groupedCategories)]));
+
+  const sortedEntities = allEntities.sort((a, b) => {
     if (a === "Khác") return 1;
     if (b === "Khác") return -1;
     return a.localeCompare(b);
