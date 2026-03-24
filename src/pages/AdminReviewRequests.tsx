@@ -1102,6 +1102,50 @@ const AdminReviewRequests = () => {
                     ⚠️ Vui lòng cấp quyền <strong>Editor (Chỉnh sửa)</strong> cho tất cả reviewer trước khi gửi.
                   </p>
                 </div>
+
+                {/* Supplementary Documents */}
+                <div className="space-y-3 p-4 rounded-lg border bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-semibold">Văn bản bổ sung (nếu có)</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setSupplementaryDocs([...supplementaryDocs, { doc_name: "", doc_url: "" }])}>
+                      + Thêm văn bản
+                    </Button>
+                  </div>
+                  {supplementaryDocs.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">Chưa có văn bản bổ sung. Nhấn "Thêm văn bản" để đính kèm tài liệu.</p>
+                  )}
+                  {supplementaryDocs.map((doc, idx) => (
+                    <div key={idx} className="space-y-2 p-3 rounded border bg-background">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">Văn bản {idx + 1}</span>
+                        <Button type="button" variant="ghost" size="sm" className="text-destructive text-xs h-6 px-2" onClick={() => setSupplementaryDocs(supplementaryDocs.filter((_, i) => i !== idx))}>
+                          ✕ Xóa
+                        </Button>
+                      </div>
+                      <Input
+                        value={doc.doc_name}
+                        onChange={(e) => {
+                          const updated = [...supplementaryDocs];
+                          updated[idx] = { ...updated[idx], doc_name: e.target.value };
+                          setSupplementaryDocs(updated);
+                        }}
+                        placeholder="VD: Phụ lục hợp đồng, BBNT…"
+                      />
+                      <Input
+                        type="url"
+                        value={doc.doc_url}
+                        onChange={(e) => {
+                          const updated = [...supplementaryDocs];
+                          updated[idx] = { ...updated[idx], doc_url: e.target.value };
+                          setSupplementaryDocs(updated);
+                        }}
+                        placeholder="Dán link (Google Drive, PDF…)"
+                      />
+                      {doc.doc_name && !doc.doc_url && <p className="text-xs text-destructive">Vui lòng nhập link cho tài liệu này</p>}
+                      {!doc.doc_name && doc.doc_url && <p className="text-xs text-destructive">Vui lòng nhập tên tài liệu</p>}
+                    </div>
+                  ))}
+                </div>
                 <div className="space-y-2" id="field-approved_pe_number">
                   <Label className={formErrors.approved_pe_number ? "text-destructive" : ""}>Số PE đã duyệt *</Label>
                   <Input className={formErrors.approved_pe_number ? "border-destructive focus-visible:ring-destructive" : ""} value={form.approved_pe_number} onChange={(e) => setForm({ ...form, approved_pe_number: e.target.value })} placeholder="VD: PE-2026-001" />
