@@ -251,7 +251,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {categoryStats.length > 0 && (
+      {hasContractAccess && categoryStats.length > 0 && (
         <Card className="border-none shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle className="text-lg font-semibold">Tổng số hợp đồng theo loại</CardTitle>
@@ -261,36 +261,12 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={categoryStats} barSize={50} margin={{ top: 20, right: 30, left: 20, bottom: 50 }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis
-                  dataKey="name"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  interval={0}
-                  angle={-45}
-                  textAnchor="end"
-                />
+                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} interval={0} angle={-45} textAnchor="end" />
                 <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                <Tooltip
-                  cursor={{ fill: 'hsl(var(--muted)/0.5)' }}
-                  contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: "13px" }}
-                />
-                <Bar
-                  dataKey="value"
-                  name="Số lượng hợp đồng"
-                  radius={[6, 6, 0, 0]}
-                  onClick={(data) => {
-                    navigate(`/tong-hop-dong?categoryId=${data.payload?.id || data.id}`);
-                  }}
-                  className="cursor-pointer"
-                >
+                <Tooltip cursor={{ fill: 'hsl(var(--muted)/0.5)' }} contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: "13px" }} />
+                <Bar dataKey="value" name="Số lượng hợp đồng" radius={[6, 6, 0, 0]} onClick={(data) => { navigate(`/tong-hop-dong?categoryId=${data.payload?.id || data.id}`); }} className="cursor-pointer">
                   {categoryStats.map((entry, index) => (
-                    <Cell
-                      key={index}
-                      fill="hsl(var(--primary))"
-                      className="hover:opacity-80 transition-opacity"
-                    />
+                    <Cell key={index} fill="hsl(var(--primary))" className="hover:opacity-80 transition-opacity" />
                   ))}
                 </Bar>
               </BarChart>
