@@ -1467,12 +1467,19 @@ const AdminReviewRequests = () => {
       {/* Detail / Approve Dialog */}
       <Dialog open={!!selectedReq} onOpenChange={(open) => {
         if (!open) {
+          const closingId = selectedReq?.id;
           if (routeReqId && activeReqId === routeReqId) {
             setClosedRouteIds(prev => new Set(prev).add(routeReqId));
           }
           searchParams.delete('id');
           setSearchParams(searchParams);
           setSelectedReq(null);
+          if (closingId) {
+            setPinnedId(closingId);
+            setHighlightId(closingId);
+            setTimeout(() => setHighlightId(null), 2000);
+            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+          }
         }
       }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
