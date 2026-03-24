@@ -473,6 +473,7 @@ const UserDashboard = () => {
     setEditingReqId(null);
     setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "", global_manager_id: "", legal_reviewer_id: "", accountant_reviewer_id: "", finance_reviewer_id: "" });
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
+    setSupplementaryDocs([]);
   };
 
   const handleResetForm = () => {
