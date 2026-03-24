@@ -48,6 +48,8 @@ const CONTRACT_TYPE_CATEGORIES = [
   "Hợp đồng sử dụng 1 lần",
   "Hợp đồng sử dụng dài hạn",
   "Hợp đồng/phụ lục gia hạn",
+  "Phụ lục hợp đồng",
+  "NDA",
 ];
 
 const STATUS_LABELS: Record<string, string> = {
