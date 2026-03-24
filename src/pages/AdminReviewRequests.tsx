@@ -1277,7 +1277,7 @@ const AdminReviewRequests = () => {
           const canAct = canActOnRequest(req);
 
           return (
-            <Card key={req.id} className="border shadow-sm hover:shadow-md transition-all animate-slide-up" style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}>
+            <Card key={req.id} className={`border shadow-sm hover:shadow-md transition-all animate-slide-up ${highlightId === req.id ? "ring-2 ring-accent bg-accent/5" : ""}`} style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}>
               <CardHeader className="pb-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
