@@ -188,12 +188,23 @@ export default function Notifications() {
                     <p className="text-muted-foreground font-medium">{visibleUnreadCount} thông báo chưa đọc</p>
                 </div>
 
-                {visibleUnreadCount > 0 && (
-                    <Button variant="outline" onClick={markAllAsRead} className="shadow-sm font-medium">
-                        <CheckCheck className="w-4 h-4 mr-2" />
-                        Đánh dấu tất cả đã đọc
-                    </Button>
-                )}
+                <div className="flex gap-2">
+                    {visibleNotifications.length > 0 && (
+                        <Button variant="outline" onClick={() => {
+                            deleteAllNotifications();
+                            toast({ title: "Đã xóa tất cả thông báo" });
+                        }} className="shadow-sm font-medium text-destructive hover:text-destructive">
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Xóa tất cả
+                        </Button>
+                    )}
+                    {visibleUnreadCount > 0 && (
+                        <Button variant="outline" onClick={markAllAsRead} className="shadow-sm font-medium">
+                            <CheckCheck className="w-4 h-4 mr-2" />
+                            Đánh dấu tất cả đã đọc
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {visibleNotifications.length === 0 ? (
