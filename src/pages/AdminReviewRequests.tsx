@@ -1264,47 +1264,25 @@ const AdminReviewRequests = () => {
                   />
                 )}
 
-                {/* File links */}
+                {/* File links - all workflow roles can see both links */}
                 <div className="space-y-1">
-                  {isAdmin && (
-                    <>
-                      {req.file_url && (
-                        <button
-                          onClick={() => {
-                            window.open(req.file_url as string, "_blank");
-                          }}
-                          className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
-                        >
-                          Xem tài liệu ban đầu
-                        </button>
-                      )}
-                      {req.legal_review_doc_link && (
-                        <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
-                          Xem tài liệu đã review
-                        </a>
-                      )}
-                    </>
-                  )}
-                  {(isAccountant || isFinance) && (
-                    <>
-                      {req.legal_review_doc_link ? (
-                        <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
-                          Xem tài liệu đã review
-                        </a>
-                      ) : (
-                        <p className="text-xs text-muted-foreground italic">Chưa có tài liệu review</p>
-                      )}
-                    </>
-                  )}
-                  {isManager && req.file_url && (
+                  {req.file_url && (
                     <button
                       onClick={() => {
                         window.open(req.file_url as string, "_blank");
                       }}
                       className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
                     >
-                      Xem tài liệu
+                      Xem tài liệu ban đầu
                     </button>
+                  )}
+                  {req.legal_review_doc_link && (
+                    <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
+                      Xem tài liệu đã review
+                    </a>
+                  )}
+                  {!req.file_url && !req.legal_review_doc_link && (
+                    <p className="text-xs text-muted-foreground italic">Chưa có tài liệu</p>
                   )}
                 </div>
 
