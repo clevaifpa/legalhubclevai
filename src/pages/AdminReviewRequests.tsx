@@ -1263,6 +1263,7 @@ const AdminReviewRequests = () => {
           const deptReviews = extractDeptReviews(notes[req.id] || []);
           const reqNotes = (notes[req.id] || []).filter((n: any) => !decodeDeptReview(n.content));
           const reqPayments = paymentSchedules[req.id] || [];
+          const reqSuppDocs = supplementaryDocsData[req.id] || [];
           const canAct = canActOnRequest(req);
 
           return (
