@@ -1329,16 +1329,14 @@ const AdminReviewRequests = () => {
                   </div>
                 )}
 
-                {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                  <DepartmentReviewTracker
-                    deptReviews={deptReviews}
-                    assignedReviewers={getAssignedReviewers(req)}
-                    skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")}
-                    assignable={isAdmin}
-                    reviewers={[...reviewers, ...globalManagers]}
-                    onAssignReviewer={(dept, reviewerId) => handleAssignReviewer(req.id, dept, reviewerId)}
-                  />
-                )}
+                <DepartmentReviewTracker
+                  deptReviews={deptReviews}
+                  assignedReviewers={getAssignedReviewers(req)}
+                  skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")}
+                  assignable={isAdmin && req.status !== "hoan_tat" && req.status !== "da_hoan_thanh"}
+                  reviewers={[...reviewers, ...globalManagers]}
+                  onAssignReviewer={(dept, reviewerId) => handleAssignReviewer(req.id, dept, reviewerId)}
+                />
 
                 {/* File links - all workflow roles can see both links */}
                 <div className="space-y-1">
