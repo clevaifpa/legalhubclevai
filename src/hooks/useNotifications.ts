@@ -37,6 +37,7 @@ export function useNotifications() {
       .from("notifications")
       .select("*")
       .eq("user_id", user.id)
+      .eq("is_deleted", false)
       .order("created_at", { ascending: false });
     if (data) setNotifications(data as any);
     setLoading(false);
