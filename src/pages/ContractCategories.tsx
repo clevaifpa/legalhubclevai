@@ -1120,6 +1120,7 @@ const ContractCategories = () => {
           })()}
         </div>
       ) : (
+      <>
       <Accordion type="multiple" defaultValue={sortedEntities} className="w-full space-y-4">
         {sortedEntities.map(entity => {
           const entityCategories = groupedCategories[entity] || [];
