@@ -250,6 +250,14 @@ const UserDashboard = () => {
           });
           setPaymentSchedules(grouped);
         }
+        if (suppDocsRes.data) {
+          const grouped: Record<string, any[]> = {};
+          suppDocsRes.data.forEach((d: any) => {
+            if (!grouped[d.review_request_id]) grouped[d.review_request_id] = [];
+            grouped[d.review_request_id].push(d);
+          });
+          setSupplementaryDocsData(grouped);
+        }
       }
     }
     setLoading(false);
