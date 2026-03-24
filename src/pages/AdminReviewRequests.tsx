@@ -390,8 +390,8 @@ const AdminReviewRequests = () => {
 
     const errors: Record<string, string> = {};
     if (!form.department) errors.department = "Vui lòng chọn phòng ban";
-    if (!form.contract_type_category) errors.contract_type_category = "Vui lòng chọn loại hợp đồng";
-    if (!form.contract_title.trim()) errors.contract_title = "Vui lòng nhập tên hợp đồng";
+    if (!form.contract_type_category) errors.contract_type_category = "Vui lòng chọn loại văn bản";
+    if (!form.contract_title.trim()) errors.contract_title = "Vui lòng nhập tên văn bản";
     if (!form.partner_name.trim()) errors.partner_name = "Vui lòng nhập tên đối tác";
     if (!form.tax_code.trim()) errors.tax_code = "Vui lòng nhập mã số thuế đối tác";
     if (!form.contract_value_na && (!form.contract_value || parseInt(form.contract_value) <= 0)) {
