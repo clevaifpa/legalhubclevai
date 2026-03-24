@@ -166,6 +166,9 @@ const AdminReviewRequests = () => {
     { phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false },
   ]);
 
+  const [supplementaryDocs, setSupplementaryDocs] = useState<SupplementaryDoc[]>([]);
+  const [supplementaryDocsData, setSupplementaryDocsData] = useState<Record<string, any[]>>({});
+
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
