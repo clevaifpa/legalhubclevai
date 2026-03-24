@@ -190,10 +190,17 @@ export default function Notifications() {
 
                 <div className="flex gap-2">
                     {visibleNotifications.length > 0 && (
-                        <Button variant="outline" onClick={() => {
-                            deleteAllNotifications();
-                            toast({ title: "Đã xóa tất cả thông báo" });
-                        }} className="shadow-sm font-medium text-destructive hover:text-destructive">
+                        <Button
+                            variant="outline"
+                            onClick={async () => {
+                                const ok = await deleteAllNotifications();
+                                toast({
+                                    title: ok ? "Đã xóa tất cả thông báo" : "Xóa thông báo thất bại",
+                                    variant: ok ? "default" : "destructive",
+                                });
+                            }}
+                            className="shadow-sm font-medium text-destructive hover:text-destructive"
+                        >
                             <Trash2 className="w-4 h-4 mr-2" />
                             Xóa tất cả
                         </Button>
@@ -259,12 +266,17 @@ export default function Notifications() {
                                 </div>
 
                                 <button
+                                    type="button"
                                     className="mt-0.5 shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                                     title="Xóa thông báo"
-                                    onClick={(e) => {
+                                    onClick={async (e) => {
+                                        e.preventDefault();
                                         e.stopPropagation();
-                                        deleteNotification(n.id);
-                                        toast({ title: "Đã xóa thông báo" });
+                                        const ok = await deleteNotification(n.id);
+                                        toast({
+                                            title: ok ? "Đã xóa thông báo" : "Xóa thông báo thất bại",
+                                            variant: ok ? "default" : "destructive",
+                                        });
                                     }}
                                 >
                                     <Trash2 className="w-4 h-4" />
