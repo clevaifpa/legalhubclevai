@@ -153,6 +153,48 @@ const ContractCategories = () => {
   useEffect(() => { fetchCategories(); }, []);
   useEffect(() => { if (selectedCategory) fetchContracts(selectedCategory.id); }, [selectedCategory, activeContractId]);
 
+  // Debounce global search
+  useEffect(() => {
+    const timer = setTimeout(() => setGlobalSearchDebounced(globalSearchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [globalSearchTerm]);
+
+  // Fetch global search results
+  useEffect(() => {
+    if (!globalSearchDebounced.trim()) {
+      setGlobalResults([]);
+      setGlobalResultPayments({});
+      return;
+    }
+    const doSearch = async () => {
+      setGlobalSearching(true);
+      const term = `%${globalSearchDebounced.trim()}%`;
+      const { data } = await supabase
+        .from("contracts")
+        .select("*")
+        .or(`title.ilike.${term},partner_name.ilike.${term},tax_code.ilike.${term},department.ilike.${term},status.ilike.${term}`)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (data) {
+        setGlobalResults(data);
+        const ids = data.map((c: any) => c.id);
+        if (ids.length > 0) {
+          const { data: payments } = await supabase.from("contract_payment_schedules").select("*").in("contract_id", ids).order("created_at", { ascending: true });
+          if (payments) {
+            const grouped: Record<string, any[]> = {};
+            payments.forEach((p: any) => {
+              if (!grouped[p.contract_id]) grouped[p.contract_id] = [];
+              grouped[p.contract_id].push(p);
+            });
+            setGlobalResultPayments(grouped);
+          }
+        }
+      }
+      setGlobalSearching(false);
+    };
+    doSearch();
+  }, [globalSearchDebounced]);
+
   useEffect(() => {
     const resolveDeepLink = async () => {
       if (categories.length === 0) return;
