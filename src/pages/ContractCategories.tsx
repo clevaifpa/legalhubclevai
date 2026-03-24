@@ -949,6 +949,42 @@ const ContractCategories = () => {
             </Dialog>
           );
         })()}
+
+        {/* Add Related Doc Dialog */}
+        <Dialog open={!!addDocDialogContractId} onOpenChange={(open) => { if (!open) setAddDocDialogContractId(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader><DialogTitle>Thêm văn bản liên quan</DialogTitle></DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Loại văn bản</Label>
+                <Select value={newDocType} onValueChange={setNewDocType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {DOC_TYPE_OPTIONS.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {newDocType === "khac" && (
+                <div className="space-y-2">
+                  <Label>Tên văn bản</Label>
+                  <Input value={newDocCustomName} onChange={(e) => setNewDocCustomName(e.target.value)} placeholder="VD: Báo giá, Email xác nhận…" />
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Link tài liệu *</Label>
+                <Input value={newDocUrl} onChange={(e) => setNewDocUrl(e.target.value)} placeholder="Dán link Google Drive, PDF…" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddDocDialogContractId(null)}>Hủy</Button>
+              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleAddRelatedDoc} disabled={!newDocUrl.trim() || (newDocType === "khac" && !newDocCustomName.trim())}>
+                Thêm
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
