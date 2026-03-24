@@ -1,15 +1,17 @@
 import { useState, useEffect } from "react";
-import { Bell, Mail, MailOpen, CheckCheck } from "lucide-react";
+import { Bell, Mail, MailOpen, CheckCheck, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Notifications() {
-    const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+    const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications } = useNotifications();
     const { role } = useAuth();
+    const { toast } = useToast();
     const navigate = useNavigate();
 
     const [deadlines, setDeadlines] = useState<Record<string, string>>({});
@@ -186,12 +188,23 @@ export default function Notifications() {
                     <p className="text-muted-foreground font-medium">{visibleUnreadCount} thông báo chưa đọc</p>
                 </div>
 
-                {visibleUnreadCount > 0 && (
-                    <Button variant="outline" onClick={markAllAsRead} className="shadow-sm font-medium">
-                        <CheckCheck className="w-4 h-4 mr-2" />
-                        Đánh dấu tất cả đã đọc
-                    </Button>
-                )}
+                <div className="flex gap-2">
+                    {visibleNotifications.length > 0 && (
+                        <Button variant="outline" onClick={() => {
+                            deleteAllNotifications();
+                            toast({ title: "Đã xóa tất cả thông báo" });
+                        }} className="shadow-sm font-medium text-destructive hover:text-destructive">
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Xóa tất cả
+                        </Button>
+                    )}
+                    {visibleUnreadCount > 0 && (
+                        <Button variant="outline" onClick={markAllAsRead} className="shadow-sm font-medium">
+                            <CheckCheck className="w-4 h-4 mr-2" />
+                            Đánh dấu tất cả đã đọc
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {visibleNotifications.length === 0 ? (
@@ -244,6 +257,18 @@ export default function Notifications() {
 
                                     {getBadge(n.title, n.content)}
                                 </div>
+
+                                <button
+                                    className="mt-0.5 shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                    title="Xóa thông báo"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        deleteNotification(n.id);
+                                        toast({ title: "Đã xóa thông báo" });
+                                    }}
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
                             </div>
                         )
                     })}

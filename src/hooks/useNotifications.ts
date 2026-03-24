@@ -37,6 +37,7 @@ export function useNotifications() {
       .from("notifications")
       .select("*")
       .eq("user_id", user.id)
+      .eq("is_deleted", false)
       .order("created_at", { ascending: false });
     if (data) setNotifications(data as any);
     setLoading(false);
@@ -123,5 +124,21 @@ export function useNotifications() {
       .eq("is_read", false);
   };
 
-  return { notifications, unreadCount, loading, markAsRead, markAllAsRead };
+  const deleteNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    void supabase.from("notifications").update({ is_deleted: true } as any).eq("id", id);
+  };
+
+  const deleteAllNotifications = () => {
+    if (!user) return;
+    if (notifications.length === 0) return;
+    setNotifications([]);
+    void supabase
+      .from("notifications")
+      .update({ is_deleted: true } as any)
+      .eq("user_id", user.id)
+      .eq("is_deleted", false);
+  };
+
+  return { notifications, unreadCount, loading, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications };
 }
