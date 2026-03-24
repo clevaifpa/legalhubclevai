@@ -1279,9 +1279,7 @@ const AdminReviewRequests = () => {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                      <DepartmentReviewTracker deptReviews={deptReviews} assignedReviewers={getAssignedReviewers(req)} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
-                    )}
+                    <DepartmentReviewTracker deptReviews={deptReviews} assignedReviewers={getAssignedReviewers(req)} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
                     <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
                   </div>
                 </div>
@@ -1331,16 +1329,14 @@ const AdminReviewRequests = () => {
                   </div>
                 )}
 
-                {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                  <DepartmentReviewTracker
-                    deptReviews={deptReviews}
-                    assignedReviewers={getAssignedReviewers(req)}
-                    skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")}
-                    assignable={isAdmin}
-                    reviewers={[...reviewers, ...globalManagers]}
-                    onAssignReviewer={(dept, reviewerId) => handleAssignReviewer(req.id, dept, reviewerId)}
-                  />
-                )}
+                <DepartmentReviewTracker
+                  deptReviews={deptReviews}
+                  assignedReviewers={getAssignedReviewers(req)}
+                  skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")}
+                  assignable={isAdmin && req.status !== "hoan_tat" && req.status !== "da_hoan_thanh"}
+                  reviewers={[...reviewers, ...globalManagers]}
+                  onAssignReviewer={(dept, reviewerId) => handleAssignReviewer(req.id, dept, reviewerId)}
+                />
 
                 {/* File links - all workflow roles can see both links */}
                 <div className="space-y-1">
