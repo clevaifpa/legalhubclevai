@@ -679,7 +679,8 @@ const ContractCategories = () => {
                   <TableHead>Hết hiệu lực</TableHead>
                   <TableHead>Nghĩa vụ tiếp theo</TableHead>
                   <TableHead>Đơn vị</TableHead>
-                  <TableHead>Link</TableHead>
+                  <TableHead>Link HĐ</TableHead>
+                  <TableHead>Văn bản liên quan</TableHead>
                   {canEdit && <TableHead>Thao tác</TableHead>}
                 </TableRow>
               </TableHeader>
