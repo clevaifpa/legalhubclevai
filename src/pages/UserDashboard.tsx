@@ -450,6 +450,17 @@ const UserDashboard = () => {
         payment_due_date: p.payment_due_date,
       }));
       await supabase.from("payment_schedules").insert(schedules as any);
+
+      // Save supplementary docs
+      if (editingReqId) {
+        await supabase.from("review_supplementary_docs").delete().eq("review_request_id", finalReqId);
+      }
+      const validDocs = supplementaryDocs.filter(d => d.doc_name.trim() && d.doc_url.trim());
+      if (validDocs.length > 0) {
+        await supabase.from("review_supplementary_docs").insert(
+          validDocs.map(d => ({ review_request_id: finalReqId!, doc_name: d.doc_name.trim(), doc_url: d.doc_url.trim() })) as any
+        );
+      }
     }
 
     setSubmitting(false);
