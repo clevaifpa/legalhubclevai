@@ -88,6 +88,11 @@ interface PaymentPhase {
   is_na: boolean;
 }
 
+interface SupplementaryDoc {
+  doc_name: string;
+  doc_url: string;
+}
+
 const UserDashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { id: routeReqId } = useParams();
@@ -102,6 +107,8 @@ const UserDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
   const [notes, setNotes] = useState<Record<string, any[]>>({});
   const [paymentSchedules, setPaymentSchedules] = useState<Record<string, any[]>>({});
+  const [supplementaryDocs, setSupplementaryDocs] = useState<SupplementaryDoc[]>([]);
+  const [supplementaryDocsData, setSupplementaryDocsData] = useState<Record<string, any[]>>({});
   const [managers, setManagers] = useState<any[]>([]);
   const [reviewers, setReviewers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -222,9 +229,10 @@ const UserDashboard = () => {
       setRequests(data);
       const ids = data.map((r: any) => r.id);
       if (ids.length > 0) {
-        const [notesRes, paymentsRes] = await Promise.all([
+        const [notesRes, paymentsRes, suppDocsRes] = await Promise.all([
           supabase.from("review_notes").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
           supabase.from("payment_schedules").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
+          supabase.from("review_supplementary_docs").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
         ]);
         if (notesRes.data) {
           const grouped: Record<string, any[]> = {};
@@ -241,6 +249,14 @@ const UserDashboard = () => {
             grouped[p.review_request_id].push(p);
           });
           setPaymentSchedules(grouped);
+        }
+        if (suppDocsRes.data) {
+          const grouped: Record<string, any[]> = {};
+          suppDocsRes.data.forEach((d: any) => {
+            if (!grouped[d.review_request_id]) grouped[d.review_request_id] = [];
+            grouped[d.review_request_id].push(d);
+          });
+          setSupplementaryDocsData(grouped);
         }
       }
     }
@@ -434,6 +450,17 @@ const UserDashboard = () => {
         payment_due_date: p.payment_due_date,
       }));
       await supabase.from("payment_schedules").insert(schedules as any);
+
+      // Save supplementary docs
+      if (editingReqId) {
+        await supabase.from("review_supplementary_docs").delete().eq("review_request_id", finalReqId);
+      }
+      const validDocs = supplementaryDocs.filter(d => d.doc_name.trim() && d.doc_url.trim());
+      if (validDocs.length > 0) {
+        await supabase.from("review_supplementary_docs").insert(
+          validDocs.map(d => ({ review_request_id: finalReqId!, doc_name: d.doc_name.trim(), doc_url: d.doc_url.trim() })) as any
+        );
+      }
     }
 
     setSubmitting(false);
@@ -446,6 +473,7 @@ const UserDashboard = () => {
     setEditingReqId(null);
     setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "", global_manager_id: "", legal_reviewer_id: "", accountant_reviewer_id: "", finance_reviewer_id: "" });
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
+    setSupplementaryDocs([]);
   };
 
   const handleResetForm = () => {
@@ -490,6 +518,10 @@ const UserDashboard = () => {
     } else {
       setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
     }
+
+    // Load supplementary docs for editing
+    const existingDocs = supplementaryDocsData[req.id] || [];
+    setSupplementaryDocs(existingDocs.map((d: any) => ({ doc_name: d.doc_name, doc_url: d.doc_url })));
 
     setDialogOpen(true);
   };
@@ -786,6 +818,39 @@ const UserDashboard = () => {
                 <Label className={formErrors.description ? "text-destructive" : ""}>Mô tả chi tiết *</Label>
                 <Textarea className={formErrors.description ? "border-destructive focus-visible:ring-destructive" : ""} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả thêm về hợp đồng cần review..." rows={3} />
                 {formErrors.description && <p className="text-xs text-destructive">{formErrors.description}</p>}
+              </div>
+
+              {/* Supplementary Documents */}
+              <div className="space-y-3 p-4 rounded-lg border bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">Văn bản bổ sung (nếu có)</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setSupplementaryDocs([...supplementaryDocs, { doc_name: "", doc_url: "" }])}>
+                    + Thêm văn bản
+                  </Button>
+                </div>
+                {supplementaryDocs.length === 0 && (
+                  <p className="text-xs text-muted-foreground italic">Chưa có văn bản bổ sung. Nhấn "Thêm văn bản" để đính kèm tài liệu.</p>
+                )}
+                {supplementaryDocs.map((doc, idx) => (
+                  <div key={idx} className="space-y-2 p-3 rounded border bg-background">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">Văn bản {idx + 1}</span>
+                      <Button type="button" variant="ghost" size="sm" className="text-destructive text-xs h-6 px-2" onClick={() => setSupplementaryDocs(supplementaryDocs.filter((_, i) => i !== idx))}>
+                        ✕ Xóa
+                      </Button>
+                    </div>
+                    <Input placeholder="Tên văn bản" value={doc.doc_name} onChange={(e) => {
+                      const updated = [...supplementaryDocs];
+                      updated[idx] = { ...updated[idx], doc_name: e.target.value };
+                      setSupplementaryDocs(updated);
+                    }} />
+                    <Input placeholder="Link văn bản (URL)" value={doc.doc_url} onChange={(e) => {
+                      const updated = [...supplementaryDocs];
+                      updated[idx] = { ...updated[idx], doc_url: e.target.value };
+                      setSupplementaryDocs(updated);
+                    }} />
+                  </div>
+                ))}
               </div>
             </div>
             <DialogFooter>
