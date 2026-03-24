@@ -138,6 +138,8 @@ const AdminReviewRequests = () => {
   const [managers, setManagers] = useState<any[]>([]);
   const [reviewers, setReviewers] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [editingReqId, setEditingReqId] = useState<string | null>(null);
 
@@ -312,20 +314,26 @@ const AdminReviewRequests = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const filtered = requests.filter((req) => {
-    // If we have an activeReqId but the dialog was closed, don't single it out forever
-    if (activeReqId && !closedRouteIds.has(activeReqId)) {
-      // We still show the full list. We rely on the useEffect below to launch the popup!
+  const filtered = (() => {
+    const list = requests.filter((req) => {
+      const matchSearch = search === "" ||
+        req.contract_title.toLowerCase().includes(search.toLowerCase()) ||
+        req.partner_name?.toLowerCase().includes(search.toLowerCase()) ||
+        req.requester_name?.toLowerCase().includes(search.toLowerCase()) ||
+        req.department?.toLowerCase().includes(search.toLowerCase()) ||
+        req.tax_code?.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === "all" || req.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+    if (pinnedId) {
+      const idx = list.findIndex(r => r.id === pinnedId);
+      if (idx > 0) {
+        const [pinned] = list.splice(idx, 1);
+        list.unshift(pinned);
+      }
     }
-    const matchSearch = search === "" ||
-      req.contract_title.toLowerCase().includes(search.toLowerCase()) ||
-      req.partner_name?.toLowerCase().includes(search.toLowerCase()) ||
-      req.requester_name?.toLowerCase().includes(search.toLowerCase()) ||
-      req.department?.toLowerCase().includes(search.toLowerCase()) ||
-      req.tax_code?.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "all" || req.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+    return list;
+  })();
 
   // Deep link auto-open logic
   useEffect(() => {
@@ -742,8 +750,12 @@ const AdminReviewRequests = () => {
       department: selectedReq.department || "",
     }).catch(console.error);
 
+    const closingId = selectedReq.id;
     setSaving(false);
     setSelectedReq(null);
+    setPinnedId(closingId);
+    setHighlightId(closingId);
+    setTimeout(() => setHighlightId(null), 2000);
     toast.success(`Đã duyệt và chuyển sang: ${STATUS_LABELS[nextStatus] || nextStatus}`);
     fetchRequests();
   };
@@ -806,8 +818,12 @@ const AdminReviewRequests = () => {
       department: selectedReq.department || "",
     }).catch(console.error);
 
+    const closingId = selectedReq.id;
     setSaving(false);
     setSelectedReq(null);
+    setPinnedId(closingId);
+    setHighlightId(closingId);
+    setTimeout(() => setHighlightId(null), 2000);
     toast.success("Đã từ chối yêu cầu");
     fetchRequests();
   };
@@ -1269,7 +1285,7 @@ const AdminReviewRequests = () => {
           const canAct = canActOnRequest(req);
 
           return (
-            <Card key={req.id} className="border shadow-sm hover:shadow-md transition-all animate-slide-up" style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}>
+            <Card key={req.id} className={`border shadow-sm hover:shadow-md transition-all animate-slide-up ${highlightId === req.id ? "ring-2 ring-accent bg-accent/5" : ""}`} style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}>
               <CardHeader className="pb-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
@@ -1459,12 +1475,19 @@ const AdminReviewRequests = () => {
       {/* Detail / Approve Dialog */}
       <Dialog open={!!selectedReq} onOpenChange={(open) => {
         if (!open) {
+          const closingId = selectedReq?.id;
           if (routeReqId && activeReqId === routeReqId) {
             setClosedRouteIds(prev => new Set(prev).add(routeReqId));
           }
           searchParams.delete('id');
           setSearchParams(searchParams);
           setSelectedReq(null);
+          if (closingId) {
+            setPinnedId(closingId);
+            setHighlightId(closingId);
+            setTimeout(() => setHighlightId(null), 2000);
+            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+          }
         }
       }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -1538,24 +1561,38 @@ const AdminReviewRequests = () => {
             {isAdmin && selectedReq && (
               <Button variant="outline" onClick={() => {
                 const req = selectedReq;
+                const closingId = req?.id;
                 if (routeReqId && activeReqId === routeReqId) {
                   setClosedRouteIds(prev => new Set(prev).add(routeReqId));
                 }
                 searchParams.delete('id');
                 setSearchParams(searchParams);
                 setSelectedReq(null);
+                if (closingId) {
+                  setPinnedId(closingId);
+                  setHighlightId(closingId);
+                  setTimeout(() => setHighlightId(null), 2000);
+                  setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                }
                 handleEdit(req);
               }}>
                 Chỉnh sửa
               </Button>
             )}
             <Button variant="outline" onClick={() => {
+              const closingId = selectedReq?.id;
               if (routeReqId && activeReqId === routeReqId) {
                 setClosedRouteIds(prev => new Set(prev).add(routeReqId));
               }
               searchParams.delete('id');
               setSearchParams(searchParams);
               setSelectedReq(null);
+              if (closingId) {
+                setPinnedId(closingId);
+                setHighlightId(closingId);
+                setTimeout(() => setHighlightId(null), 2000);
+                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+              }
             }}>Đóng</Button>
             {canActOnRequest(selectedReq) && (
               <>
