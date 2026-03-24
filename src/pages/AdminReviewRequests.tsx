@@ -314,20 +314,26 @@ const AdminReviewRequests = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const filtered = requests.filter((req) => {
-    // If we have an activeReqId but the dialog was closed, don't single it out forever
-    if (activeReqId && !closedRouteIds.has(activeReqId)) {
-      // We still show the full list. We rely on the useEffect below to launch the popup!
+  const filtered = (() => {
+    const list = requests.filter((req) => {
+      const matchSearch = search === "" ||
+        req.contract_title.toLowerCase().includes(search.toLowerCase()) ||
+        req.partner_name?.toLowerCase().includes(search.toLowerCase()) ||
+        req.requester_name?.toLowerCase().includes(search.toLowerCase()) ||
+        req.department?.toLowerCase().includes(search.toLowerCase()) ||
+        req.tax_code?.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === "all" || req.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+    if (pinnedId) {
+      const idx = list.findIndex(r => r.id === pinnedId);
+      if (idx > 0) {
+        const [pinned] = list.splice(idx, 1);
+        list.unshift(pinned);
+      }
     }
-    const matchSearch = search === "" ||
-      req.contract_title.toLowerCase().includes(search.toLowerCase()) ||
-      req.partner_name?.toLowerCase().includes(search.toLowerCase()) ||
-      req.requester_name?.toLowerCase().includes(search.toLowerCase()) ||
-      req.department?.toLowerCase().includes(search.toLowerCase()) ||
-      req.tax_code?.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "all" || req.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+    return list;
+  })();
 
   // Deep link auto-open logic
   useEffect(() => {
