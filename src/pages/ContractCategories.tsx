@@ -97,6 +97,9 @@ const ContractCategories = () => {
   const [globalResultPayments, setGlobalResultPayments] = useState<Record<string, any[]>>({});
   const [globalSearching, setGlobalSearching] = useState(false);
   const [globalSelectedContract, setGlobalSelectedContract] = useState<any>(null);
+  const [entityOrder, setEntityOrder] = useState<Record<string, number>>({});
+  const [draggedEntity, setDraggedEntity] = useState<string | null>(null);
+  const [dragOverEntity, setDragOverEntity] = useState<string | null>(null);
   // Related docs add dialog
   const [addDocDialogContractId, setAddDocDialogContractId] = useState<string | null>(null);
   const [newDocType, setNewDocType] = useState("bien_ban_nghiem_thu");
