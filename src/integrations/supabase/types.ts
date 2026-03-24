@@ -290,6 +290,27 @@ export type Database = {
         }
         Relationships: []
       }
+      entity_order: {
+        Row: {
+          entity_name: string
+          id: string
+          order_index: number
+          updated_at: string
+        }
+        Insert: {
+          entity_name: string
+          id?: string
+          order_index?: number
+          updated_at?: string
+        }
+        Update: {
+          entity_name?: string
+          id?: string
+          order_index?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_logs: {
         Row: {
           content: string

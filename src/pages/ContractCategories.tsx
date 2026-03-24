@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
-import { X, Plus } from "lucide-react";
+import { X, Plus, GripVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,6 +97,9 @@ const ContractCategories = () => {
   const [globalResultPayments, setGlobalResultPayments] = useState<Record<string, any[]>>({});
   const [globalSearching, setGlobalSearching] = useState(false);
   const [globalSelectedContract, setGlobalSelectedContract] = useState<any>(null);
+  const [entityOrder, setEntityOrder] = useState<Record<string, number>>({});
+  const [draggedEntity, setDraggedEntity] = useState<string | null>(null);
+  const [dragOverEntity, setDragOverEntity] = useState<string | null>(null);
   // Related docs add dialog
   const [addDocDialogContractId, setAddDocDialogContractId] = useState<string | null>(null);
   const [newDocType, setNewDocType] = useState("bien_ban_nghiem_thu");
@@ -184,7 +187,16 @@ const ContractCategories = () => {
     }
   };
 
-  useEffect(() => { fetchCategories(); }, []);
+  const fetchEntityOrder = async () => {
+    const { data } = await supabase.from("entity_order").select("entity_name, order_index").order("order_index");
+    if (data) {
+      const order: Record<string, number> = {};
+      data.forEach((r: any) => { order[r.entity_name] = r.order_index; });
+      setEntityOrder(order);
+    }
+  };
+
+  useEffect(() => { fetchCategories(); fetchEntityOrder(); }, []);
   useEffect(() => { if (selectedCategory) fetchContracts(selectedCategory.id); }, [selectedCategory, activeContractId]);
 
   const handleAddRelatedDoc = async () => {
@@ -1041,8 +1053,57 @@ const ContractCategories = () => {
   const sortedEntities = allEntities.sort((a, b) => {
     if (a === "Khác") return 1;
     if (b === "Khác") return -1;
+    const orderA = entityOrder[a] ?? 999;
+    const orderB = entityOrder[b] ?? 999;
+    if (orderA !== orderB) return orderA - orderB;
     return a.localeCompare(b);
   });
+
+  const handleDragStart = (entity: string) => {
+    setDraggedEntity(entity);
+  };
+
+  const handleDragOver = (e: React.DragEvent, entity: string) => {
+    e.preventDefault();
+    if (entity !== draggedEntity && entity !== "Khác") {
+      setDragOverEntity(entity);
+    }
+  };
+
+  const handleDrop = async (targetEntity: string) => {
+    if (!draggedEntity || draggedEntity === targetEntity || targetEntity === "Khác") {
+      setDraggedEntity(null);
+      setDragOverEntity(null);
+      return;
+    }
+    const reordered = sortedEntities.filter(e => e !== "Khác");
+    const fromIdx = reordered.indexOf(draggedEntity);
+    const toIdx = reordered.indexOf(targetEntity);
+    if (fromIdx === -1 || toIdx === -1) return;
+    reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, draggedEntity);
+
+    // Optimistic update
+    const newOrder: Record<string, number> = {};
+    reordered.forEach((e, i) => { newOrder[e] = i; });
+    setEntityOrder(newOrder);
+    setDraggedEntity(null);
+    setDragOverEntity(null);
+
+    // Persist to DB - upsert each entity
+    for (const [i, entityName] of reordered.entries()) {
+      await supabase.from("entity_order").upsert(
+        { entity_name: entityName, order_index: i, updated_at: new Date().toISOString() } as any,
+        { onConflict: "entity_name" }
+      );
+    }
+    toast.success("Đã cập nhật thứ tự pháp nhân");
+  };
+
+  const handleDragEnd = () => {
+    setDraggedEntity(null);
+    setDragOverEntity(null);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -1271,9 +1332,21 @@ const ContractCategories = () => {
           const totalContracts = entityCategories.reduce((sum: number, cat: any) => sum + (categoryCounts[cat.id] || 0), 0);
 
           return (
-            <AccordionItem key={entity} value={entity} className="border rounded-lg bg-card shadow-sm px-4">
+            <AccordionItem
+              key={entity}
+              value={entity}
+              className={`border rounded-lg bg-card shadow-sm px-4 transition-all ${dragOverEntity === entity ? "ring-2 ring-accent" : ""} ${draggedEntity === entity ? "opacity-50" : ""}`}
+              draggable={isAdmin && entity !== "Khác"}
+              onDragStart={() => handleDragStart(entity)}
+              onDragOver={(e) => handleDragOver(e, entity)}
+              onDrop={() => handleDrop(entity)}
+              onDragEnd={handleDragEnd}
+            >
               <AccordionTrigger className="hover:no-underline py-4">
                 <div className="flex items-center gap-2">
+                  {isAdmin && entity !== "Khác" && (
+                    <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing shrink-0" />
+                  )}
                   <span className="font-semibold text-lg">{entity}</span>
                   <Badge variant="secondary" className="font-normal text-muted-foreground">{totalContracts} hợp đồng</Badge>
                 </div>
