@@ -38,7 +38,6 @@ const advancedMenuItems = [
 
 
 const reviewerMenuItems = [
-  { title: "Tổng quan", url: "/", icon: LayoutDashboard },
   { title: "Yêu cầu review", url: "/yeu-cau-review", icon: FileCheck },
   { title: "AI Kiểm tra", url: "/ai-kiem-tra", icon: Bot }];
 
