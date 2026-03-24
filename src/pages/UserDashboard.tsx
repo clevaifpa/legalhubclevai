@@ -830,9 +830,7 @@ const UserDashboard = () => {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
-                      <DepartmentReviewTracker deptReviews={deptReviews} assignedReviewers={getAssignedReviewers(req)} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} reviewers={[...reviewers, ...globalManagers]} />
-                    )}
+                    <DepartmentReviewTracker deptReviews={deptReviews} assignedReviewers={getAssignedReviewers(req)} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} reviewers={[...reviewers, ...globalManagers]} />
                     <Badge className={STATUS_COLORS[req.status] || ""}>{STATUS_LABELS[req.status] || req.status}</Badge>
                   </div>
                 </div>
