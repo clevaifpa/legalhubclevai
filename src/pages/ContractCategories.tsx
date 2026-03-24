@@ -1053,8 +1053,57 @@ const ContractCategories = () => {
   const sortedEntities = allEntities.sort((a, b) => {
     if (a === "Khác") return 1;
     if (b === "Khác") return -1;
+    const orderA = entityOrder[a] ?? 999;
+    const orderB = entityOrder[b] ?? 999;
+    if (orderA !== orderB) return orderA - orderB;
     return a.localeCompare(b);
   });
+
+  const handleDragStart = (entity: string) => {
+    setDraggedEntity(entity);
+  };
+
+  const handleDragOver = (e: React.DragEvent, entity: string) => {
+    e.preventDefault();
+    if (entity !== draggedEntity && entity !== "Khác") {
+      setDragOverEntity(entity);
+    }
+  };
+
+  const handleDrop = async (targetEntity: string) => {
+    if (!draggedEntity || draggedEntity === targetEntity || targetEntity === "Khác") {
+      setDraggedEntity(null);
+      setDragOverEntity(null);
+      return;
+    }
+    const reordered = sortedEntities.filter(e => e !== "Khác");
+    const fromIdx = reordered.indexOf(draggedEntity);
+    const toIdx = reordered.indexOf(targetEntity);
+    if (fromIdx === -1 || toIdx === -1) return;
+    reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, draggedEntity);
+
+    // Optimistic update
+    const newOrder: Record<string, number> = {};
+    reordered.forEach((e, i) => { newOrder[e] = i; });
+    setEntityOrder(newOrder);
+    setDraggedEntity(null);
+    setDragOverEntity(null);
+
+    // Persist to DB - upsert each entity
+    for (const [i, entityName] of reordered.entries()) {
+      await supabase.from("entity_order").upsert(
+        { entity_name: entityName, order_index: i, updated_at: new Date().toISOString() } as any,
+        { onConflict: "entity_name" }
+      );
+    }
+    toast.success("Đã cập nhật thứ tự pháp nhân");
+  };
+
+  const handleDragEnd = () => {
+    setDraggedEntity(null);
+    setDragOverEntity(null);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
