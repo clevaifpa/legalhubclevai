@@ -97,6 +97,11 @@ interface PaymentPhase {
   is_na: boolean;
 }
 
+interface SupplementaryDoc {
+  doc_name: string;
+  doc_url: string;
+}
+
 const AdminReviewRequests = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { id: routeReqId } = useParams();
