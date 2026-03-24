@@ -3,6 +3,7 @@ import { Bell, Mail, MailOpen, CheckCheck, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,9 +12,7 @@ export default function Notifications() {
     const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications } = useNotifications();
     const { role } = useAuth();
     const { toast } = useToast();
-
-    // Dynamic import for navigate
-    const navigate = (await import("react-router-dom")).useNavigate;
+    const navigate = useNavigate();
 
     const [deadlines, setDeadlines] = useState<Record<string, string>>({});
     const [validRequestIds, setValidRequestIds] = useState<Set<string>>(new Set());
