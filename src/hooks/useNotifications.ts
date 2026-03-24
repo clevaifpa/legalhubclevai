@@ -12,6 +12,17 @@ export interface Notification {
   created_at: string;
 }
 
+type NotificationSyncEvent =
+  | { type: "mark_read"; id: string }
+  | { type: "mark_all_read" };
+
+const NOTIFICATION_SYNC_EVENT = "notifications-sync";
+
+const emitNotificationSync = (payload: NotificationSyncEvent) => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent<NotificationSyncEvent>(NOTIFICATION_SYNC_EVENT, { detail: payload }));
+};
+
 export function useNotifications() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -69,15 +80,47 @@ export function useNotifications() {
     return () => { supabase.removeChannel(channel); };
   }, [user, fetchNotifications]);
 
-  const markAsRead = async (id: string) => {
-    await supabase.from("notifications").update({ is_read: true } as any).eq("id", id);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleSync = (event: Event) => {
+      const { detail } = event as CustomEvent<NotificationSyncEvent>;
+      if (!detail) return;
+
+      if (detail.type === "mark_read") {
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === detail.id && !n.is_read ? { ...n, is_read: true } : n))
+        );
+        return;
+      }
+
+      setNotifications((prev) => prev.map((n) => (n.is_read ? n : { ...n, is_read: true })));
+    };
+
+    window.addEventListener(NOTIFICATION_SYNC_EVENT, handleSync as EventListener);
+    return () => window.removeEventListener(NOTIFICATION_SYNC_EVENT, handleSync as EventListener);
+  }, []);
+
+  const markAsRead = (id: string) => {
+    const target = notifications.find((n) => n.id === id);
+    if (!target || target.is_read) return;
+
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+    emitNotificationSync({ type: "mark_read", id });
+    void supabase.from("notifications").update({ is_read: true } as any).eq("id", id);
   };
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = () => {
     if (!user) return;
-    await supabase.from("notifications").update({ is_read: true } as any).eq("user_id", user.id).eq("is_read", false);
+    if (!notifications.some((n) => !n.is_read)) return;
+
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    emitNotificationSync({ type: "mark_all_read" });
+    void supabase
+      .from("notifications")
+      .update({ is_read: true } as any)
+      .eq("user_id", user.id)
+      .eq("is_read", false);
   };
 
   return { notifications, unreadCount, loading, markAsRead, markAllAsRead };
