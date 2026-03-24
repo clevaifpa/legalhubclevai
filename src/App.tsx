@@ -90,19 +90,18 @@ function ProtectedRoutes() {
     );
   }
 
-  // Manager → view-only Dashboard + review (no contract summary access)
+  // Manager → review requests as default (no dashboard access)
   if (role === "manager") {
     return (
       <Routes>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/request/:id" element={<Dashboard />} />
+          <Route path="/" element={<Navigate to="/yeu-cau-review" replace />} />
           <Route path="/yeu-cau-review" element={<AdminReviewRequests />} />
           <Route path="/admin-request/:id" element={<AdminReviewRequests />} />
           <Route path="/thong-bao" element={<Notifications />} />
           <Route path="/ai-kiem-tra" element={<AIReview />} />
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/yeu-cau-review" replace />} />
       </Routes>
     );
   }
