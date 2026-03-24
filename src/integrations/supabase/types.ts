@@ -360,6 +360,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          is_deleted: boolean
           is_read: boolean
           review_request_id: string | null
           title: string
@@ -369,6 +370,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          is_deleted?: boolean
           is_read?: boolean
           review_request_id?: string | null
           title: string
@@ -378,6 +380,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          is_deleted?: boolean
           is_read?: boolean
           review_request_id?: string | null
           title?: string
