@@ -1194,6 +1194,7 @@ const ContractCategories = () => {
           <p className="text-sm text-muted-foreground/70 mt-1">{canEdit ? 'Nhấn "Tạo loại hợp đồng" để bắt đầu' : "Liên hệ admin để tạo danh mục"}</p>
         </div>
       )}
+      )}
     </div>
   );
 };
