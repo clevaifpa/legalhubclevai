@@ -1017,7 +1017,7 @@ const AdminReviewRequests = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2" id="field-contract_type_category">
-                    <Label className={formErrors.contract_type_category ? "text-destructive" : ""}>Loại hợp đồng *</Label>
+                    <Label className={formErrors.contract_type_category ? "text-destructive" : ""}>Loại văn bản *</Label>
                     <Select value={form.contract_type_category} onValueChange={(v) => setForm({ ...form, contract_type_category: v })}>
                       <SelectTrigger className={formErrors.contract_type_category ? "border-destructive focus:ring-destructive" : ""}><SelectValue placeholder="Chọn loại" /></SelectTrigger>
                       <SelectContent>
