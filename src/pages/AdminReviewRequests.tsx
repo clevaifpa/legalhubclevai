@@ -1561,24 +1561,38 @@ const AdminReviewRequests = () => {
             {isAdmin && selectedReq && (
               <Button variant="outline" onClick={() => {
                 const req = selectedReq;
+                const closingId = req?.id;
                 if (routeReqId && activeReqId === routeReqId) {
                   setClosedRouteIds(prev => new Set(prev).add(routeReqId));
                 }
                 searchParams.delete('id');
                 setSearchParams(searchParams);
                 setSelectedReq(null);
+                if (closingId) {
+                  setPinnedId(closingId);
+                  setHighlightId(closingId);
+                  setTimeout(() => setHighlightId(null), 2000);
+                  setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                }
                 handleEdit(req);
               }}>
                 Chỉnh sửa
               </Button>
             )}
             <Button variant="outline" onClick={() => {
+              const closingId = selectedReq?.id;
               if (routeReqId && activeReqId === routeReqId) {
                 setClosedRouteIds(prev => new Set(prev).add(routeReqId));
               }
               searchParams.delete('id');
               setSearchParams(searchParams);
               setSelectedReq(null);
+              if (closingId) {
+                setPinnedId(closingId);
+                setHighlightId(closingId);
+                setTimeout(() => setHighlightId(null), 2000);
+                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+              }
             }}>Đóng</Button>
             {canActOnRequest(selectedReq) && (
               <>
