@@ -77,6 +77,7 @@ const ContractCategories = () => {
   const [categories, setCategories] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
   const [contractPayments, setContractPayments] = useState<Record<string, any[]>>({});
+  const [contractRelatedDocs, setContractRelatedDocs] = useState<Record<string, any[]>>({});
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -96,6 +97,29 @@ const ContractCategories = () => {
   const [globalResultPayments, setGlobalResultPayments] = useState<Record<string, any[]>>({});
   const [globalSearching, setGlobalSearching] = useState(false);
   const [globalSelectedContract, setGlobalSelectedContract] = useState<any>(null);
+  // Related docs add dialog
+  const [addDocDialogContractId, setAddDocDialogContractId] = useState<string | null>(null);
+  const [newDocType, setNewDocType] = useState("bien_ban_nghiem_thu");
+  const [newDocCustomName, setNewDocCustomName] = useState("");
+  const [newDocUrl, setNewDocUrl] = useState("");
+
+  const DOC_TYPE_OPTIONS = [
+    { value: "bien_ban_nghiem_thu", label: "Biên bản nghiệm thu" },
+    { value: "thanh_ly", label: "Thanh lý" },
+    { value: "phu_luc_hop_dong", label: "Phụ lục hợp đồng" },
+    { value: "khac", label: "Khác" },
+  ];
+
+  const getDocDisplayName = useCallback((doc: any, allDocs: any[]) => {
+    if (doc.doc_type === "phu_luc_hop_dong") {
+      const appendices = allDocs.filter(d => d.doc_type === "phu_luc_hop_dong").sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      const idx = appendices.findIndex((d: any) => d.id === doc.id);
+      return `Phụ lục hợp đồng ${idx + 1}`;
+    }
+    if (doc.doc_type === "khac") return doc.doc_name || "Khác";
+    const found = DOC_TYPE_OPTIONS.find(o => o.value === doc.doc_type);
+    return found?.label || doc.doc_type;
+  }, []);
 
   const [form, setForm] = useState({
     title: "", partner_name: "", contract_type: "khac", status: "da_ky",
