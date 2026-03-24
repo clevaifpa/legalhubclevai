@@ -257,7 +257,18 @@ export default function Notifications() {
 
                                     {getBadge(n.title, n.content)}
                                 </div>
-                            </div>
+
+                                <button
+                                    className="mt-0.5 shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                    title="Xóa thông báo"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        deleteNotification(n.id);
+                                        toast({ title: "Đã xóa thông báo" });
+                                    }}
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
                         )
                     })}
                 </div>
