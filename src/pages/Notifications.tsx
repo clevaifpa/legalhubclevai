@@ -266,12 +266,17 @@ export default function Notifications() {
                                 </div>
 
                                 <button
+                                    type="button"
                                     className="mt-0.5 shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                                     title="Xóa thông báo"
-                                    onClick={(e) => {
+                                    onClick={async (e) => {
+                                        e.preventDefault();
                                         e.stopPropagation();
-                                        deleteNotification(n.id);
-                                        toast({ title: "Đã xóa thông báo" });
+                                        const ok = await deleteNotification(n.id);
+                                        toast({
+                                            title: ok ? "Đã xóa thông báo" : "Xóa thông báo thất bại",
+                                            variant: ok ? "default" : "destructive",
+                                        });
                                     }}
                                 >
                                     <Trash2 className="w-4 h-4" />

@@ -9,12 +9,15 @@ export interface Notification {
   content: string;
   review_request_id: string | null;
   is_read: boolean;
+  is_deleted?: boolean;
   created_at: string;
 }
 
 type NotificationSyncEvent =
   | { type: "mark_read"; id: string }
-  | { type: "mark_all_read" };
+  | { type: "mark_all_read" }
+  | { type: "delete_one"; id: string }
+  | { type: "delete_all" };
 
 const NOTIFICATION_SYNC_EVENT = "notifications-sync";
 
@@ -53,20 +56,24 @@ export function useNotifications() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
         (payload) => {
-          setNotifications((prev) => [payload.new as Notification, ...prev]);
+          const inserted = payload.new as Notification;
+          if (inserted.is_deleted) return;
+          setNotifications((prev) => [inserted, ...prev.filter((n) => n.id !== inserted.id)]);
         }
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
         (payload) => {
-          const updated = payload.new as Notification & { is_deleted?: boolean };
-          if ((updated as any).is_deleted) {
+          const updated = payload.new as Notification;
+          if (updated.is_deleted) {
             setNotifications((prev) => prev.filter((n) => n.id !== updated.id));
             return;
           }
           setNotifications((prev) =>
-            prev.map((n) => (n.id === updated.id ? updated : n))
+            prev.some((n) => n.id === updated.id)
+              ? prev.map((n) => (n.id === updated.id ? updated : n))
+              : [updated, ...prev]
           );
         }
       )
@@ -82,7 +89,9 @@ export function useNotifications() {
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, fetchNotifications]);
 
   useEffect(() => {
@@ -99,7 +108,17 @@ export function useNotifications() {
         return;
       }
 
-      setNotifications((prev) => prev.map((n) => (n.is_read ? n : { ...n, is_read: true })));
+      if (detail.type === "mark_all_read") {
+        setNotifications((prev) => prev.map((n) => (n.is_read ? n : { ...n, is_read: true })));
+        return;
+      }
+
+      if (detail.type === "delete_one") {
+        setNotifications((prev) => prev.filter((n) => n.id !== detail.id));
+        return;
+      }
+
+      setNotifications([]);
     };
 
     window.addEventListener(NOTIFICATION_SYNC_EVENT, handleSync as EventListener);
@@ -108,11 +127,15 @@ export function useNotifications() {
 
   const markAsRead = (id: string) => {
     const target = notifications.find((n) => n.id === id);
-    if (!target || target.is_read) return;
+    if (!target || target.is_read || !user) return;
 
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
     emitNotificationSync({ type: "mark_read", id });
-    void supabase.from("notifications").update({ is_read: true } as any).eq("id", id);
+    void supabase
+      .from("notifications")
+      .update({ is_read: true } as any)
+      .eq("id", id)
+      .eq("user_id", user.id);
   };
 
   const markAllAsRead = () => {
@@ -125,24 +148,62 @@ export function useNotifications() {
       .from("notifications")
       .update({ is_read: true } as any)
       .eq("user_id", user.id)
-      .eq("is_read", false);
-  };
-
-  const deleteNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-    void supabase.from("notifications").update({ is_deleted: true } as any).eq("id", id);
-  };
-
-  const deleteAllNotifications = () => {
-    if (!user) return;
-    if (notifications.length === 0) return;
-    setNotifications([]);
-    void supabase
-      .from("notifications")
-      .update({ is_deleted: true } as any)
-      .eq("user_id", user.id)
+      .eq("is_read", false)
       .eq("is_deleted", false);
   };
 
-  return { notifications, unreadCount, loading, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications };
+  const deleteNotification = async (id: string) => {
+    if (!user) return false;
+
+    const previous = notifications;
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    emitNotificationSync({ type: "delete_one", id });
+
+    const { error } = await supabase
+      .from("notifications")
+      .update({ is_deleted: true, is_read: true } as any)
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .eq("is_deleted", false);
+
+    if (error) {
+      setNotifications(previous);
+      return false;
+    }
+
+    return true;
+  };
+
+  const deleteAllNotifications = async () => {
+    if (!user) return false;
+    if (notifications.length === 0) return true;
+
+    const previous = notifications;
+    setNotifications([]);
+    emitNotificationSync({ type: "delete_all" });
+
+    const { error } = await supabase
+      .from("notifications")
+      .update({ is_deleted: true, is_read: true } as any)
+      .eq("user_id", user.id)
+      .eq("is_deleted", false);
+
+    if (error) {
+      setNotifications(previous);
+      return false;
+    }
+
+    return true;
+  };
+
+  return {
+    notifications,
+    unreadCount,
+    loading,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    deleteAllNotifications,
+  };
 }
+
