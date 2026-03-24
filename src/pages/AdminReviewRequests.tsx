@@ -750,8 +750,12 @@ const AdminReviewRequests = () => {
       department: selectedReq.department || "",
     }).catch(console.error);
 
+    const closingId = selectedReq.id;
     setSaving(false);
     setSelectedReq(null);
+    setPinnedId(closingId);
+    setHighlightId(closingId);
+    setTimeout(() => setHighlightId(null), 2000);
     toast.success(`Đã duyệt và chuyển sang: ${STATUS_LABELS[nextStatus] || nextStatus}`);
     fetchRequests();
   };
