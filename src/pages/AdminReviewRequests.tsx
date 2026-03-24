@@ -90,6 +90,7 @@ const CONTRACT_TYPE_CATEGORIES = [
   "Hợp đồng/phụ lục gia hạn",
   "Phụ lục hợp đồng",
   "NDA",
+  "Văn bản khác",
 ];
 
 interface PaymentPhase {

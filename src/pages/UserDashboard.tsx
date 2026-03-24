@@ -50,6 +50,7 @@ const CONTRACT_TYPE_CATEGORIES = [
   "Hợp đồng/phụ lục gia hạn",
   "Phụ lục hợp đồng",
   "NDA",
+  "Văn bản khác",
 ];
 
 const STATUS_LABELS: Record<string, string> = {
