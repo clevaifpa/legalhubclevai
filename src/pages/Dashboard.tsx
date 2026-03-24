@@ -84,9 +84,14 @@ const Dashboard = () => {
 
   const expiring60 = expiringContracts.length;
 
+  const { role: userRole } = useAuth();
+  const hasContractAccess = userRole === "admin" || userRole === "accountant" || userRole === "finance" || userRole === "manager_chung";
+
   const stats = [
-    { title: "Tổng hợp đồng", value: total, link: "/tong-hop-dong" },
-    { title: "Hợp đồng sắp hết hạn (60 ngày)", value: expiring60, link: "/tong-hop-dong" },
+    ...(hasContractAccess ? [
+      { title: "Tổng hợp đồng", value: total, link: "/tong-hop-dong" },
+      { title: "Hợp đồng sắp hết hạn (60 ngày)", value: expiring60, link: "/tong-hop-dong" },
+    ] : []),
     { title: "Chờ review", value: reviewCount, link: "/yeu-cau-review" },
     { title: "Sắp hết hạn review (5 ngày)", value: expiringReviewCount, link: "/yeu-cau-review" },
   ];
@@ -118,88 +123,92 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column: Contracts & Payments */}
         <div className="space-y-6">
-          <Card className="border-none shadow-sm">
-            <CardHeader><CardTitle className="text-lg font-semibold">Hợp đồng theo trạng thái</CardTitle></CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={byStatus} barSize={40}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: "13px" }} />
-                  <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                    {byStatus.map((entry, index) => (<Cell key={index} fill={entry.fill} />))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          {hasContractAccess && (
+            <>
+              <Card className="border-none shadow-sm">
+                <CardHeader><CardTitle className="text-lg font-semibold">Hợp đồng theo trạng thái</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={byStatus} barSize={40}>
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
+                      <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: "13px" }} />
+                      <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                        {byStatus.map((entry, index) => (<Cell key={index} fill={entry.fill} />))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
 
-          <Card className="border-none shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle className="text-lg font-semibold">Hợp đồng sắp hết hạn (60 ngày)</CardTitle>
-              <Link to="/tong-hop-dong"><Button variant="ghost" size="sm" className="text-accent hover:text-accent/80">Xem tất cả →</Button></Link>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {expiringContracts.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Không có hợp đồng nào sắp hết hạn</p>}
-                {expiringContracts.slice(0, 6).map((contract) => {
-                  const todayDate = new Date();
-                  todayDate.setHours(0, 0, 0, 0);
-                  const expiryDate = new Date(contract.expiry_date!.replace(/-/g, '/'));
-                  expiryDate.setHours(0, 0, 0, 0);
-                  const daysLeft = Math.round((expiryDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
-                  return (
-                    <div
-                      key={contract.id}
-                      onClick={() => navigate(`/contract/${contract.id}`)}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{contract.title}</p>
-                        <p className="text-xs text-muted-foreground">{contract.partner_name} — Hết hạn: {formatDate(contract.expiry_date!)}</p>
-                      </div>
-                      <Badge variant={daysLeft <= 7 ? "destructive" : "secondary"} className={`ml-3 shrink-0 ${daysLeft <= 30 && daysLeft > 7 ? "bg-warning/10 text-warning border-warning/20" : ""}`}>
-                        {daysLeft} ngày
-                      </Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+              <Card className="border-none shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <CardTitle className="text-lg font-semibold">Hợp đồng sắp hết hạn (60 ngày)</CardTitle>
+                  <Link to="/tong-hop-dong"><Button variant="ghost" size="sm" className="text-accent hover:text-accent/80">Xem tất cả →</Button></Link>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {expiringContracts.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Không có hợp đồng nào sắp hết hạn</p>}
+                    {expiringContracts.slice(0, 6).map((contract) => {
+                      const todayDate = new Date();
+                      todayDate.setHours(0, 0, 0, 0);
+                      const expiryDate = new Date(contract.expiry_date!.replace(/-/g, '/'));
+                      expiryDate.setHours(0, 0, 0, 0);
+                      const daysLeft = Math.round((expiryDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+                      return (
+                        <div
+                          key={contract.id}
+                          onClick={() => navigate(`/contract/${contract.id}`)}
+                          className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{contract.title}</p>
+                            <p className="text-xs text-muted-foreground">{contract.partner_name} — Hết hạn: {formatDate(contract.expiry_date!)}</p>
+                          </div>
+                          <Badge variant={daysLeft <= 7 ? "destructive" : "secondary"} className={`ml-3 shrink-0 ${daysLeft <= 30 && daysLeft > 7 ? "bg-warning/10 text-warning border-warning/20" : ""}`}>
+                            {daysLeft} ngày
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="border-none shadow-sm">
-            <CardHeader><CardTitle className="text-lg font-semibold">Nghĩa vụ thanh toán sắp đến hạn</CardTitle></CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {upcomingPayments.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Không có nghĩa vụ thanh toán nào sắp đến hạn</p>}
-                {upcomingPayments.map((p) => {
-                  const todayDate = new Date();
-                  todayDate.setHours(0, 0, 0, 0);
-                  const dueDate = new Date(p.payment_due_date.replace(/-/g, '/'));
-                  dueDate.setHours(0, 0, 0, 0);
-                  const daysLeft = Math.round((dueDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
-                  const isOverdue = daysLeft < 0;
-                  return (
-                    <div
-                      key={p.id}
-                      onClick={() => navigate(`/contract/${p.contract_id}`)}
-                      className={`flex items-center justify-between p-3 rounded-lg transition-colors cursor-pointer ${isOverdue ? 'bg-destructive/10 hover:bg-destructive/20' : 'bg-muted/50 hover:bg-muted'}`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{p.contracts?.title}</p>
-                        <p className="text-xs text-muted-foreground">{p.phase_name} — Hạn: {formatDate(p.payment_due_date)} — {formatCurrency(p.payment_amount)}</p>
-                      </div>
-                      <Badge variant={isOverdue || daysLeft <= 7 ? "destructive" : "secondary"} className={`ml-3 shrink-0 ${!isOverdue && daysLeft <= 14 && daysLeft > 7 ? "bg-warning/10 text-warning border-warning/20" : ""}`}>
-                        {isOverdue ? `Quá ${Math.abs(daysLeft)} ngày` : `Còn ${daysLeft} ngày`}
-                      </Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+              <Card className="border-none shadow-sm">
+                <CardHeader><CardTitle className="text-lg font-semibold">Nghĩa vụ thanh toán sắp đến hạn</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {upcomingPayments.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Không có nghĩa vụ thanh toán nào sắp đến hạn</p>}
+                    {upcomingPayments.map((p) => {
+                      const todayDate = new Date();
+                      todayDate.setHours(0, 0, 0, 0);
+                      const dueDate = new Date(p.payment_due_date.replace(/-/g, '/'));
+                      dueDate.setHours(0, 0, 0, 0);
+                      const daysLeft = Math.round((dueDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+                      const isOverdue = daysLeft < 0;
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => navigate(`/contract/${p.contract_id}`)}
+                          className={`flex items-center justify-between p-3 rounded-lg transition-colors cursor-pointer ${isOverdue ? 'bg-destructive/10 hover:bg-destructive/20' : 'bg-muted/50 hover:bg-muted'}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{p.contracts?.title}</p>
+                            <p className="text-xs text-muted-foreground">{p.phase_name} — Hạn: {formatDate(p.payment_due_date)} — {formatCurrency(p.payment_amount)}</p>
+                          </div>
+                          <Badge variant={isOverdue || daysLeft <= 7 ? "destructive" : "secondary"} className={`ml-3 shrink-0 ${!isOverdue && daysLeft <= 14 && daysLeft > 7 ? "bg-warning/10 text-warning border-warning/20" : ""}`}>
+                            {isOverdue ? `Quá ${Math.abs(daysLeft)} ngày` : `Còn ${daysLeft} ngày`}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
 
         {/* Right Column: Reviews */}
@@ -242,7 +251,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {categoryStats.length > 0 && (
+      {hasContractAccess && categoryStats.length > 0 && (
         <Card className="border-none shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle className="text-lg font-semibold">Tổng số hợp đồng theo loại</CardTitle>
@@ -252,36 +261,12 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={categoryStats} barSize={50} margin={{ top: 20, right: 30, left: 20, bottom: 50 }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis
-                  dataKey="name"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  interval={0}
-                  angle={-45}
-                  textAnchor="end"
-                />
+                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} interval={0} angle={-45} textAnchor="end" />
                 <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                <Tooltip
-                  cursor={{ fill: 'hsl(var(--muted)/0.5)' }}
-                  contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: "13px" }}
-                />
-                <Bar
-                  dataKey="value"
-                  name="Số lượng hợp đồng"
-                  radius={[6, 6, 0, 0]}
-                  onClick={(data) => {
-                    navigate(`/tong-hop-dong?categoryId=${data.payload?.id || data.id}`);
-                  }}
-                  className="cursor-pointer"
-                >
+                <Tooltip cursor={{ fill: 'hsl(var(--muted)/0.5)' }} contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: "13px" }} />
+                <Bar dataKey="value" name="Số lượng hợp đồng" radius={[6, 6, 0, 0]} onClick={(data) => { navigate(`/tong-hop-dong?categoryId=${data.payload?.id || data.id}`); }} className="cursor-pointer">
                   {categoryStats.map((entry, index) => (
-                    <Cell
-                      key={index}
-                      fill="hsl(var(--primary))"
-                      className="hover:opacity-80 transition-opacity"
-                    />
+                    <Cell key={index} fill="hsl(var(--primary))" className="hover:opacity-80 transition-opacity" />
                   ))}
                 </Bar>
               </BarChart>
