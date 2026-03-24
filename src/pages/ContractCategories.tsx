@@ -184,6 +184,43 @@ const ContractCategories = () => {
     }
   };
 
+  useEffect(() => { fetchCategories(); }, []);
+  useEffect(() => { if (selectedCategory) fetchContracts(selectedCategory.id); }, [selectedCategory, activeContractId]);
+
+  const handleAddRelatedDoc = async () => {
+    if (!addDocDialogContractId || !newDocUrl.trim()) return;
+    if (newDocType === "khac" && !newDocCustomName.trim()) {
+      toast.error("Vui lòng nhập tên văn bản");
+      return;
+    }
+    const docName = newDocType === "khac" ? newDocCustomName.trim() : "";
+    const { error } = await supabase.from("contract_related_docs").insert({
+      contract_id: addDocDialogContractId,
+      doc_type: newDocType,
+      doc_name: docName,
+      doc_url: newDocUrl.trim(),
+    } as any);
+    if (error) {
+      toast.error("Lỗi thêm văn bản", { description: error.message });
+    } else {
+      toast.success("Đã thêm văn bản");
+      setAddDocDialogContractId(null);
+      setNewDocType("bien_ban_nghiem_thu");
+      setNewDocCustomName("");
+      setNewDocUrl("");
+      if (selectedCategory) fetchContracts(selectedCategory.id);
+    }
+  };
+
+  const handleDeleteRelatedDoc = async (docId: string) => {
+    const { error } = await supabase.from("contract_related_docs").delete().eq("id", docId);
+    if (error) toast.error("Lỗi xóa văn bản", { description: error.message });
+    else {
+      toast.success("Đã xóa văn bản");
+      if (selectedCategory) fetchContracts(selectedCategory.id);
+    }
+  };
+
   // Debounce global search
   useEffect(() => {
     const timer = setTimeout(() => setGlobalSearchDebounced(globalSearchTerm), 300);
