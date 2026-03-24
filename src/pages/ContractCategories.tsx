@@ -171,12 +171,18 @@ const ContractCategories = () => {
           });
           setContractPayments(grouped);
         }
+        const { data: relDocs } = await supabase.from("contract_related_docs").select("*").in("contract_id", ids).order("created_at", { ascending: true });
+        if (relDocs) {
+          const grouped: Record<string, any[]> = {};
+          relDocs.forEach((d: any) => {
+            if (!grouped[d.contract_id]) grouped[d.contract_id] = [];
+            grouped[d.contract_id].push(d);
+          });
+          setContractRelatedDocs(grouped);
+        }
       }
     }
   };
-
-  useEffect(() => { fetchCategories(); }, []);
-  useEffect(() => { if (selectedCategory) fetchContracts(selectedCategory.id); }, [selectedCategory, activeContractId]);
 
   // Debounce global search
   useEffect(() => {
