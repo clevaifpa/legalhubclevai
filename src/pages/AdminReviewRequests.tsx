@@ -267,9 +267,10 @@ const AdminReviewRequests = () => {
       setRequests(data);
       const ids = data.map((r: any) => r.id);
       if (ids.length > 0) {
-        const [notesRes, paymentsRes] = await Promise.all([
+        const [notesRes, paymentsRes, suppDocsRes] = await Promise.all([
           supabase.from("review_notes").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
           supabase.from("payment_schedules").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
+          supabase.from("review_supplementary_docs").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
         ]);
         if (notesRes.data) {
           const grouped: Record<string, any[]> = {};
@@ -286,6 +287,14 @@ const AdminReviewRequests = () => {
             grouped[p.review_request_id].push(p);
           });
           setPaymentSchedules(grouped);
+        }
+        if (suppDocsRes.data) {
+          const grouped: Record<string, any[]> = {};
+          suppDocsRes.data.forEach((d: any) => {
+            if (!grouped[d.review_request_id]) grouped[d.review_request_id] = [];
+            grouped[d.review_request_id].push(d);
+          });
+          setSupplementaryDocsData(grouped);
         }
       }
     }
