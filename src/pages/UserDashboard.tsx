@@ -229,9 +229,10 @@ const UserDashboard = () => {
       setRequests(data);
       const ids = data.map((r: any) => r.id);
       if (ids.length > 0) {
-        const [notesRes, paymentsRes] = await Promise.all([
+        const [notesRes, paymentsRes, suppDocsRes] = await Promise.all([
           supabase.from("review_notes").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
           supabase.from("payment_schedules").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
+          supabase.from("review_supplementary_docs").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
         ]);
         if (notesRes.data) {
           const grouped: Record<string, any[]> = {};
