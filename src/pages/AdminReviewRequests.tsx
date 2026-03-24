@@ -1534,11 +1534,27 @@ const AdminReviewRequests = () => {
           </div>
           <DialogFooter>
             {isAdmin && selectedReq && (
-              <Button variant="outline" onClick={() => { setSelectedReq(null); handleEdit(selectedReq); }}>
+              <Button variant="outline" onClick={() => {
+                const req = selectedReq;
+                if (routeReqId && activeReqId === routeReqId) {
+                  setClosedRouteIds(prev => new Set(prev).add(routeReqId));
+                }
+                searchParams.delete('id');
+                setSearchParams(searchParams);
+                setSelectedReq(null);
+                handleEdit(req);
+              }}>
                 Chỉnh sửa
               </Button>
             )}
-            <Button variant="outline" onClick={() => setSelectedReq(null)}>Đóng</Button>
+            <Button variant="outline" onClick={() => {
+              if (routeReqId && activeReqId === routeReqId) {
+                setClosedRouteIds(prev => new Set(prev).add(routeReqId));
+              }
+              searchParams.delete('id');
+              setSearchParams(searchParams);
+              setSelectedReq(null);
+            }}>Đóng</Button>
             {canActOnRequest(selectedReq) && (
               <>
                 <Button variant="destructive" onClick={handleReject} disabled={saving}>
