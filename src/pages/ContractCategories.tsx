@@ -187,7 +187,16 @@ const ContractCategories = () => {
     }
   };
 
-  useEffect(() => { fetchCategories(); }, []);
+  const fetchEntityOrder = async () => {
+    const { data } = await supabase.from("entity_order").select("entity_name, order_index").order("order_index");
+    if (data) {
+      const order: Record<string, number> = {};
+      data.forEach((r: any) => { order[r.entity_name] = r.order_index; });
+      setEntityOrder(order);
+    }
+  };
+
+  useEffect(() => { fetchCategories(); fetchEntityOrder(); }, []);
   useEffect(() => { if (selectedCategory) fetchContracts(selectedCategory.id); }, [selectedCategory, activeContractId]);
 
   const handleAddRelatedDoc = async () => {
