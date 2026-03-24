@@ -168,16 +168,22 @@ const ContractCategories = () => {
     }
     const doSearch = async () => {
       setGlobalSearching(true);
-      const term = `%${globalSearchDebounced.trim()}%`;
+      // Fetch all contracts and filter client-side to avoid PostgREST .or() encoding issues with Vietnamese
       const { data } = await supabase
         .from("contracts")
         .select("*")
-        .or(`title.ilike.${term},partner_name.ilike.${term},tax_code.ilike.${term},department.ilike.${term},status.ilike.${term}`)
-        .order("created_at", { ascending: false })
-        .limit(50);
+        .order("created_at", { ascending: false });
       if (data) {
-        setGlobalResults(data);
-        const ids = data.map((c: any) => c.id);
+        const term = globalSearchDebounced.trim().toLowerCase();
+        const filtered = data.filter((c: any) =>
+          c.title?.toLowerCase().includes(term) ||
+          c.partner_name?.toLowerCase().includes(term) ||
+          c.tax_code?.toLowerCase().includes(term) ||
+          c.department?.toLowerCase().includes(term) ||
+          (STATUS_LABELS[c.status] || c.status)?.toLowerCase().includes(term)
+        ).slice(0, 50);
+        setGlobalResults(filtered);
+        const ids = filtered.map((c: any) => c.id);
         if (ids.length > 0) {
           const { data: payments } = await supabase.from("contract_payment_schedules").select("*").in("contract_id", ids).order("created_at", { ascending: true });
           if (payments) {
@@ -188,6 +194,8 @@ const ContractCategories = () => {
             });
             setGlobalResultPayments(grouped);
           }
+        } else {
+          setGlobalResultPayments({});
         }
       }
       setGlobalSearching(false);
