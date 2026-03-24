@@ -57,13 +57,13 @@ const userMenuItems = [
 export function AppSidebar() {
   const { role } = useAuth();
   const isAdmin = role === "admin";
-  const isManagerRole = role === "manager" || role === "manager_chung";
   const isAccountantFinance = role === "accountant" || role === "finance";
+  const isManagerChung = role === "manager_chung";
 
   const getMenuItems = () => {
     if (isAdmin) return adminMenuItems;
-    if (isAccountantFinance) return accountantFinanceMenuItems;
-    if (isManagerRole) return reviewerMenuItems;
+    if (isAccountantFinance || isManagerChung) return accountantFinanceMenuItems;
+    if (role === "manager") return reviewerMenuItems;
     return userMenuItems;
   };
 

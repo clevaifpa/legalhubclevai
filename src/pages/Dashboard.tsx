@@ -84,9 +84,14 @@ const Dashboard = () => {
 
   const expiring60 = expiringContracts.length;
 
+  const { role: userRole } = useAuth();
+  const hasContractAccess = userRole === "admin" || userRole === "accountant" || userRole === "finance" || userRole === "manager_chung";
+
   const stats = [
-    { title: "Tổng hợp đồng", value: total, link: "/tong-hop-dong" },
-    { title: "Hợp đồng sắp hết hạn (60 ngày)", value: expiring60, link: "/tong-hop-dong" },
+    ...(hasContractAccess ? [
+      { title: "Tổng hợp đồng", value: total, link: "/tong-hop-dong" },
+      { title: "Hợp đồng sắp hết hạn (60 ngày)", value: expiring60, link: "/tong-hop-dong" },
+    ] : []),
     { title: "Chờ review", value: reviewCount, link: "/yeu-cau-review" },
     { title: "Sắp hết hạn review (5 ngày)", value: expiringReviewCount, link: "/yeu-cau-review" },
   ];
