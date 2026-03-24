@@ -819,6 +819,39 @@ const UserDashboard = () => {
                 <Textarea className={formErrors.description ? "border-destructive focus-visible:ring-destructive" : ""} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả thêm về hợp đồng cần review..." rows={3} />
                 {formErrors.description && <p className="text-xs text-destructive">{formErrors.description}</p>}
               </div>
+
+              {/* Supplementary Documents */}
+              <div className="space-y-3 p-4 rounded-lg border bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">Văn bản bổ sung (nếu có)</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setSupplementaryDocs([...supplementaryDocs, { doc_name: "", doc_url: "" }])}>
+                    + Thêm văn bản
+                  </Button>
+                </div>
+                {supplementaryDocs.length === 0 && (
+                  <p className="text-xs text-muted-foreground italic">Chưa có văn bản bổ sung. Nhấn "Thêm văn bản" để đính kèm tài liệu.</p>
+                )}
+                {supplementaryDocs.map((doc, idx) => (
+                  <div key={idx} className="space-y-2 p-3 rounded border bg-background">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">Văn bản {idx + 1}</span>
+                      <Button type="button" variant="ghost" size="sm" className="text-destructive text-xs h-6 px-2" onClick={() => setSupplementaryDocs(supplementaryDocs.filter((_, i) => i !== idx))}>
+                        ✕ Xóa
+                      </Button>
+                    </div>
+                    <Input placeholder="Tên văn bản" value={doc.doc_name} onChange={(e) => {
+                      const updated = [...supplementaryDocs];
+                      updated[idx] = { ...updated[idx], doc_name: e.target.value };
+                      setSupplementaryDocs(updated);
+                    }} />
+                    <Input placeholder="Link văn bản (URL)" value={doc.doc_url} onChange={(e) => {
+                      const updated = [...supplementaryDocs];
+                      updated[idx] = { ...updated[idx], doc_url: e.target.value };
+                      setSupplementaryDocs(updated);
+                    }} />
+                  </div>
+                ))}
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={handleResetForm}>Hủy</Button>
