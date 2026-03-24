@@ -89,6 +89,12 @@ const ContractCategories = () => {
   const [newCatEntity, setNewCatEntity] = useState("CHV");
   const [addEntityDialogOpen, setAddEntityDialogOpen] = useState(false);
   const [newEntityName, setNewEntityName] = useState("");
+  const [globalSearchTerm, setGlobalSearchTerm] = useState("");
+  const [globalSearchDebounced, setGlobalSearchDebounced] = useState("");
+  const [globalResults, setGlobalResults] = useState<any[]>([]);
+  const [globalResultPayments, setGlobalResultPayments] = useState<Record<string, any[]>>({});
+  const [globalSearching, setGlobalSearching] = useState(false);
+  const [globalSelectedContract, setGlobalSelectedContract] = useState<any>(null);
 
   const [form, setForm] = useState({
     title: "", partner_name: "", contract_type: "khac", status: "da_ky",
