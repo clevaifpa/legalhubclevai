@@ -97,6 +97,11 @@ interface PaymentPhase {
   is_na: boolean;
 }
 
+interface SupplementaryDoc {
+  doc_name: string;
+  doc_url: string;
+}
+
 const AdminReviewRequests = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { id: routeReqId } = useParams();
@@ -160,6 +165,9 @@ const AdminReviewRequests = () => {
   const [paymentPhases, setPaymentPhases] = useState<PaymentPhase[]>([
     { phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false },
   ]);
+
+  const [supplementaryDocs, setSupplementaryDocs] = useState<SupplementaryDoc[]>([]);
+  const [supplementaryDocsData, setSupplementaryDocsData] = useState<Record<string, any[]>>({});
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -259,9 +267,10 @@ const AdminReviewRequests = () => {
       setRequests(data);
       const ids = data.map((r: any) => r.id);
       if (ids.length > 0) {
-        const [notesRes, paymentsRes] = await Promise.all([
+        const [notesRes, paymentsRes, suppDocsRes] = await Promise.all([
           supabase.from("review_notes").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
           supabase.from("payment_schedules").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
+          supabase.from("review_supplementary_docs").select("*").in("review_request_id", ids).order("created_at", { ascending: true }),
         ]);
         if (notesRes.data) {
           const grouped: Record<string, any[]> = {};
@@ -278,6 +287,14 @@ const AdminReviewRequests = () => {
             grouped[p.review_request_id].push(p);
           });
           setPaymentSchedules(grouped);
+        }
+        if (suppDocsRes.data) {
+          const grouped: Record<string, any[]> = {};
+          suppDocsRes.data.forEach((d: any) => {
+            if (!grouped[d.review_request_id]) grouped[d.review_request_id] = [];
+            grouped[d.review_request_id].push(d);
+          });
+          setSupplementaryDocsData(grouped);
         }
       }
     }
@@ -543,6 +560,17 @@ const AdminReviewRequests = () => {
         payment_due_date: p.payment_due_date,
       }));
       await supabase.from("payment_schedules").insert(schedules as any);
+
+      // Save supplementary docs
+      if (editingReqId) {
+        await supabase.from("review_supplementary_docs").delete().eq("review_request_id", finalReqId);
+      }
+      const validDocs = supplementaryDocs.filter(d => d.doc_name.trim() && d.doc_url.trim());
+      if (validDocs.length > 0) {
+        await supabase.from("review_supplementary_docs").insert(
+          validDocs.map(d => ({ review_request_id: finalReqId!, doc_name: d.doc_name.trim(), doc_url: d.doc_url.trim() })) as any
+        );
+      }
     }
 
     // Notification already sent in the create/update block above
@@ -559,6 +587,7 @@ const AdminReviewRequests = () => {
     setEditingReqId(null);
     setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "", global_manager_id: "", legal_reviewer_id: "", accountant_reviewer_id: "", finance_reviewer_id: "" });
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
+    setSupplementaryDocs([]);
   };
 
   const handleResetForm = () => {
@@ -603,6 +632,10 @@ const AdminReviewRequests = () => {
     } else {
       setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
     }
+
+    // Load supplementary docs for editing
+    const existingDocs = supplementaryDocsData[req.id] || [];
+    setSupplementaryDocs(existingDocs.map((d: any) => ({ doc_name: d.doc_name, doc_url: d.doc_url })));
 
     setDialogOpen(true);
   };
@@ -1069,6 +1102,50 @@ const AdminReviewRequests = () => {
                     ⚠️ Vui lòng cấp quyền <strong>Editor (Chỉnh sửa)</strong> cho tất cả reviewer trước khi gửi.
                   </p>
                 </div>
+
+                {/* Supplementary Documents */}
+                <div className="space-y-3 p-4 rounded-lg border bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-semibold">Văn bản bổ sung (nếu có)</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setSupplementaryDocs([...supplementaryDocs, { doc_name: "", doc_url: "" }])}>
+                      + Thêm văn bản
+                    </Button>
+                  </div>
+                  {supplementaryDocs.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">Chưa có văn bản bổ sung. Nhấn "Thêm văn bản" để đính kèm tài liệu.</p>
+                  )}
+                  {supplementaryDocs.map((doc, idx) => (
+                    <div key={idx} className="space-y-2 p-3 rounded border bg-background">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">Văn bản {idx + 1}</span>
+                        <Button type="button" variant="ghost" size="sm" className="text-destructive text-xs h-6 px-2" onClick={() => setSupplementaryDocs(supplementaryDocs.filter((_, i) => i !== idx))}>
+                          ✕ Xóa
+                        </Button>
+                      </div>
+                      <Input
+                        value={doc.doc_name}
+                        onChange={(e) => {
+                          const updated = [...supplementaryDocs];
+                          updated[idx] = { ...updated[idx], doc_name: e.target.value };
+                          setSupplementaryDocs(updated);
+                        }}
+                        placeholder="VD: Phụ lục hợp đồng, BBNT…"
+                      />
+                      <Input
+                        type="url"
+                        value={doc.doc_url}
+                        onChange={(e) => {
+                          const updated = [...supplementaryDocs];
+                          updated[idx] = { ...updated[idx], doc_url: e.target.value };
+                          setSupplementaryDocs(updated);
+                        }}
+                        placeholder="Dán link (Google Drive, PDF…)"
+                      />
+                      {doc.doc_name && !doc.doc_url && <p className="text-xs text-destructive">Vui lòng nhập link cho tài liệu này</p>}
+                      {!doc.doc_name && doc.doc_url && <p className="text-xs text-destructive">Vui lòng nhập tên tài liệu</p>}
+                    </div>
+                  ))}
+                </div>
                 <div className="space-y-2" id="field-approved_pe_number">
                   <Label className={formErrors.approved_pe_number ? "text-destructive" : ""}>Số PE đã duyệt *</Label>
                   <Input className={formErrors.approved_pe_number ? "border-destructive focus-visible:ring-destructive" : ""} value={form.approved_pe_number} onChange={(e) => setForm({ ...form, approved_pe_number: e.target.value })} placeholder="VD: PE-2026-001" />
@@ -1186,6 +1263,7 @@ const AdminReviewRequests = () => {
           const deptReviews = extractDeptReviews(notes[req.id] || []);
           const reqNotes = (notes[req.id] || []).filter((n: any) => !decodeDeptReview(n.content));
           const reqPayments = paymentSchedules[req.id] || [];
+          const reqSuppDocs = supplementaryDocsData[req.id] || [];
           const canAct = canActOnRequest(req);
 
           return (
@@ -1285,6 +1363,24 @@ const AdminReviewRequests = () => {
                     <p className="text-xs text-muted-foreground italic">Chưa có tài liệu</p>
                   )}
                 </div>
+
+                {/* Supplementary Documents */}
+                {reqSuppDocs.length > 0 && (
+                  <div className="p-3 rounded-lg bg-muted/20 border space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Văn bản bổ sung</p>
+                    <div className="space-y-1">
+                      {reqSuppDocs.map((doc: any) => (
+                        <div key={doc.id} className="flex items-center gap-2 text-sm">
+                          <span className="font-medium">{doc.doc_name}</span>
+                          <span className="text-muted-foreground">→</span>
+                          <a href={doc.doc_url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate">
+                            {doc.doc_url.length > 50 ? doc.doc_url.slice(0, 50) + "…" : doc.doc_url}
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <Separator />
                 <div className="flex items-center justify-between">
