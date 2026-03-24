@@ -785,36 +785,52 @@ const ContractCategories = () => {
                       <TableCell className="text-sm text-muted-foreground">{c.department || "—"}</TableCell>
                       <TableCell>
                         {c.file_url ? (
-                          <a href={c.file_url.startsWith('http') ? c.file_url : `https://${c.file_url}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-xs break-all line-clamp-2" title={c.file_url}>
-                            {c.file_url}
+                          <a href={c.file_url.startsWith('http') ? c.file_url : `https://${c.file_url}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs break-all line-clamp-2" title={c.file_url}>
+                            Link HĐ
                           </a>
                         ) : "—"}
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1 items-center">
-                          {c.liquidation_file_url ? (
-                            <a href={c.liquidation_file_url.startsWith('http') ? c.liquidation_file_url : `https://${c.liquidation_file_url}`} target="_blank" rel="noopener noreferrer" className="text-info hover:underline text-xs break-all line-clamp-1" title={c.liquidation_file_url}>
-                              Thanh lý
-                            </a>
-                          ) : (
-                            (c.status === "het_hieu_luc" || c.status === "da_ky") && canEditContract(c) && (
-                              <label className="cursor-pointer whitespace-nowrap">
-                                <span className="text-xs text-warning hover:underline cursor-pointer border px-2 py-1 rounded-md" onClick={() => {
-                                  const url = prompt("Nhập link biên bản thanh lý:");
-                                  if (url) {
-                                    supabase.from("contracts").update({ liquidation_file_url: url } as any).eq("id", c.id)
-                                      .then(({ error }) => {
-                                        if (error) toast.error("Lỗi cập nhật link thanh lý", { description: error.message });
-                                        else {
-                                          toast.success("Đã cập nhật link thanh lý");
-                                          if (selectedCategory) fetchContracts(selectedCategory.id);
-                                        }
-                                      });
-                                  }
-                                }}>+ Link TL</span>
-                              </label>
-                            )
-                          )}
+                        <div className="flex flex-col gap-1">
+                          {(() => {
+                            const docs = contractRelatedDocs[c.id] || [];
+                            // Also show legacy liquidation_file_url if exists
+                            const legacyLiq = c.liquidation_file_url && !docs.some((d: any) => d.doc_type === "thanh_ly");
+                            return (
+                              <>
+                                {legacyLiq && (
+                                  <div className="flex items-center gap-1 text-xs">
+                                    <span className="font-medium">Thanh lý</span>
+                                    <a href={c.liquidation_file_url.startsWith('http') ? c.liquidation_file_url : `https://${c.liquidation_file_url}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">[Link]</a>
+                                  </div>
+                                )}
+                                {docs.map((doc: any) => (
+                                  <div key={doc.id} className="flex items-center gap-1 text-xs group/doc">
+                                    <span className="font-medium whitespace-nowrap">{getDocDisplayName(doc, docs)}</span>
+                                    <a href={doc.doc_url.startsWith('http') ? doc.doc_url : `https://${doc.doc_url}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">[Link]</a>
+                                    {canEditContract(c) && (
+                                      <button onClick={() => handleDeleteRelatedDoc(doc.id)} className="text-destructive opacity-0 group-hover/doc:opacity-100 transition-opacity ml-1" title="Xóa">
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                                {canEditContract(c) && (
+                                  <button
+                                    onClick={() => {
+                                      setAddDocDialogContractId(c.id);
+                                      setNewDocType("bien_ban_nghiem_thu");
+                                      setNewDocCustomName("");
+                                      setNewDocUrl("");
+                                    }}
+                                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5 mt-0.5"
+                                  >
+                                    <Plus className="h-3 w-3" /> Văn bản
+                                  </button>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </TableCell>
                       {canEditContract(c) && (
