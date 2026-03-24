@@ -374,7 +374,6 @@ const ContractCategories = () => {
   }
 
   const filteredContracts = contracts.filter((c) => {
-    if (routeContractId) return c.id === routeContractId;
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (
@@ -382,6 +381,13 @@ const ContractCategories = () => {
       c.partner_name?.toLowerCase().includes(term) || c.tax_code?.toLowerCase().includes(term) ||
       (STATUS_LABELS[c.status] || c.status)?.toLowerCase().includes(term)
     );
+  }).sort((a, b) => {
+    // Move the contract from notification to the top
+    if (activeContractId) {
+      if (a.id === activeContractId) return -1;
+      if (b.id === activeContractId) return 1;
+    }
+    return 0;
   });
 
   // Get nearest obligation date for a contract
