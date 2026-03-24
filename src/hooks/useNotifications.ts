@@ -60,7 +60,11 @@ export function useNotifications() {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
         (payload) => {
-          const updated = payload.new as Notification;
+          const updated = payload.new as Notification & { is_deleted?: boolean };
+          if ((updated as any).is_deleted) {
+            setNotifications((prev) => prev.filter((n) => n.id !== updated.id));
+            return;
+          }
           setNotifications((prev) =>
             prev.map((n) => (n.id === updated.id ? updated : n))
           );
