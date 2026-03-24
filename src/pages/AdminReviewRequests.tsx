@@ -1364,6 +1364,24 @@ const AdminReviewRequests = () => {
                   )}
                 </div>
 
+                {/* Supplementary Documents */}
+                {reqSuppDocs.length > 0 && (
+                  <div className="p-3 rounded-lg bg-muted/20 border space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Văn bản bổ sung</p>
+                    <div className="space-y-1">
+                      {reqSuppDocs.map((doc: any) => (
+                        <div key={doc.id} className="flex items-center gap-2 text-sm">
+                          <span className="font-medium">{doc.doc_name}</span>
+                          <span className="text-muted-foreground">→</span>
+                          <a href={doc.doc_url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate">
+                            {doc.doc_url.length > 50 ? doc.doc_url.slice(0, 50) + "…" : doc.doc_url}
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <Separator />
                 <div className="flex items-center justify-between">
                   {isAdmin && (
