@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
-import { X, Plus } from "lucide-react";
+import { X, Plus, GripVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
