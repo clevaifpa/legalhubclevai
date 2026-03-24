@@ -519,6 +519,10 @@ const UserDashboard = () => {
       setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
     }
 
+    // Load supplementary docs for editing
+    const existingDocs = supplementaryDocsData[req.id] || [];
+    setSupplementaryDocs(existingDocs.map((d: any) => ({ doc_name: d.doc_name, doc_url: d.doc_url })));
+
     setDialogOpen(true);
   };
 
