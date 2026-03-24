@@ -107,6 +107,8 @@ const UserDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
   const [notes, setNotes] = useState<Record<string, any[]>>({});
   const [paymentSchedules, setPaymentSchedules] = useState<Record<string, any[]>>({});
+  const [supplementaryDocs, setSupplementaryDocs] = useState<SupplementaryDoc[]>([]);
+  const [supplementaryDocsData, setSupplementaryDocsData] = useState<Record<string, any[]>>({});
   const [managers, setManagers] = useState<any[]>([]);
   const [reviewers, setReviewers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
