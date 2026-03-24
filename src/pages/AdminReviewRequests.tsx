@@ -88,6 +88,8 @@ const CONTRACT_TYPE_CATEGORIES = [
   "Hợp đồng sử dụng 1 lần",
   "Hợp đồng sử dụng dài hạn",
   "Hợp đồng/phụ lục gia hạn",
+  "Phụ lục hợp đồng",
+  "NDA",
 ];
 
 interface PaymentPhase {
@@ -388,8 +390,8 @@ const AdminReviewRequests = () => {
 
     const errors: Record<string, string> = {};
     if (!form.department) errors.department = "Vui lòng chọn phòng ban";
-    if (!form.contract_type_category) errors.contract_type_category = "Vui lòng chọn loại hợp đồng";
-    if (!form.contract_title.trim()) errors.contract_title = "Vui lòng nhập tên hợp đồng";
+    if (!form.contract_type_category) errors.contract_type_category = "Vui lòng chọn loại văn bản";
+    if (!form.contract_title.trim()) errors.contract_title = "Vui lòng nhập tên văn bản";
     if (!form.partner_name.trim()) errors.partner_name = "Vui lòng nhập tên đối tác";
     if (!form.tax_code.trim()) errors.tax_code = "Vui lòng nhập mã số thuế đối tác";
     if (!form.contract_value_na && (!form.contract_value || parseInt(form.contract_value) <= 0)) {
@@ -1015,7 +1017,7 @@ const AdminReviewRequests = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2" id="field-contract_type_category">
-                    <Label className={formErrors.contract_type_category ? "text-destructive" : ""}>Loại hợp đồng *</Label>
+                    <Label className={formErrors.contract_type_category ? "text-destructive" : ""}>Loại văn bản *</Label>
                     <Select value={form.contract_type_category} onValueChange={(v) => setForm({ ...form, contract_type_category: v })}>
                       <SelectTrigger className={formErrors.contract_type_category ? "border-destructive focus:ring-destructive" : ""}><SelectValue placeholder="Chọn loại" /></SelectTrigger>
                       <SelectContent>
@@ -1039,7 +1041,7 @@ const AdminReviewRequests = () => {
                   </div>
                 </div>
                 <div className="space-y-2" id="field-contract_title">
-                  <Label className={formErrors.contract_title ? "text-destructive" : ""}>Tên hợp đồng *</Label>
+                  <Label className={formErrors.contract_title ? "text-destructive" : ""}>Tên văn bản *</Label>
                   <Input className={formErrors.contract_title ? "border-destructive focus-visible:ring-destructive" : ""} value={form.contract_title} onChange={(e) => setForm({ ...form, contract_title: e.target.value })} placeholder="VD: Hợp đồng mua bán thiết bị" />
                   {formErrors.contract_title && <p className="text-xs text-destructive">{formErrors.contract_title}</p>}
                 </div>
