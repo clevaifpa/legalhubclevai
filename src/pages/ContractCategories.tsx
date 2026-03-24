@@ -1245,21 +1245,17 @@ const ContractCategories = () => {
                         {detailContract.file_url && (
                           <div>
                             <span className="text-xs text-muted-foreground mb-1 block">Link hợp đồng:</span>
-                            <a href={detailContract.file_url.startsWith('http') ? detailContract.file_url : `https://${detailContract.file_url}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all text-sm block bg-muted/20 p-2 rounded border">
+                            <a href={detailContract.file_url.startsWith('http') ? detailContract.file_url : `https://${detailContract.file_url}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline break-all text-sm block bg-muted/20 p-2 rounded border">
                               {detailContract.file_url}
                             </a>
                           </div>
                         )}
-                        {detailContract.liquidation_file_url && (
-                          <div className="mt-2">
-                            <span className="text-xs text-muted-foreground mb-1 block">Link biên bản thanh lý:</span>
-                            <a href={detailContract.liquidation_file_url.startsWith('http') ? detailContract.liquidation_file_url : `https://${detailContract.liquidation_file_url}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all text-sm block bg-muted/20 p-2 rounded border">
-                              {detailContract.liquidation_file_url}
-                            </a>
-                          </div>
-                        )}
-                        {!detailContract.file_url && !detailContract.liquidation_file_url && <span className="text-sm text-muted-foreground italic">Không có link đính kèm</span>}
+                        {!detailContract.file_url && <span className="text-sm text-muted-foreground italic">Không có link hợp đồng</span>}
                       </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-sm mb-3">Văn bản liên quan</h4>
+                      <p className="text-sm text-muted-foreground italic">Mở từ danh sách chính để xem chi tiết</p>
                     </div>
                   </div>
                 </DialogContent>
