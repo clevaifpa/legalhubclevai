@@ -138,6 +138,8 @@ const AdminReviewRequests = () => {
   const [managers, setManagers] = useState<any[]>([]);
   const [reviewers, setReviewers] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [editingReqId, setEditingReqId] = useState<string | null>(null);
 
