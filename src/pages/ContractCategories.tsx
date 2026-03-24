@@ -975,6 +975,151 @@ const ContractCategories = () => {
         </div>
       </div>
 
+      {/* Global Search Bar */}
+      <div className="relative">
+        <Input
+          placeholder="Tìm theo tên hợp đồng, phòng ban, trạng thái, đối tác, MST…"
+          value={globalSearchTerm}
+          onChange={(e) => setGlobalSearchTerm(e.target.value)}
+          className="text-base"
+        />
+        {globalSearchTerm && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-6 text-xs text-muted-foreground"
+            onClick={() => setGlobalSearchTerm("")}
+          >
+            ✕
+          </Button>
+        )}
+      </div>
+
+      {/* Global search results */}
+      {globalSearchDebounced.trim() ? (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            {globalSearching ? "Đang tìm kiếm..." : `${globalResults.length} kết quả cho "${globalSearchDebounced}"`}
+          </p>
+          {globalResults.length > 0 && (
+            <Card className="border-none shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead>Tên hợp đồng</TableHead>
+                      <TableHead>Đối tác</TableHead>
+                      <TableHead>MST</TableHead>
+                      <TableHead>Trạng thái</TableHead>
+                      <TableHead>Hết hiệu lực</TableHead>
+                      <TableHead>Đơn vị</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {globalResults.map((c) => {
+                      const payments = globalResultPayments[c.id] || [];
+                      const hasHiddenFlag = payments.some((p: any) => p.phase_name === "[HIDDEN] CHUA_HOAN_THANH");
+                      const derivedStatus = (c.status === "het_hieu_luc" && hasHiddenFlag) ? "het_hieu_luc_chua_hoan_thanh" : c.status;
+                      // Find category name
+                      const cat = categories.find((cat: any) => cat.id === c.category_id);
+                      return (
+                        <TableRow
+                          key={c.id}
+                          className="hover:bg-muted/30 transition-colors cursor-pointer"
+                          onClick={() => setGlobalSelectedContract(c)}
+                        >
+                          <TableCell className="font-medium max-w-[250px]">
+                            <div>
+                              <span className="truncate block">{c.title}</span>
+                              {cat && <span className="text-xs text-muted-foreground">{cat.name}</span>}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{c.partner_name || "—"}</TableCell>
+                          <TableCell className="text-muted-foreground text-xs">{c.tax_code || "—"}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{STATUS_LABELS[derivedStatus] || derivedStatus}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{c.expiry_date ? formatDate(c.expiry_date) : "—"}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{c.department || "—"}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </Card>
+          )}
+          {!globalSearching && globalResults.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground font-medium">Không tìm thấy hợp đồng nào</p>
+            </div>
+          )}
+
+          {/* Global search contract detail modal */}
+          {globalSelectedContract && (() => {
+            const detailContract = globalSelectedContract;
+            const payments = globalResultPayments[detailContract.id] || [];
+            const visiblePayments = payments.filter((p: any) => p.phase_name !== "[HIDDEN] CHUA_HOAN_THANH");
+            const hasHiddenFlag = payments.some((p: any) => p.phase_name === "[HIDDEN] CHUA_HOAN_THANH");
+            const derivedStatus = (detailContract.status === "het_hieu_luc" && hasHiddenFlag) ? "het_hieu_luc_chua_hoan_thanh" : detailContract.status;
+            return (
+              <Dialog open={true} onOpenChange={(open) => { if (!open) setGlobalSelectedContract(null); }}>
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader><DialogTitle>Chi tiết hợp đồng</DialogTitle></DialogHeader>
+                  <div className="space-y-6 mt-4">
+                    <div>
+                      <h3 className="font-bold text-lg">{detailContract.title}</h3>
+                      <Badge className="mt-2" variant="secondary">{STATUS_LABELS[derivedStatus] || derivedStatus}</Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-4 rounded-lg">
+                      <div><span className="text-muted-foreground mr-2">Đối tác:</span> <span className="font-medium">{detailContract.partner_name || "—"}</span></div>
+                      <div><span className="text-muted-foreground mr-2">MST:</span> <span>{detailContract.tax_code || "—"}</span></div>
+                      <div><span className="text-muted-foreground mr-2">Phòng ban:</span> <span>{detailContract.department || "—"}</span></div>
+                      <div><span className="text-muted-foreground mr-2">Cập nhật:</span> <span>{detailContract.created_at ? formatDate(detailContract.created_at) : "—"}</span></div>
+                      <div><span className="text-muted-foreground mr-2">Hết hiệu lực:</span> <span>{detailContract.expiry_date ? formatDate(detailContract.expiry_date) : "—"}</span></div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-sm mb-3">Đợt thanh toán (Nghĩa vụ)</h4>
+                      {visiblePayments.length > 0 ? (
+                        <div className="space-y-2">
+                          {visiblePayments.map((p: any) => (
+                            <div key={p.id} className="flex justify-between items-center text-sm p-3 border rounded-md">
+                              <span className="font-medium">{p.phase_name}</span>
+                              <span>{formatCurrency(p.payment_amount)} — <span className="text-muted-foreground">{p.payment_due_date ? formatDate(p.payment_due_date) : "—"}</span></span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="text-sm text-muted-foreground italic">Không có đợt thanh toán nào</p>}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-sm mb-3">Liên kết hợp đồng</h4>
+                      <div className="flex flex-col gap-2">
+                        {detailContract.file_url && (
+                          <div>
+                            <span className="text-xs text-muted-foreground mb-1 block">Link hợp đồng:</span>
+                            <a href={detailContract.file_url.startsWith('http') ? detailContract.file_url : `https://${detailContract.file_url}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all text-sm block bg-muted/20 p-2 rounded border">
+                              {detailContract.file_url}
+                            </a>
+                          </div>
+                        )}
+                        {detailContract.liquidation_file_url && (
+                          <div className="mt-2">
+                            <span className="text-xs text-muted-foreground mb-1 block">Link biên bản thanh lý:</span>
+                            <a href={detailContract.liquidation_file_url.startsWith('http') ? detailContract.liquidation_file_url : `https://${detailContract.liquidation_file_url}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all text-sm block bg-muted/20 p-2 rounded border">
+                              {detailContract.liquidation_file_url}
+                            </a>
+                          </div>
+                        )}
+                        {!detailContract.file_url && !detailContract.liquidation_file_url && <span className="text-sm text-muted-foreground italic">Không có link đính kèm</span>}
+                      </div>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            );
+          })()}
+        </div>
+      ) : (
       <Accordion type="multiple" defaultValue={sortedEntities} className="w-full space-y-4">
         {sortedEntities.map(entity => {
           const entityCategories = groupedCategories[entity] || [];
