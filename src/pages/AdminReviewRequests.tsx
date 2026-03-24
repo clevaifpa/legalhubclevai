@@ -1041,7 +1041,7 @@ const AdminReviewRequests = () => {
                   </div>
                 </div>
                 <div className="space-y-2" id="field-contract_title">
-                  <Label className={formErrors.contract_title ? "text-destructive" : ""}>Tên hợp đồng *</Label>
+                  <Label className={formErrors.contract_title ? "text-destructive" : ""}>Tên văn bản *</Label>
                   <Input className={formErrors.contract_title ? "border-destructive focus-visible:ring-destructive" : ""} value={form.contract_title} onChange={(e) => setForm({ ...form, contract_title: e.target.value })} placeholder="VD: Hợp đồng mua bán thiết bị" />
                   {formErrors.contract_title && <p className="text-xs text-destructive">{formErrors.contract_title}</p>}
                 </div>
