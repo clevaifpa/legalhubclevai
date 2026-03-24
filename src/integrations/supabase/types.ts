@@ -533,6 +533,38 @@ export type Database = {
         }
         Relationships: []
       }
+      review_supplementary_docs: {
+        Row: {
+          created_at: string
+          doc_name: string
+          doc_url: string
+          id: string
+          review_request_id: string
+        }
+        Insert: {
+          created_at?: string
+          doc_name: string
+          doc_url: string
+          id?: string
+          review_request_id: string
+        }
+        Update: {
+          created_at?: string
+          doc_name?: string
+          doc_url?: string
+          id?: string
+          review_request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_supplementary_docs_review_request_id_fkey"
+            columns: ["review_request_id"]
+            isOneToOne: false
+            referencedRelation: "review_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           department: string | null
