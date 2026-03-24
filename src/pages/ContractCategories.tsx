@@ -1332,9 +1332,21 @@ const ContractCategories = () => {
           const totalContracts = entityCategories.reduce((sum: number, cat: any) => sum + (categoryCounts[cat.id] || 0), 0);
 
           return (
-            <AccordionItem key={entity} value={entity} className="border rounded-lg bg-card shadow-sm px-4">
+            <AccordionItem
+              key={entity}
+              value={entity}
+              className={`border rounded-lg bg-card shadow-sm px-4 transition-all ${dragOverEntity === entity ? "ring-2 ring-accent" : ""} ${draggedEntity === entity ? "opacity-50" : ""}`}
+              draggable={isAdmin && entity !== "Khác"}
+              onDragStart={() => handleDragStart(entity)}
+              onDragOver={(e) => handleDragOver(e, entity)}
+              onDrop={() => handleDrop(entity)}
+              onDragEnd={handleDragEnd}
+            >
               <AccordionTrigger className="hover:no-underline py-4">
                 <div className="flex items-center gap-2">
+                  {isAdmin && entity !== "Khác" && (
+                    <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing shrink-0" />
+                  )}
                   <span className="font-semibold text-lg">{entity}</span>
                   <Badge variant="secondary" className="font-normal text-muted-foreground">{totalContracts} hợp đồng</Badge>
                 </div>
