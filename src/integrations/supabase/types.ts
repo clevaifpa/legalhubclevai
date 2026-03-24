@@ -151,6 +151,41 @@ export type Database = {
           },
         ]
       }
+      contract_related_docs: {
+        Row: {
+          contract_id: string
+          created_at: string
+          doc_name: string
+          doc_type: string
+          doc_url: string
+          id: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          doc_name?: string
+          doc_type?: string
+          doc_url: string
+          id?: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          doc_name?: string
+          doc_type?: string
+          doc_url?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_related_docs_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           approved_pe_number: string | null

@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
+import { X, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,6 +77,7 @@ const ContractCategories = () => {
   const [categories, setCategories] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
   const [contractPayments, setContractPayments] = useState<Record<string, any[]>>({});
+  const [contractRelatedDocs, setContractRelatedDocs] = useState<Record<string, any[]>>({});
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -95,6 +97,29 @@ const ContractCategories = () => {
   const [globalResultPayments, setGlobalResultPayments] = useState<Record<string, any[]>>({});
   const [globalSearching, setGlobalSearching] = useState(false);
   const [globalSelectedContract, setGlobalSelectedContract] = useState<any>(null);
+  // Related docs add dialog
+  const [addDocDialogContractId, setAddDocDialogContractId] = useState<string | null>(null);
+  const [newDocType, setNewDocType] = useState("bien_ban_nghiem_thu");
+  const [newDocCustomName, setNewDocCustomName] = useState("");
+  const [newDocUrl, setNewDocUrl] = useState("");
+
+  const DOC_TYPE_OPTIONS = [
+    { value: "bien_ban_nghiem_thu", label: "Biên bản nghiệm thu" },
+    { value: "thanh_ly", label: "Thanh lý" },
+    { value: "phu_luc_hop_dong", label: "Phụ lục hợp đồng" },
+    { value: "khac", label: "Khác" },
+  ];
+
+  const getDocDisplayName = useCallback((doc: any, allDocs: any[]) => {
+    if (doc.doc_type === "phu_luc_hop_dong") {
+      const appendices = allDocs.filter(d => d.doc_type === "phu_luc_hop_dong").sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      const idx = appendices.findIndex((d: any) => d.id === doc.id);
+      return `Phụ lục hợp đồng ${idx + 1}`;
+    }
+    if (doc.doc_type === "khac") return doc.doc_name || "Khác";
+    const found = DOC_TYPE_OPTIONS.find(o => o.value === doc.doc_type);
+    return found?.label || doc.doc_type;
+  }, []);
 
   const [form, setForm] = useState({
     title: "", partner_name: "", contract_type: "khac", status: "da_ky",
@@ -146,12 +171,55 @@ const ContractCategories = () => {
           });
           setContractPayments(grouped);
         }
+        const { data: relDocs } = await supabase.from("contract_related_docs").select("*").in("contract_id", ids).order("created_at", { ascending: true });
+        if (relDocs) {
+          const grouped: Record<string, any[]> = {};
+          relDocs.forEach((d: any) => {
+            if (!grouped[d.contract_id]) grouped[d.contract_id] = [];
+            grouped[d.contract_id].push(d);
+          });
+          setContractRelatedDocs(grouped);
+        }
       }
     }
   };
 
   useEffect(() => { fetchCategories(); }, []);
   useEffect(() => { if (selectedCategory) fetchContracts(selectedCategory.id); }, [selectedCategory, activeContractId]);
+
+  const handleAddRelatedDoc = async () => {
+    if (!addDocDialogContractId || !newDocUrl.trim()) return;
+    if (newDocType === "khac" && !newDocCustomName.trim()) {
+      toast.error("Vui lòng nhập tên văn bản");
+      return;
+    }
+    const docName = newDocType === "khac" ? newDocCustomName.trim() : "";
+    const { error } = await supabase.from("contract_related_docs").insert({
+      contract_id: addDocDialogContractId,
+      doc_type: newDocType,
+      doc_name: docName,
+      doc_url: newDocUrl.trim(),
+    } as any);
+    if (error) {
+      toast.error("Lỗi thêm văn bản", { description: error.message });
+    } else {
+      toast.success("Đã thêm văn bản");
+      setAddDocDialogContractId(null);
+      setNewDocType("bien_ban_nghiem_thu");
+      setNewDocCustomName("");
+      setNewDocUrl("");
+      if (selectedCategory) fetchContracts(selectedCategory.id);
+    }
+  };
+
+  const handleDeleteRelatedDoc = async (docId: string) => {
+    const { error } = await supabase.from("contract_related_docs").delete().eq("id", docId);
+    if (error) toast.error("Lỗi xóa văn bản", { description: error.message });
+    else {
+      toast.success("Đã xóa văn bản");
+      if (selectedCategory) fetchContracts(selectedCategory.id);
+    }
+  };
 
   // Debounce global search
   useEffect(() => {
@@ -611,7 +679,8 @@ const ContractCategories = () => {
                   <TableHead>Hết hiệu lực</TableHead>
                   <TableHead>Nghĩa vụ tiếp theo</TableHead>
                   <TableHead>Đơn vị</TableHead>
-                  <TableHead>Link</TableHead>
+                  <TableHead>Link HĐ</TableHead>
+                  <TableHead>Văn bản liên quan</TableHead>
                   {canEdit && <TableHead>Thao tác</TableHead>}
                 </TableRow>
               </TableHeader>
@@ -716,36 +785,52 @@ const ContractCategories = () => {
                       <TableCell className="text-sm text-muted-foreground">{c.department || "—"}</TableCell>
                       <TableCell>
                         {c.file_url ? (
-                          <a href={c.file_url.startsWith('http') ? c.file_url : `https://${c.file_url}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-xs break-all line-clamp-2" title={c.file_url}>
-                            {c.file_url}
+                          <a href={c.file_url.startsWith('http') ? c.file_url : `https://${c.file_url}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs break-all line-clamp-2" title={c.file_url}>
+                            Link HĐ
                           </a>
                         ) : "—"}
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1 items-center">
-                          {c.liquidation_file_url ? (
-                            <a href={c.liquidation_file_url.startsWith('http') ? c.liquidation_file_url : `https://${c.liquidation_file_url}`} target="_blank" rel="noopener noreferrer" className="text-info hover:underline text-xs break-all line-clamp-1" title={c.liquidation_file_url}>
-                              Thanh lý
-                            </a>
-                          ) : (
-                            (c.status === "het_hieu_luc" || c.status === "da_ky") && canEditContract(c) && (
-                              <label className="cursor-pointer whitespace-nowrap">
-                                <span className="text-xs text-warning hover:underline cursor-pointer border px-2 py-1 rounded-md" onClick={() => {
-                                  const url = prompt("Nhập link biên bản thanh lý:");
-                                  if (url) {
-                                    supabase.from("contracts").update({ liquidation_file_url: url } as any).eq("id", c.id)
-                                      .then(({ error }) => {
-                                        if (error) toast.error("Lỗi cập nhật link thanh lý", { description: error.message });
-                                        else {
-                                          toast.success("Đã cập nhật link thanh lý");
-                                          if (selectedCategory) fetchContracts(selectedCategory.id);
-                                        }
-                                      });
-                                  }
-                                }}>+ Link TL</span>
-                              </label>
-                            )
-                          )}
+                        <div className="flex flex-col gap-1">
+                          {(() => {
+                            const docs = contractRelatedDocs[c.id] || [];
+                            // Also show legacy liquidation_file_url if exists
+                            const legacyLiq = c.liquidation_file_url && !docs.some((d: any) => d.doc_type === "thanh_ly");
+                            return (
+                              <>
+                                {legacyLiq && (
+                                  <div className="flex items-center gap-1 text-xs">
+                                    <span className="font-medium">Thanh lý</span>
+                                    <a href={c.liquidation_file_url.startsWith('http') ? c.liquidation_file_url : `https://${c.liquidation_file_url}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">[Link]</a>
+                                  </div>
+                                )}
+                                {docs.map((doc: any) => (
+                                  <div key={doc.id} className="flex items-center gap-1 text-xs group/doc">
+                                    <span className="font-medium whitespace-nowrap">{getDocDisplayName(doc, docs)}</span>
+                                    <a href={doc.doc_url.startsWith('http') ? doc.doc_url : `https://${doc.doc_url}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">[Link]</a>
+                                    {canEditContract(c) && (
+                                      <button onClick={() => handleDeleteRelatedDoc(doc.id)} className="text-destructive opacity-0 group-hover/doc:opacity-100 transition-opacity ml-1" title="Xóa">
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                                {canEditContract(c) && (
+                                  <button
+                                    onClick={() => {
+                                      setAddDocDialogContractId(c.id);
+                                      setNewDocType("bien_ban_nghiem_thu");
+                                      setNewDocCustomName("");
+                                      setNewDocUrl("");
+                                    }}
+                                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5 mt-0.5"
+                                  >
+                                    <Plus className="h-3 w-3" /> Văn bản
+                                  </button>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </TableCell>
                       {canEditContract(c) && (
@@ -841,29 +926,84 @@ const ContractCategories = () => {
                       {detailContract.file_url && (
                         <div>
                           <span className="text-xs text-muted-foreground mb-1 block">Link hợp đồng:</span>
-                          <a href={detailContract.file_url.startsWith('http') ? detailContract.file_url : `https://${detailContract.file_url}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline break-all text-sm block bg-muted/20 p-2 rounded border">
+                          <a href={detailContract.file_url.startsWith('http') ? detailContract.file_url : `https://${detailContract.file_url}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline break-all text-sm block bg-muted/20 p-2 rounded border">
                             {detailContract.file_url}
                           </a>
                         </div>
                       )}
-
-                      {detailContract.liquidation_file_url && (
-                        <div className="mt-2">
-                          <span className="text-xs text-muted-foreground mb-1 block">Link biên bản thanh lý:</span>
-                          <a href={detailContract.liquidation_file_url.startsWith('http') ? detailContract.liquidation_file_url : `https://${detailContract.liquidation_file_url}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline break-all text-sm block bg-muted/20 p-2 rounded border">
-                            {detailContract.liquidation_file_url}
-                          </a>
-                        </div>
-                      )}
-
-                      {!detailContract.file_url && !detailContract.liquidation_file_url && <span className="text-sm text-muted-foreground italic">Không có link đính kèm</span>}
+                      {!detailContract.file_url && <span className="text-sm text-muted-foreground italic">Không có link hợp đồng</span>}
                     </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-sm mb-3">Văn bản liên quan</h4>
+                    {(() => {
+                      const docs = contractRelatedDocs[detailContract.id] || [];
+                      const legacyLiq = detailContract.liquidation_file_url && !docs.some((d: any) => d.doc_type === "thanh_ly");
+                      if (docs.length === 0 && !legacyLiq) return <p className="text-sm text-muted-foreground italic">Không có văn bản liên quan</p>;
+                      return (
+                        <div className="space-y-2">
+                          {legacyLiq && (
+                            <div className="flex items-center gap-2 text-sm p-2 border rounded-md">
+                              <span className="font-medium">Thanh lý</span>
+                              <a href={detailContract.liquidation_file_url.startsWith('http') ? detailContract.liquidation_file_url : `https://${detailContract.liquidation_file_url}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline break-all">
+                                [Link]
+                              </a>
+                            </div>
+                          )}
+                          {docs.map((doc: any) => (
+                            <div key={doc.id} className="flex items-center gap-2 text-sm p-2 border rounded-md">
+                              <span className="font-medium">{getDocDisplayName(doc, docs)}</span>
+                              <a href={doc.doc_url.startsWith('http') ? doc.doc_url : `https://${doc.doc_url}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline break-all">
+                                [Link]
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </DialogContent>
             </Dialog>
           );
         })()}
+
+        {/* Add Related Doc Dialog */}
+        <Dialog open={!!addDocDialogContractId} onOpenChange={(open) => { if (!open) setAddDocDialogContractId(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader><DialogTitle>Thêm văn bản liên quan</DialogTitle></DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Loại văn bản</Label>
+                <Select value={newDocType} onValueChange={setNewDocType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {DOC_TYPE_OPTIONS.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {newDocType === "khac" && (
+                <div className="space-y-2">
+                  <Label>Tên văn bản</Label>
+                  <Input value={newDocCustomName} onChange={(e) => setNewDocCustomName(e.target.value)} placeholder="VD: Báo giá, Email xác nhận…" />
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Link tài liệu *</Label>
+                <Input value={newDocUrl} onChange={(e) => setNewDocUrl(e.target.value)} placeholder="Dán link Google Drive, PDF…" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddDocDialogContractId(null)}>Hủy</Button>
+              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleAddRelatedDoc} disabled={!newDocUrl.trim() || (newDocType === "khac" && !newDocCustomName.trim())}>
+                Thêm
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -1105,21 +1245,17 @@ const ContractCategories = () => {
                         {detailContract.file_url && (
                           <div>
                             <span className="text-xs text-muted-foreground mb-1 block">Link hợp đồng:</span>
-                            <a href={detailContract.file_url.startsWith('http') ? detailContract.file_url : `https://${detailContract.file_url}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all text-sm block bg-muted/20 p-2 rounded border">
+                            <a href={detailContract.file_url.startsWith('http') ? detailContract.file_url : `https://${detailContract.file_url}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline break-all text-sm block bg-muted/20 p-2 rounded border">
                               {detailContract.file_url}
                             </a>
                           </div>
                         )}
-                        {detailContract.liquidation_file_url && (
-                          <div className="mt-2">
-                            <span className="text-xs text-muted-foreground mb-1 block">Link biên bản thanh lý:</span>
-                            <a href={detailContract.liquidation_file_url.startsWith('http') ? detailContract.liquidation_file_url : `https://${detailContract.liquidation_file_url}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all text-sm block bg-muted/20 p-2 rounded border">
-                              {detailContract.liquidation_file_url}
-                            </a>
-                          </div>
-                        )}
-                        {!detailContract.file_url && !detailContract.liquidation_file_url && <span className="text-sm text-muted-foreground italic">Không có link đính kèm</span>}
+                        {!detailContract.file_url && <span className="text-sm text-muted-foreground italic">Không có link hợp đồng</span>}
                       </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-sm mb-3">Văn bản liên quan</h4>
+                      <p className="text-sm text-muted-foreground italic">Mở từ danh sách chính để xem chi tiết</p>
                     </div>
                   </div>
                 </DialogContent>
