@@ -1278,22 +1278,234 @@ const AdminReviewRequests = () => {
       </Card>
 
       {/* Request Cards */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {filtered.map((req, i) => {
           const deptReviews = extractDeptReviews(notes[req.id] || []);
           const reqNotes = (notes[req.id] || []).filter((n: any) => !decodeDeptReview(n.content));
           const reqPayments = paymentSchedules[req.id] || [];
           const reqSuppDocs = supplementaryDocsData[req.id] || [];
           const canAct = canActOnRequest(req);
+          const isExpanded = expandedId === req.id;
 
           return (
-            <Card key={req.id} className={`border shadow-sm hover:shadow-md transition-all animate-slide-up ${highlightId === req.id ? "ring-2 ring-accent bg-accent/5" : ""}`} style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}>
-              <CardHeader className="pb-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <CardTitle className="text-base font-semibold">{req.contract_title}</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      Yêu cầu bởi <span className="font-medium text-foreground">{req.requester_name}</span> — {req.department}
+            <Card
+              key={req.id}
+              className={`border shadow-sm transition-all duration-200 animate-slide-up cursor-pointer ${
+                isExpanded ? "ring-2 ring-accent/50 shadow-md" : "hover:shadow-md"
+              } ${highlightId === req.id ? "ring-2 ring-accent bg-accent/5" : ""}`}
+              style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
+            >
+              {/* Collapsed Summary - Always visible */}
+              <div
+                className="p-4 select-none"
+                onClick={() => {
+                  setExpandedId(isExpanded ? null : req.id);
+                  if (!isExpanded) {
+                    setTimeout(() => {
+                      document.getElementById(`req-card-${req.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 100);
+                  }
+                }}
+                id={`req-card-${req.id}`}
+              >
+                {/* Line 1: Contract title + status */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`text-xs transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>▶</span>
+                    <h3 className="text-sm font-bold truncate">{req.contract_title}</h3>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <DepartmentReviewTracker deptReviews={deptReviews} assignedReviewers={getAssignedReviewers(req)} compact skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")} />
+                    <Badge className={`text-xs ${STATUS_COLORS[req.status] || ""}`}>{STATUS_LABELS[req.status] || req.status}</Badge>
+                  </div>
+                </div>
+
+                {/* Line 2: Requester — Department — Contract type — Tax code */}
+                <p className="text-xs text-muted-foreground mt-1.5 truncate pl-5">
+                  <span className="font-medium text-foreground">{req.requester_name}</span>
+                  <span className="mx-1">—</span>{req.department}
+                  {req.contract_type_category && <><span className="mx-1">—</span>{req.contract_type_category}</>}
+                  {req.tax_code && <><span className="mx-1">—</span>MST: {req.tax_code}</>}
+                </p>
+
+                {/* Line 3: Partner — Value — Duration — Review deadline — Created date */}
+                <p className="text-xs text-muted-foreground mt-1 truncate pl-5">
+                  {req.partner_name || "—"}
+                  <span className="mx-1">—</span>{req.contract_value > 0 ? formatCurrency(req.contract_value) : "N/A"}
+                  <span className="mx-1">—</span>{req.contract_start_date && req.contract_end_date ? `${formatDate(req.contract_start_date)} - ${formatDate(req.contract_end_date)}` : "—"}
+                  <span className="mx-1">—</span>Hạn: {req.review_deadline ? formatDate(req.review_deadline) : "—"}
+                  <span className="mx-1">—</span>{req.created_at ? formatDate(req.created_at) : "—"}
+                </p>
+              </div>
+
+              {/* Expanded Details - Animated */}
+              <div
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+                }`}
+              >
+                <CardContent className="pt-0 pb-4 space-y-4 border-t">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 p-3 rounded-lg bg-muted/40 mt-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Đối tác</p>
+                      <p className="text-sm font-medium">{req.partner_name || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Giá trị</p>
+                      <p className="text-sm font-medium">{req.contract_value > 0 ? formatCurrency(req.contract_value) : "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Thời hạn HĐ</p>
+                      <p className="text-sm font-medium">{req.contract_start_date && req.contract_end_date ? `${formatDate(req.contract_start_date)} - ${formatDate(req.contract_end_date)}` : "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Hạn review</p>
+                      <p className="text-sm font-medium">{req.review_deadline ? formatDate(req.review_deadline) : "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Ngày tạo yêu cầu</p>
+                      <p className="text-sm font-medium">{req.created_at ? formatDate(req.created_at) : "—"}</p>
+                    </div>
+                  </div>
+
+                  {/* Mô tả chi tiết */}
+                  <div className="p-3 rounded-lg bg-muted/20 border space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Mô tả chi tiết</p>
+                    <p className="text-sm whitespace-pre-wrap">{req.description || "Không có mô tả"}</p>
+                  </div>
+
+                  {/* Payment Schedule */}
+                  {reqPayments.length > 0 && (
+                    <div className="p-3 rounded-lg bg-muted/30 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Đợt thanh toán</p>
+                      <div className="space-y-1">
+                        {reqPayments.map((ps: any) => (
+                          <div key={ps.id} className="flex items-center justify-between text-sm">
+                            <span className="font-medium">{ps.phase_name}</span>
+                            <span>{ps.payment_amount > 0 ? formatCurrency(ps.payment_amount) : "N/A"} — {ps.payment_due_date ? formatDate(ps.payment_due_date) : "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <DepartmentReviewTracker
+                    deptReviews={deptReviews}
+                    assignedReviewers={getAssignedReviewers(req)}
+                    skipManagerStep={!!req.admin_notes?.includes("Quản lý chung duyệt")}
+                    assignable={isAdmin && req.status !== "hoan_tat" && req.status !== "da_hoan_thanh"}
+                    reviewers={[...reviewers, ...globalManagers]}
+                    onAssignReviewer={(dept, reviewerId) => handleAssignReviewer(req.id, dept, reviewerId)}
+                  />
+
+                  {/* File links */}
+                  <div className="space-y-1">
+                    {req.file_url && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); window.open(req.file_url as string, "_blank"); }}
+                        className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
+                      >
+                        Xem tài liệu ban đầu
+                      </button>
+                    )}
+                    {req.legal_review_doc_link && (
+                      <a href={req.legal_review_doc_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
+                        Xem tài liệu đã review
+                      </a>
+                    )}
+                    {!req.file_url && !req.legal_review_doc_link && (
+                      <p className="text-xs text-muted-foreground italic">Chưa có tài liệu</p>
+                    )}
+                  </div>
+
+                  {/* Supplementary Documents */}
+                  {reqSuppDocs.length > 0 && (
+                    <div className="p-3 rounded-lg bg-muted/20 border space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Văn bản bổ sung</p>
+                      <div className="space-y-1">
+                        {reqSuppDocs.map((doc: any) => (
+                          <div key={doc.id} className="flex items-center gap-2 text-sm">
+                            <span className="font-medium">{doc.doc_name}</span>
+                            <span className="text-muted-foreground">→</span>
+                            <a href={doc.doc_url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate" onClick={(e) => e.stopPropagation()}>
+                              {doc.doc_url.length > 50 ? doc.doc_url.slice(0, 50) + "…" : doc.doc_url}
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <Separator />
+                  <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                    {isAdmin && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="text-xs text-destructive hover:text-destructive">Xóa</Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
+                            <AlertDialogDescription>Yêu cầu review "{req.contract_title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Hủy</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(req.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                    {req.status !== "hoan_tat" && req.status !== "da_hoan_thanh" && (
+                      <div className="flex gap-2 ml-auto">
+                        {canAct && (
+                          <Button size="sm" className="text-xs bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => openDetail(req)}>
+                            Duyệt
+                          </Button>
+                        )}
+                        {!canAct && (
+                          <Button size="sm" className="text-xs" variant="outline" onClick={() => openDetail(req)}>
+                            Xem chi tiết
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {(isAdmin || (user?.id === req.requester_id && ["cho_xu_ly", "cho_quan_ly", "cho_quan_ly_chung", "cho_phap_che", "dang_review"].includes(req.status))) && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Separator />
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" size="sm" className="text-xs" onClick={() => handleEdit(req)}>
+                          Chỉnh sửa
+                        </Button>
+                        {user?.id === req.requester_id && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10">
+                                Xóa yêu cầu
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Xác nhận xóa?</AlertDialogTitle>
+                                <AlertDialogDescription>Yêu cầu review "{req.contract_title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Hủy</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(req.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
                       {req.contract_type_category && <> — {req.contract_type_category}</>}
                       {req.tax_code && <> — MST: {req.tax_code}</>}
                     </p>
