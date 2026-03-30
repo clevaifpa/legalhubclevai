@@ -141,6 +141,7 @@ const AdminReviewRequests = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [editingReqId, setEditingReqId] = useState<string | null>(null);
 
