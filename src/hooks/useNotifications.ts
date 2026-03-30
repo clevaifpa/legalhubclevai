@@ -131,11 +131,12 @@ export function useNotifications() {
 
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
     emitNotificationSync({ type: "mark_read", id });
-    void supabase
+    supabase
       .from("notifications")
       .update({ is_read: true } as any)
       .eq("id", id)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .then();
   };
 
   const markAllAsRead = () => {
@@ -144,12 +145,13 @@ export function useNotifications() {
 
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     emitNotificationSync({ type: "mark_all_read" });
-    void supabase
+    supabase
       .from("notifications")
       .update({ is_read: true } as any)
       .eq("user_id", user.id)
       .eq("is_read", false)
-      .eq("is_deleted", false);
+      .eq("is_deleted", false)
+      .then();
   };
 
   const deleteNotification = async (id: string) => {
