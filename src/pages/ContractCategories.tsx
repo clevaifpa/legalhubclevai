@@ -425,7 +425,7 @@ const ContractCategories = () => {
       const { data: insertedContract, error } = await supabase.from("contracts").insert({
         title: form.title.trim(), partner_name: form.partner_name.trim(),
         contract_type: form.contract_type as any, status: dbStatus as any,
-        value: parseInt(form.value) || 0, effective_date: form.effective_date || null,
+        value: paymentPhases.reduce((sum, p) => sum + (parseInt(p.payment_amount) || 0), 0), effective_date: form.effective_date || null,
         expiry_date: form.expiry_date, department: form.department,
         risk_level: form.risk_level as any, category_id: selectedCategory.id,
         created_by: user?.id, file_url: form.file_link.trim(),
