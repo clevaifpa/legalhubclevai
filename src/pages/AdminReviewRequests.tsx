@@ -1181,18 +1181,37 @@ const AdminReviewRequests = () => {
                 </div>
                 <div className="space-y-2" id="field-google_doc_url">
                   <Label className={formErrors.google_doc_url ? "text-destructive" : ""}>Link Google Doc *</Label>
-                  <Input
-                    type="url"
-                    value={form.google_doc_url}
-                    onChange={(e) => setForm({ ...form, google_doc_url: e.target.value })}
-                    placeholder="Dán link Google Doc (đã cấp quyền chỉnh sửa)"
-                    className={formErrors.google_doc_url ? "border-destructive focus-visible:ring-destructive" : ""}
-                    title="Link phải cho phép người được phân công có quyền edit"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      type="url"
+                      value={form.google_doc_url}
+                      onChange={(e) => setForm({ ...form, google_doc_url: e.target.value })}
+                      placeholder="Dán link Google Doc (đã cấp quyền chỉnh sửa)"
+                      className={`flex-1 ${formErrors.google_doc_url ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                      title="Link phải cho phép người được phân công có quyền edit"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 gap-1.5"
+                      disabled={aiExtracting || !form.google_doc_url}
+                      onClick={handleAiExtract}
+                    >
+                      {aiExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                      {aiExtracting ? "Đang đọc..." : "AI đọc HĐ"}
+                    </Button>
+                  </div>
                   {formErrors.google_doc_url && <p className="text-xs text-destructive">{formErrors.google_doc_url}</p>}
                   <p className="text-xs text-muted-foreground">
-                    ⚠️ Vui lòng cấp quyền <strong>Editor (Chỉnh sửa)</strong> cho tất cả reviewer trước khi gửi.
+                    ⚠️ Cấp quyền <strong>Editor</strong> cho reviewer. Nhấn <strong>"AI đọc HĐ"</strong> để tự động điền form từ nội dung Google Doc.
                   </p>
+                  {aiExtracting && (
+                    <div className="flex items-center gap-2 p-2 rounded bg-accent/10 border border-accent/20">
+                      <Loader2 className="h-3 w-3 animate-spin text-accent" />
+                      <span className="text-xs text-accent">AI đang đọc và phân tích nội dung hợp đồng...</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Supplementary Documents */}
