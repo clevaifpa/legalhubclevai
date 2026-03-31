@@ -348,7 +348,7 @@ const UserDashboard = () => {
         priority: form.priority as any,
         contract_title: form.contract_title,
         partner_name: form.partner_name,
-        contract_value: form.contract_value_na ? 0 : (parseInt(form.contract_value) || 0),
+        contract_value: form.contract_value_na ? 0 : calculatedContractValue,
         request_deadline: form.review_deadline,
         contract_start_date: form.contract_start_date || null,
         contract_end_date: form.contract_end_date || null,
