@@ -177,6 +177,64 @@ const AdminReviewRequests = () => {
   const [supplementaryDocsData, setSupplementaryDocsData] = useState<Record<string, any[]>>({});
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [aiExtracting, setAiExtracting] = useState(false);
+
+  const handleAiExtract = async () => {
+    if (!form.google_doc_url) {
+      toast.error("Vui lòng dán link Google Doc trước");
+      return;
+    }
+    setAiExtracting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-contract-from-doc", {
+        body: { googleDocUrl: form.google_doc_url },
+      });
+
+      if (error) {
+        toast.error("Lỗi khi phân tích", { description: error.message });
+        return;
+      }
+      if (data?.error) {
+        toast.error("AI không thể phân tích", { description: data.error });
+        return;
+      }
+
+      const updates: Partial<typeof form> = {};
+      if (data.loai_van_ban && CONTRACT_TYPE_CATEGORIES.includes(data.loai_van_ban)) {
+        updates.contract_type_category = data.loai_van_ban;
+      }
+      if (data.ten_van_ban) updates.contract_title = data.ten_van_ban;
+      if (data.ten_doi_tac) updates.partner_name = data.ten_doi_tac;
+      if (data.ma_so_thue) updates.tax_code = data.ma_so_thue;
+      if (data.ngay_bat_dau) updates.contract_start_date = data.ngay_bat_dau;
+      if (data.ngay_ket_thuc) updates.contract_end_date = data.ngay_ket_thuc;
+
+      setForm(prev => ({ ...prev, ...updates }));
+
+      if (data.dot_thanh_toan && data.dot_thanh_toan.length > 0) {
+        setPaymentPhases(data.dot_thanh_toan.map((d: any, idx: number) => ({
+          phase_name: d.ten_dot || `Đợt ${String(idx + 1).padStart(2, "0")}`,
+          payment_amount: d.gia_tri ? String(d.gia_tri) : "",
+          payment_due_date: d.ngay_thanh_toan || "",
+          is_na: false,
+        })));
+      } else if (data.gia_tri_hop_dong && data.gia_tri_hop_dong > 0) {
+        setPaymentPhases([{
+          phase_name: "Đợt 01",
+          payment_amount: String(data.gia_tri_hop_dong),
+          payment_due_date: "",
+          is_na: false,
+        }]);
+      }
+
+      toast.success("AI đã điền form thành công!", { description: "Vui lòng kiểm tra và bổ sung thông tin còn thiếu." });
+    } catch (err: any) {
+      console.error("AI extract error:", err);
+      toast.error("Lỗi hệ thống khi phân tích");
+    } finally {
+      setAiExtracting(false);
+    }
+  };
 
   useEffect(() => {
     setFormErrors(prev => {
