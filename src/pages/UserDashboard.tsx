@@ -155,7 +155,6 @@ const UserDashboard = () => {
       if (form.contract_title.trim()) delete newErrors.contract_title;
       if (form.partner_name.trim()) delete newErrors.partner_name;
       if (form.tax_code.trim()) delete newErrors.tax_code;
-      if (form.contract_value_na || (form.contract_value && parseInt(form.contract_value) > 0)) delete newErrors.contract_value;
       if (form.review_deadline) delete newErrors.review_deadline;
       if (form.contract_start_date) delete newErrors.contract_start_date;
       if (form.contract_end_date) delete newErrors.contract_end_date;
