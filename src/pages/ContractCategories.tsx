@@ -571,7 +571,17 @@ const ContractCategories = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Giá trị (VNĐ)</Label>
-                    <Input type="number" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} placeholder="0" />
+                    <Input
+                      type="text"
+                      readOnly
+                      disabled
+                      value={(() => {
+                        const total = paymentPhases.reduce((sum, p) => sum + (parseInt(p.payment_amount) || 0), 0);
+                        return total > 0 ? new Intl.NumberFormat('vi-VN').format(total) + ' VNĐ' : '0';
+                      })()}
+                      className="bg-muted cursor-not-allowed"
+                    />
+                    <p className="text-xs text-muted-foreground">Tự động tính từ {paymentPhases.length} đợt thanh toán</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Trạng thái</Label>

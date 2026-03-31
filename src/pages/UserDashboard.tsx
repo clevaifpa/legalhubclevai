@@ -705,16 +705,28 @@ const UserDashboard = () => {
               </div>
               <div className="space-y-2" id="field-contract_value">
                 <div className="flex items-center gap-3">
-                  <Label className={formErrors.contract_value ? "text-destructive" : ""}>Giá trị hợp đồng (VNĐ) *</Label>
+                  <Label>Giá trị hợp đồng (VNĐ)</Label>
                   <div className="flex items-center gap-1.5">
                     <Checkbox checked={form.contract_value_na} onCheckedChange={(v) => setForm({ ...form, contract_value_na: !!v, contract_value: "" })} id="value-na" />
                     <label htmlFor="value-na" className="text-xs text-muted-foreground cursor-pointer">N/A</label>
                   </div>
                 </div>
-                {!form.contract_value_na && (
-                  <Input className={formErrors.contract_value ? "border-destructive focus-visible:ring-destructive" : ""} type="number" value={form.contract_value} onChange={(e) => setForm({ ...form, contract_value: e.target.value })} placeholder="0" />
+                {!form.contract_value_na ? (
+                  <div>
+                    <Input
+                      type="text"
+                      readOnly
+                      disabled
+                      value={calculatedContractValue > 0 ? new Intl.NumberFormat('vi-VN').format(calculatedContractValue) + ' VNĐ' : '0'}
+                      className="bg-muted cursor-not-allowed"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Tự động tính từ {paymentPhases.filter(p => !p.is_na).length} đợt thanh toán
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">N/A</p>
                 )}
-                {formErrors.contract_value && <p className="text-xs text-destructive">{formErrors.contract_value}</p>}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 col-span-2 sm:col-span-1" id="field-review_deadline">
