@@ -425,7 +425,7 @@ const ContractCategories = () => {
       const { data: insertedContract, error } = await supabase.from("contracts").insert({
         title: form.title.trim(), partner_name: form.partner_name.trim(),
         contract_type: form.contract_type as any, status: dbStatus as any,
-        value: parseInt(form.value) || 0, effective_date: form.effective_date || null,
+        value: paymentPhases.reduce((sum, p) => sum + (parseInt(p.payment_amount) || 0), 0), effective_date: form.effective_date || null,
         expiry_date: form.expiry_date, department: form.department,
         risk_level: form.risk_level as any, category_id: selectedCategory.id,
         created_by: user?.id, file_url: form.file_link.trim(),
@@ -571,7 +571,17 @@ const ContractCategories = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Giá trị (VNĐ)</Label>
-                    <Input type="number" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} placeholder="0" />
+                    <Input
+                      type="text"
+                      readOnly
+                      disabled
+                      value={(() => {
+                        const total = paymentPhases.reduce((sum, p) => sum + (parseInt(p.payment_amount) || 0), 0);
+                        return total > 0 ? new Intl.NumberFormat('vi-VN').format(total) + ' VNĐ' : '0';
+                      })()}
+                      className="bg-muted cursor-not-allowed"
+                    />
+                    <p className="text-xs text-muted-foreground">Tự động tính từ {paymentPhases.length} đợt thanh toán</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Trạng thái</Label>

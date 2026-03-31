@@ -155,7 +155,6 @@ const UserDashboard = () => {
       if (form.contract_title.trim()) delete newErrors.contract_title;
       if (form.partner_name.trim()) delete newErrors.partner_name;
       if (form.tax_code.trim()) delete newErrors.tax_code;
-      if (form.contract_value_na || (form.contract_value && parseInt(form.contract_value) > 0)) delete newErrors.contract_value;
       if (form.review_deadline) delete newErrors.review_deadline;
       if (form.contract_start_date) delete newErrors.contract_start_date;
       if (form.contract_end_date) delete newErrors.contract_end_date;
@@ -281,9 +280,6 @@ const UserDashboard = () => {
     if (!form.contract_title.trim()) errors.contract_title = "Vui lòng nhập tên văn bản";
     if (!form.partner_name.trim()) errors.partner_name = "Vui lòng nhập tên đối tác";
     if (!form.tax_code.trim()) errors.tax_code = "Vui lòng nhập mã số thuế đối tác";
-    if (!form.contract_value_na && (!form.contract_value || parseInt(form.contract_value) <= 0)) {
-      errors.contract_value = "Vui lòng nhập giá trị hợp đồng hoặc chọn N/A";
-    }
     if (!form.review_deadline) errors.review_deadline = "Vui lòng nhập hạn review";
     if (!form.contract_start_date) errors.contract_start_date = "Vui lòng nhập ngày bắt đầu HĐ";
     if (!form.contract_end_date) errors.contract_end_date = "Vui lòng nhập ngày kết thúc HĐ";
@@ -351,7 +347,7 @@ const UserDashboard = () => {
         priority: form.priority as any,
         contract_title: form.contract_title,
         partner_name: form.partner_name,
-        contract_value: form.contract_value_na ? 0 : (parseInt(form.contract_value) || 0),
+        contract_value: form.contract_value_na ? 0 : calculatedContractValue,
         request_deadline: form.review_deadline,
         contract_start_date: form.contract_start_date || null,
         contract_end_date: form.contract_end_date || null,
@@ -399,7 +395,7 @@ const UserDashboard = () => {
         priority: form.priority as any,
         contract_title: form.contract_title,
         partner_name: form.partner_name,
-        contract_value: form.contract_value_na ? 0 : (parseInt(form.contract_value) || 0),
+        contract_value: form.contract_value_na ? 0 : calculatedContractValue,
         request_deadline: form.review_deadline,
         contract_start_date: form.contract_start_date || null,
         contract_end_date: form.contract_end_date || null,
@@ -565,7 +561,9 @@ const UserDashboard = () => {
 
   const hasAllReviewerRoles = globalManagers.length > 0 && legalReviewers.length > 0 && accountantReviewers.length > 0 && financeReviewers.length > 0;
 
-  const isFormValid = form.contract_title && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date) && hasAllReviewerRoles;
+  const calculatedContractValue = form.contract_value_na ? 0 : paymentPhases.reduce((sum, p) => sum + (p.is_na ? 0 : (parseInt(p.payment_amount) || 0)), 0);
+
+  const isFormValid = form.contract_title && form.approved_pe_number.trim() && form.partner_name.trim() && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date) && hasAllReviewerRoles;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -705,16 +703,28 @@ const UserDashboard = () => {
               </div>
               <div className="space-y-2" id="field-contract_value">
                 <div className="flex items-center gap-3">
-                  <Label className={formErrors.contract_value ? "text-destructive" : ""}>Giá trị hợp đồng (VNĐ) *</Label>
+                  <Label>Giá trị hợp đồng (VNĐ)</Label>
                   <div className="flex items-center gap-1.5">
                     <Checkbox checked={form.contract_value_na} onCheckedChange={(v) => setForm({ ...form, contract_value_na: !!v, contract_value: "" })} id="value-na" />
                     <label htmlFor="value-na" className="text-xs text-muted-foreground cursor-pointer">N/A</label>
                   </div>
                 </div>
-                {!form.contract_value_na && (
-                  <Input className={formErrors.contract_value ? "border-destructive focus-visible:ring-destructive" : ""} type="number" value={form.contract_value} onChange={(e) => setForm({ ...form, contract_value: e.target.value })} placeholder="0" />
+                {!form.contract_value_na ? (
+                  <div>
+                    <Input
+                      type="text"
+                      readOnly
+                      disabled
+                      value={calculatedContractValue > 0 ? new Intl.NumberFormat('vi-VN').format(calculatedContractValue) + ' VNĐ' : '0'}
+                      className="bg-muted cursor-not-allowed"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Tự động tính từ {paymentPhases.filter(p => !p.is_na).length} đợt thanh toán
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">N/A</p>
                 )}
-                {formErrors.contract_value && <p className="text-xs text-destructive">{formErrors.contract_value}</p>}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 col-span-2 sm:col-span-1" id="field-review_deadline">
