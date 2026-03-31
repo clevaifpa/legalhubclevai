@@ -404,8 +404,8 @@ const AdminReviewRequests = () => {
     if (!form.contract_title.trim()) errors.contract_title = "Vui lòng nhập tên văn bản";
     if (!form.partner_name.trim()) errors.partner_name = "Vui lòng nhập tên đối tác";
     if (!form.tax_code.trim()) errors.tax_code = "Vui lòng nhập mã số thuế đối tác";
-    if (!form.contract_value_na && (!form.contract_value || parseInt(form.contract_value) <= 0)) {
-      errors.contract_value = "Vui lòng nhập giá trị hợp đồng hoặc chọn N/A";
+    if (!form.contract_value_na && calculatedContractValue <= 0) {
+      errors.contract_value = "Vui lòng thêm đợt thanh toán hoặc chọn N/A";
     }
     if (!form.review_deadline) errors.review_deadline = "Vui lòng nhập hạn review";
     if (!form.contract_start_date) errors.contract_start_date = "Vui lòng nhập ngày bắt đầu HĐ";
@@ -472,7 +472,7 @@ const AdminReviewRequests = () => {
         priority: form.priority as any,
         contract_title: form.contract_title,
         partner_name: form.partner_name,
-        contract_value: form.contract_value_na ? 0 : (parseInt(form.contract_value) || 0),
+        contract_value: form.contract_value_na ? 0 : calculatedContractValue,
         request_deadline: form.review_deadline,
         contract_start_date: form.contract_start_date || null,
         contract_end_date: form.contract_end_date || null,
@@ -521,7 +521,7 @@ const AdminReviewRequests = () => {
         priority: form.priority as any,
         contract_title: form.contract_title,
         partner_name: form.partner_name,
-        contract_value: form.contract_value_na ? 0 : (parseInt(form.contract_value) || 0),
+        contract_value: form.contract_value_na ? 0 : calculatedContractValue,
         request_deadline: form.review_deadline,
         contract_start_date: form.contract_start_date || null,
         contract_end_date: form.contract_end_date || null,
@@ -880,7 +880,8 @@ const AdminReviewRequests = () => {
   const hasAllReviewerRoles = globalManagers.length > 0 && legalReviewers.length > 0 && accountantReviewers.length > 0 && financeReviewers.length > 0;
 
   const roleLabel = isAdmin ? "Pháp chế" : isManager ? "Quản lý" : isAccountant ? "Kế toán" : isFinance ? "Tài chính" : "";
-  const isFormValid = form.contract_title && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date) && hasAllReviewerRoles;
+  const calculatedContractValue = form.contract_value_na ? 0 : paymentPhases.reduce((sum, p) => sum + (p.is_na ? 0 : (parseInt(p.payment_amount) || 0)), 0);
+  const isFormValid = form.contract_title && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || calculatedContractValue > 0) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date) && hasAllReviewerRoles;
 
   // Helper for tracking props
   const getAssignedReviewers = (req: any) => {
@@ -1083,8 +1084,20 @@ const AdminReviewRequests = () => {
                       <label htmlFor="value-na" className="text-xs text-muted-foreground cursor-pointer">N/A</label>
                     </div>
                   </div>
-                  {!form.contract_value_na && (
-                    <Input className={formErrors.contract_value ? "border-destructive focus-visible:ring-destructive" : ""} type="number" value={form.contract_value} onChange={(e) => setForm({ ...form, contract_value: e.target.value })} placeholder="0" />
+                  {!form.contract_value_na ? (
+                    <div>
+                      <Input
+                        readOnly
+                        disabled
+                        value={calculatedContractValue > 0 ? new Intl.NumberFormat('vi-VN').format(calculatedContractValue) + ' VNĐ' : '0'}
+                        className="bg-muted cursor-not-allowed"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Tự động tính từ {paymentPhases.filter(p => !p.is_na).length} đợt thanh toán
+                      </p>
+                    </div>
+                  ) : (
+                    <Input readOnly disabled value="N/A" className="bg-muted cursor-not-allowed" />
                   )}
                   {formErrors.contract_value && <p className="text-xs text-destructive">{formErrors.contract_value}</p>}
                 </div>
