@@ -880,7 +880,8 @@ const AdminReviewRequests = () => {
   const hasAllReviewerRoles = globalManagers.length > 0 && legalReviewers.length > 0 && accountantReviewers.length > 0 && financeReviewers.length > 0;
 
   const roleLabel = isAdmin ? "Pháp chế" : isManager ? "Quản lý" : isAccountant ? "Kế toán" : isFinance ? "Tài chính" : "";
-  const isFormValid = form.contract_title && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || form.contract_value) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date) && hasAllReviewerRoles;
+  const calculatedContractValue = form.contract_value_na ? 0 : paymentPhases.reduce((sum, p) => sum + (p.is_na ? 0 : (parseInt(p.payment_amount) || 0)), 0);
+  const isFormValid = form.contract_title && form.approved_pe_number.trim() && form.partner_name.trim() && (form.contract_value_na || calculatedContractValue > 0) && form.review_deadline && form.contract_start_date && form.contract_end_date && form.description.trim() && form.department && form.contract_type_category && form.tax_code.trim() && (isDirectSubmit || form.manager_id) && isValidGoogleDocUrl(form.google_doc_url) && paymentPhases.every(p => (p.is_na || (p.payment_amount && parseInt(p.payment_amount) > 0)) && p.payment_due_date) && hasAllReviewerRoles;
 
   // Helper for tracking props
   const getAssignedReviewers = (req: any) => {
