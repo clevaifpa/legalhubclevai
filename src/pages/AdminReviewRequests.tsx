@@ -404,8 +404,8 @@ const AdminReviewRequests = () => {
     if (!form.contract_title.trim()) errors.contract_title = "Vui lòng nhập tên văn bản";
     if (!form.partner_name.trim()) errors.partner_name = "Vui lòng nhập tên đối tác";
     if (!form.tax_code.trim()) errors.tax_code = "Vui lòng nhập mã số thuế đối tác";
-    if (!form.contract_value_na && (!form.contract_value || parseInt(form.contract_value) <= 0)) {
-      errors.contract_value = "Vui lòng nhập giá trị hợp đồng hoặc chọn N/A";
+    if (!form.contract_value_na && calculatedContractValue <= 0) {
+      errors.contract_value = "Vui lòng thêm đợt thanh toán hoặc chọn N/A";
     }
     if (!form.review_deadline) errors.review_deadline = "Vui lòng nhập hạn review";
     if (!form.contract_start_date) errors.contract_start_date = "Vui lòng nhập ngày bắt đầu HĐ";
