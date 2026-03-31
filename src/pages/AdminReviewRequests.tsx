@@ -1084,8 +1084,20 @@ const AdminReviewRequests = () => {
                       <label htmlFor="value-na" className="text-xs text-muted-foreground cursor-pointer">N/A</label>
                     </div>
                   </div>
-                  {!form.contract_value_na && (
-                    <Input className={formErrors.contract_value ? "border-destructive focus-visible:ring-destructive" : ""} type="number" value={form.contract_value} onChange={(e) => setForm({ ...form, contract_value: e.target.value })} placeholder="0" />
+                  {!form.contract_value_na ? (
+                    <div>
+                      <Input
+                        readOnly
+                        disabled
+                        value={calculatedContractValue > 0 ? new Intl.NumberFormat('vi-VN').format(calculatedContractValue) + ' VNĐ' : '0'}
+                        className="bg-muted cursor-not-allowed"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Tự động tính từ {paymentPhases.filter(p => !p.is_na).length} đợt thanh toán
+                      </p>
+                    </div>
+                  ) : (
+                    <Input readOnly disabled value="N/A" className="bg-muted cursor-not-allowed" />
                   )}
                   {formErrors.contract_value && <p className="text-xs text-destructive">{formErrors.contract_value}</p>}
                 </div>
