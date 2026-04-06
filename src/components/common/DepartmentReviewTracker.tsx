@@ -18,6 +18,8 @@ import {
 } from "@/types/reviewDepartments";
 import { formatDate } from "@/lib/format";
 
+type UserRoleForNotes = 'admin' | 'manager' | 'manager_chung' | 'accountant' | 'finance' | 'user' | 'creator';
+
 interface DepartmentReviewTrackerProps {
     deptReviews: Record<ReviewDepartment, DepartmentReviewStatus>;
     assignedReviewers?: Partial<Record<ReviewDepartment, { id: string; name: string }>>;
@@ -26,6 +28,49 @@ interface DepartmentReviewTrackerProps {
     assignable?: boolean;
     reviewers?: any[];
     onAssignReviewer?: (dept: ReviewDepartment, reviewerId: string) => void;
+    userRole?: UserRoleForNotes;
+    isRequester?: boolean;
+}
+
+/**
+ * Determine if a department's notes should be visible based on user role.
+ * - admin/phap_ly(admin)/tai_chinh(finance): see ALL notes
+ * - quan_ly/quan_ly_chung/ke_toan(accountant): see notes up to their step
+ * - creator (user who created the request): see only step 1
+ */
+function canSeeNotes(
+    dept: ReviewDepartment,
+    userRole: UserRoleForNotes | undefined,
+    isRequester: boolean,
+    departments: ReviewDepartment[]
+): boolean {
+    if (!userRole) return true; // fallback: show all
+
+    // Admin & Finance & Legal (admin role = phap_che) → see all
+    if (userRole === 'admin' || userRole === 'finance') return true;
+
+    const deptIndex = departments.indexOf(dept);
+
+    // Map role to their corresponding step department
+    const roleStepMap: Record<string, ReviewDepartment> = {
+        manager: 'quan_ly',
+        manager_chung: 'quan_ly_chung',
+        accountant: 'ke_toan',
+    };
+
+    const userStepDept = roleStepMap[userRole];
+    if (userStepDept) {
+        const userStepIndex = departments.indexOf(userStepDept);
+        // Can see notes of steps up to (and including) their own step
+        return deptIndex <= userStepIndex;
+    }
+
+    // Creator (user role, not a reviewer) → only see step 1
+    if (userRole === 'user' || userRole === 'creator') {
+        return deptIndex === 0;
+    }
+
+    return true;
 }
 
 const StatusText = ({ status }: { status: DepartmentReviewStatus["status"] }) => {
