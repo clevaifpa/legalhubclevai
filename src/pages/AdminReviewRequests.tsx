@@ -1649,6 +1649,8 @@ const AdminReviewRequests = () => {
                 assignable={isAdmin}
                 reviewers={reviewers}
                 onAssignReviewer={(dept, reviewerId) => handleAssignReviewer(selectedReq.id, dept, reviewerId)}
+                userRole={role || 'user'}
+                isRequester={user?.id === selectedReq.requester_id}
               />
             )}
 
