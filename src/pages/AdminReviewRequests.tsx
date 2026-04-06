@@ -1487,6 +1487,8 @@ const AdminReviewRequests = () => {
                     assignable={isAdmin && req.status !== "hoan_tat" && req.status !== "da_hoan_thanh"}
                     reviewers={[...reviewers, ...globalManagers]}
                     onAssignReviewer={(dept, reviewerId) => handleAssignReviewer(req.id, dept, reviewerId)}
+                    userRole={role || 'user'}
+                    isRequester={user?.id === req.requester_id}
                   />
 
                   {/* File links */}
