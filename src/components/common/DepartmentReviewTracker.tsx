@@ -89,7 +89,9 @@ export function DepartmentReviewTracker({
     skipManagerStep = false,
     assignable = false,
     reviewers = [],
-    onAssignReviewer
+    onAssignReviewer,
+    userRole,
+    isRequester = false
 }: DepartmentReviewTrackerProps) {
     const departments = (Object.keys(REVIEW_DEPARTMENTS) as ReviewDepartment[])
         .filter(dept => !(skipManagerStep && dept === "quan_ly"))
