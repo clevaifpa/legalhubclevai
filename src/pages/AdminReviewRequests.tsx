@@ -36,6 +36,7 @@ import {
   getReviewProgress,
   getCurrentStep,
   getNextStatus,
+  getVisibleDeptNotes,
   WORKFLOW_STATUSES,
 } from "@/types/reviewDepartments";
 

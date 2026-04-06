@@ -25,7 +25,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTracker";
-import { extractDeptReviews, decodeDeptReview, WORKFLOW_STATUSES } from "@/types/reviewDepartments";
+import { extractDeptReviews, decodeDeptReview, getVisibleDeptNotes, WORKFLOW_STATUSES, REVIEW_DEPARTMENTS } from "@/types/reviewDepartments";
 
 const isValidGoogleDocUrl = (url: string): boolean => {
   if (!url) return false;
