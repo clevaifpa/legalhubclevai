@@ -145,6 +145,57 @@ export function getReviewProgress(deptReviews: Record<ReviewDepartment, Departme
     return { completed, total, percentage: Math.round((completed / total) * 100) };
 }
 
+/**
+ * Filter department reviews to only show notes visible to the given role.
+ * - admin/finance: see ALL notes
+ * - manager/manager_chung/accountant: see notes up to their step
+ * - user/creator: see only step 1
+ */
+export function getVisibleDeptNotes(
+    deptReviews: Record<ReviewDepartment, DepartmentReviewStatus>,
+    userRole: string,
+    isRequester: boolean,
+    skipManagerStep: boolean
+): Array<{ dept: ReviewDepartment; review: DepartmentReviewStatus; label: string }> {
+    const departments = (Object.keys(REVIEW_DEPARTMENTS) as ReviewDepartment[])
+        .filter(dept => !(skipManagerStep && dept === 'quan_ly'))
+        .sort((a, b) => REVIEW_DEPARTMENTS[a].stepOrder - REVIEW_DEPARTMENTS[b].stepOrder);
+
+    const roleStepMap: Record<string, ReviewDepartment> = {
+        manager: 'quan_ly',
+        manager_chung: 'quan_ly_chung',
+        accountant: 'ke_toan',
+    };
+
+    return departments
+        .filter(dept => {
+            const review = deptReviews[dept];
+            if (!review?.notes) return false;
+
+            // Admin & Finance → see all
+            if (userRole === 'admin' || userRole === 'finance') return true;
+
+            const deptIndex = departments.indexOf(dept);
+
+            // Reviewer roles → see up to their step
+            const userStepDept = roleStepMap[userRole];
+            if (userStepDept) {
+                const userStepIndex = departments.indexOf(userStepDept);
+                return deptIndex <= userStepIndex;
+            }
+
+            // Pure requester → only step 1
+            if (isRequester) return deptIndex === 0;
+
+            return false;
+        })
+        .map(dept => ({
+            dept,
+            review: deptReviews[dept],
+            label: REVIEW_DEPARTMENTS[dept].label,
+        }));
+}
+
 // Get the current workflow step based on status
 export function getCurrentStep(status: string): ReviewDepartment | null {
     return WORKFLOW_STATUSES[status]?.nextStep || null;
