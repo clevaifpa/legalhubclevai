@@ -219,7 +219,7 @@ export function DepartmentReviewTracker({
                                 </p>
                             )}
 
-                            {review.notes && (
+                            {review.notes && canSeeNotes(dept, isRequester ? (userRole || 'creator') : userRole, isRequester && !userRole, departments) && (
                                 <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2 italic" title={review.notes}>
                                     "{review.notes}"
                                 </p>
