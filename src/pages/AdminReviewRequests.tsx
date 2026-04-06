@@ -1492,7 +1492,35 @@ const AdminReviewRequests = () => {
                     isRequester={user?.id === req.requester_id}
                   />
 
-                  {/* File links */}
+                  {/* Nhận xét các bước duyệt - filtered by role */}
+                  {(() => {
+                    const visibleNotes = getVisibleDeptNotes(
+                      deptReviews,
+                      role || 'user',
+                      !!(user?.id === req.requester_id && role === 'user'),
+                      !!req.admin_notes?.includes("Quản lý chung duyệt")
+                    );
+                    return visibleNotes.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Nhận xét các bước duyệt</p>
+                        <div className="space-y-1.5">
+                          {visibleNotes.map(({ dept, review, label }) => (
+                            <div key={dept} className="p-2.5 rounded-lg bg-muted/30 border text-sm">
+                              <div className="flex items-center justify-between mb-0.5">
+                                <span className="font-medium text-xs">{label}</span>
+                                <div className="flex items-center gap-2">
+                                  {review.reviewerName && <span className="text-xs text-muted-foreground">{review.reviewerName}</span>}
+                                  {review.reviewedAt && <span className="text-xs text-muted-foreground">{formatDate(review.reviewedAt)}</span>}
+                                </div>
+                              </div>
+                              <p className="text-muted-foreground italic text-xs">"{review.notes}"</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+
                   <div className="space-y-1">
                     {req.file_url && (
                       <button
