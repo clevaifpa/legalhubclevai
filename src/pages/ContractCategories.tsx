@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
+import { EntitySyncButton } from "@/components/EntitySyncButton";
 import { X, Plus, GripVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
@@ -1353,12 +1354,19 @@ const ContractCategories = () => {
               onDragEnd={handleDragEnd}
             >
               <AccordionTrigger className="hover:no-underline py-4">
-                <div className="flex items-center gap-2">
-                  {isAdmin && entity !== "Khác" && (
-                    <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing shrink-0" />
+                <div className="flex items-center gap-2 flex-1">
+                  <div className="flex items-center gap-2">
+                    {isAdmin && entity !== "Khác" && (
+                      <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing shrink-0" />
+                    )}
+                    <span className="font-semibold text-lg">{entity}</span>
+                    <Badge variant="secondary" className="font-normal text-muted-foreground">{totalContracts} hợp đồng</Badge>
+                  </div>
+                  {entity !== "Khác" && (
+                    <div className="ml-auto mr-4">
+                      <EntitySyncButton entityName={entity} isAdmin={isAdmin} />
+                    </div>
                   )}
-                  <span className="font-semibold text-lg">{entity}</span>
-                  <Badge variant="secondary" className="font-normal text-muted-foreground">{totalContracts} hợp đồng</Badge>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-2 pb-4">
