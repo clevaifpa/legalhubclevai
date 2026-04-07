@@ -624,6 +624,54 @@ export type Database = {
           },
         ]
       }
+      sync_logs: {
+        Row: {
+          created_at: string
+          entity_name: string
+          error_count: number
+          errors: Json
+          finished_at: string | null
+          id: string
+          imported_count: number
+          skipped_count: number
+          started_at: string
+          status: string
+          tab_name: string
+          total_rows: number
+          triggered_by: string
+        }
+        Insert: {
+          created_at?: string
+          entity_name: string
+          error_count?: number
+          errors?: Json
+          finished_at?: string | null
+          id?: string
+          imported_count?: number
+          skipped_count?: number
+          started_at?: string
+          status?: string
+          tab_name?: string
+          total_rows?: number
+          triggered_by?: string
+        }
+        Update: {
+          created_at?: string
+          entity_name?: string
+          error_count?: number
+          errors?: Json
+          finished_at?: string | null
+          id?: string
+          imported_count?: number
+          skipped_count?: number
+          started_at?: string
+          status?: string
+          tab_name?: string
+          total_rows?: number
+          triggered_by?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           department: string | null
