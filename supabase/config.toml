@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.extract-contract-from-doc]
 verify_jwt = false
+
+[functions.sync-google-sheet]
+verify_jwt = false
