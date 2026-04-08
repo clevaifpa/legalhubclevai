@@ -510,6 +510,71 @@ const ContractCategories = () => {
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "" }]);
   };
 
+  const handleInlineEdit = async (contractId: string, field: string, oldValue: any, newValue: any) => {
+    if (String(oldValue ?? "") === String(newValue ?? "")) return;
+    const updateData: any = {};
+    if (field === "value") {
+      updateData.value = parseInt(String(newValue)) || 0;
+    } else if (field === "effective_date" || field === "expiry_date") {
+      updateData[field] = newValue || null;
+    } else {
+      updateData[field] = newValue;
+    }
+    const { error } = await supabase.from("contracts").update(updateData).eq("id", contractId);
+    if (error) {
+      toast.error("Lỗi cập nhật", { description: error.message });
+      return;
+    }
+    if (user && profile) {
+      await supabase.from("edit_logs").insert({
+        editor_id: user.id,
+        editor_name: profile.full_name || user.email || "",
+        record_id: contractId,
+        table_name: "contracts",
+        changes: { field, old: oldValue, new: newValue },
+      } as any);
+    }
+    toast.success("Đã cập nhật");
+    if (selectedCategory) fetchContracts(selectedCategory.id);
+  };
+
+  const handleStatusChange = async (contract: any, oldDerivedStatus: string, newStatus: string, payments: any[], hasHiddenFlag: boolean) => {
+    if (oldDerivedStatus === newStatus) return;
+    const oldDbStatus = contract.status;
+    const dbStatusToSave = newStatus === "het_hieu_luc_chua_hoan_thanh" ? "het_hieu_luc" : newStatus;
+    const { error } = await supabase.from("contracts").update({ status: dbStatusToSave as any }).eq("id", contract.id);
+    if (error) {
+      toast.error("Lỗi cập nhật trạng thái", { description: error.message });
+      return;
+    }
+    if (user && profile) {
+      await supabase.from("edit_logs").insert({
+        editor_id: user.id,
+        editor_name: profile.full_name || user.email || "",
+        record_id: contract.id,
+        table_name: "contracts",
+        changes: { field: "status", old: oldDbStatus, new: dbStatusToSave },
+      } as any);
+    }
+    if (newStatus === "het_hieu_luc_chua_hoan_thanh") {
+      if (!hasHiddenFlag) {
+        await supabase.from("contract_payment_schedules").insert({
+          contract_id: contract.id,
+          phase_name: "[HIDDEN] CHUA_HOAN_THANH",
+          payment_amount: 0,
+          payment_due_date: null,
+        } as any);
+      }
+    } else {
+      const flagPhase = payments.find((p: any) => p.phase_name === "[HIDDEN] CHUA_HOAN_THANH");
+      if (flagPhase) {
+        await supabase.from("contract_payment_schedules").delete().eq("id", flagPhase.id);
+      }
+    }
+    toast.success("Đã cập nhật trạng thái");
+    if (selectedCategory) fetchContracts(selectedCategory.id);
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Đang tải...</p></div>;
   }
