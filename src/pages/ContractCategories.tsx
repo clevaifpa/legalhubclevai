@@ -768,180 +768,164 @@ const ContractCategories = () => {
                   <TableHead>Đối tác</TableHead>
                   <TableHead>MST</TableHead>
                   <TableHead>Trạng thái</TableHead>
-                  <TableHead>Hết hiệu lực</TableHead>
-                  <TableHead>Nghĩa vụ tiếp theo</TableHead>
-                  <TableHead>Đơn vị</TableHead>
-                  <TableHead>Link HĐ</TableHead>
-                  <TableHead>Văn bản liên quan</TableHead>
+                  <TableHead>Giá trị HĐ</TableHead>
+                  <TableHead>Ngày hiệu lực</TableHead>
+                  <TableHead>Ngày hết hạn</TableHead>
+                  <TableHead>Link hợp đồng</TableHead>
                   {canEdit && <TableHead>Thao tác</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredContracts.map((c) => {
-                  const nearestObl = getNearestObligation(c.id);
                   const payments = contractPayments[c.id] || [];
-                  const visiblePayments = payments.filter((p: any) => p.phase_name !== "[HIDDEN] CHUA_HOAN_THANH");
-
-                  // Compute reliable UI status
                   const hasHiddenFlag = payments.some((p: any) => p.phase_name === "[HIDDEN] CHUA_HOAN_THANH");
                   const derivedStatus = (c.status === "het_hieu_luc" && hasHiddenFlag)
                     ? "het_hieu_luc_chua_hoan_thanh"
                     : c.status;
 
+                  // Build links array for multi-link cell
+                  const contractLinks: LinkItem[] = [];
+                  if (c.file_url) {
+                    contractLinks.push({
+                      id: "main-" + c.id,
+                      url: c.file_url,
+                      name: "Hợp đồng",
+                      type: getLinkType(c.file_url),
+                    });
+                  }
+                  if (c.liquidation_file_url) {
+                    const docs = contractRelatedDocs[c.id] || [];
+                    if (!docs.some((d: any) => d.doc_type === "thanh_ly")) {
+                      contractLinks.push({
+                        id: "liq-" + c.id,
+                        url: c.liquidation_file_url,
+                        name: "Thanh lý",
+                        type: getLinkType(c.liquidation_file_url),
+                      });
+                    }
+                  }
+                  const docs = contractRelatedDocs[c.id] || [];
+                  docs.forEach((doc: any) => {
+                    contractLinks.push({
+                      id: doc.id,
+                      url: doc.doc_url,
+                      name: getDocDisplayName(doc, docs),
+                      type: getLinkType(doc.doc_url),
+                    });
+                  });
+
                   return (
                     <TableRow key={c.id} className="hover:bg-muted/30 transition-colors">
                       <TableCell className="font-medium max-w-[200px]">
-                        <span className="truncate block">{c.title}</span>
+                        <InlineEditCell
+                          value={c.title}
+                          type="text"
+                          canEdit={canInlineEdit}
+                          onSave={async (v) => handleInlineEdit(c.id, "title", c.title, v)}
+                          formatDisplay={(v) => v || "—"}
+                        />
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{c.partner_name || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{c.tax_code || "—"}</TableCell>
                       <TableCell>
-                        {canEditContract(c) ? (
+                        <InlineEditCell
+                          value={c.partner_name}
+                          type="text"
+                          canEdit={canInlineEdit}
+                          onSave={async (v) => handleInlineEdit(c.id, "partner_name", c.partner_name, v)}
+                          formatDisplay={(v) => v || "—"}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <InlineEditCell
+                          value={c.tax_code}
+                          type="text"
+                          canEdit={canInlineEdit}
+                          onSave={async (v) => handleInlineEdit(c.id, "tax_code", c.tax_code, v)}
+                          formatDisplay={(v) => v || "—"}
+                          className="text-xs"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {canInlineEdit ? (
                           <Select
                             value={derivedStatus}
                             onValueChange={async (newStatus) => {
-                              const oldStatus = c.status;
-                              // Map back to DB enum
-                              const dbStatusToSave = newStatus === "het_hieu_luc_chua_hoan_thanh" ? "het_hieu_luc" : newStatus;
-                              const { error } = await supabase.from("contracts").update({ status: dbStatusToSave as any }).eq("id", c.id);
-                              if (error) {
-                                toast.error("Lỗi cập nhật trạng thái", { description: error.message });
-                              } else {
-                                // Log audit
-                                if (user && profile) {
-                                  await supabase.from("edit_logs").insert({
-                                    editor_id: user.id,
-                                    editor_name: profile.full_name || user.email || "",
-                                    record_id: c.id,
-                                    table_name: "contracts",
-                                    changes: { field: "status", old: oldStatus, new: dbStatusToSave },
-                                  } as any);
-                                }
-
-                                // Manage hidden flag for state retention
-                                if (newStatus === "het_hieu_luc_chua_hoan_thanh") {
-                                  if (!hasHiddenFlag) {
-                                    await supabase.from("contract_payment_schedules").insert({
-                                      contract_id: c.id,
-                                      phase_name: "[HIDDEN] CHUA_HOAN_THANH",
-                                      payment_amount: 0,
-                                      payment_due_date: null,
-                                    } as any);
-                                  }
-                                } else {
-                                  const flagPhase = payments.find((p: any) => p.phase_name === "[HIDDEN] CHUA_HOAN_THANH");
-                                  if (flagPhase) {
-                                    await supabase.from("contract_payment_schedules").delete().eq("id", flagPhase.id);
-                                  }
-                                }
-
-                                toast.success("Đã cập nhật trạng thái");
-                                fetchContracts(selectedCategory.id);
-                              }
+                              await handleStatusChange(c, derivedStatus, newStatus, payments, hasHiddenFlag);
                             }}
                           >
-                            <SelectTrigger className="h-7 w-32 text-xs">
-                              <SelectValue placeholder={
-                                STATUS_LABELS[derivedStatus] || derivedStatus
-                              } />
+                            <SelectTrigger className="h-7 w-40 text-xs">
+                              <SelectValue placeholder={STATUS_LABELS[derivedStatus] || derivedStatus} />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="da_ky">Đã ký</SelectItem>
                               <SelectItem value="het_hieu_luc">Đã hết hạn</SelectItem>
-                              <SelectItem value="het_hieu_luc_chua_hoan_thanh">Hết hiệu lực - Chưa hoàn thành nghĩa vụ</SelectItem>
+                              <SelectItem value="het_hieu_luc_chua_hoan_thanh">Hết hiệu lực - CHTNV</SelectItem>
                               <SelectItem value="da_thanh_ly">Đã thanh lý</SelectItem>
                             </SelectContent>
                           </Select>
                         ) : (
-                          <Badge variant="secondary">
+                          <Badge variant="secondary" className="text-xs whitespace-nowrap">
                             {STATUS_LABELS[derivedStatus] || derivedStatus}
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{c.expiry_date ? formatDate(c.expiry_date) : "—"}</TableCell>
-                      <TableCell className="text-sm">
-                        {nearestObl ? (
-                          <div>
-                            <p className="font-medium text-xs">{nearestObl.phase_name}</p>
-                            <p className="text-xs text-muted-foreground">{formatDate(nearestObl.payment_due_date)} — {formatCurrency(nearestObl.payment_amount)}</p>
-                            {canEditContract(c) && (
-                              <Button size="sm" variant="outline" className="text-xs mt-1 h-6" onClick={() => handleMarkPaid(nearestObl.id, c.id)}>
-                                Đã thanh toán
-                              </Button>
-                            )}
-                          </div>
-                        ) : visiblePayments.length > 0 ? (
-                          <span className="text-xs text-success">Đã hoàn thành</span>
-                        ) : "—"}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{c.department || "—"}</TableCell>
                       <TableCell>
-                        {c.file_url ? (
-                          <a href={c.file_url.startsWith('http') ? c.file_url : `https://${c.file_url}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs break-all line-clamp-2" title={c.file_url}>
-                            Link HĐ
-                          </a>
-                        ) : "—"}
+                        <InlineEditCell
+                          value={c.value}
+                          type="number"
+                          canEdit={canInlineEdit}
+                          onSave={async (v) => handleInlineEdit(c.id, "value", c.value, v)}
+                          formatDisplay={(v) => v && Number(v) > 0 ? formatCurrency(Number(v)) : "—"}
+                        />
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-col gap-1">
-                          {(() => {
-                            const docs = contractRelatedDocs[c.id] || [];
-                            // Also show legacy liquidation_file_url if exists
-                            const legacyLiq = c.liquidation_file_url && !docs.some((d: any) => d.doc_type === "thanh_ly");
-                            return (
-                              <>
-                                {legacyLiq && (
-                                  <div className="flex items-center gap-1 text-xs">
-                                    <span className="font-medium">Thanh lý</span>
-                                    <a href={c.liquidation_file_url.startsWith('http') ? c.liquidation_file_url : `https://${c.liquidation_file_url}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">[Link]</a>
-                                  </div>
-                                )}
-                                {docs.map((doc: any) => (
-                                  <div key={doc.id} className="flex items-center gap-1 text-xs group/doc">
-                                    <span className="font-medium whitespace-nowrap">{getDocDisplayName(doc, docs)}</span>
-                                    <a href={doc.doc_url.startsWith('http') ? doc.doc_url : `https://${doc.doc_url}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">[Link]</a>
-                                    {canEditContract(c) && (
-                                      <button onClick={() => handleDeleteRelatedDoc(doc.id)} className="text-destructive opacity-0 group-hover/doc:opacity-100 transition-opacity ml-1" title="Xóa">
-                                        <X className="h-3 w-3" />
-                                      </button>
-                                    )}
-                                  </div>
-                                ))}
-                                {canEditContract(c) && (
-                                  <button
-                                    onClick={() => {
-                                      setAddDocDialogContractId(c.id);
-                                      setNewDocType("bien_ban_nghiem_thu");
-                                      setNewDocCustomName("");
-                                      setNewDocUrl("");
-                                    }}
-                                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5 mt-0.5"
-                                  >
-                                    <Plus className="h-3 w-3" /> Văn bản
-                                  </button>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
+                        <InlineEditCell
+                          value={c.effective_date}
+                          type="date"
+                          canEdit={canInlineEdit}
+                          onSave={async (v) => handleInlineEdit(c.id, "effective_date", c.effective_date, v)}
+                          formatDisplay={(v) => v ? formatDate(String(v)) : "—"}
+                        />
                       </TableCell>
-                      {canEditContract(c) && (
+                      <TableCell>
+                        <InlineEditCell
+                          value={c.expiry_date}
+                          type="date"
+                          canEdit={canInlineEdit}
+                          onSave={async (v) => handleInlineEdit(c.id, "expiry_date", c.expiry_date, v)}
+                          formatDisplay={(v) => v ? formatDate(String(v)) : "—"}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <ContractLinkCell
+                          links={contractLinks}
+                          canEdit={canInlineEdit}
+                          onAddLink={() => {
+                            setAddDocDialogContractId(c.id);
+                            setNewDocType("bien_ban_nghiem_thu");
+                            setNewDocCustomName("");
+                            setNewDocUrl("");
+                          }}
+                        />
+                      </TableCell>
+                      {canEdit && (
                         <TableCell>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive">Xóa</Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Bạn có chắc chắn muốn xóa hợp đồng này không?</AlertDialogTitle>
-                                <AlertDialogDescription>Hợp đồng "{c.title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Hủy</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteContract(c)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          {canEditContract(c) && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive">Xóa</Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Bạn có chắc chắn muốn xóa hợp đồng này không?</AlertDialogTitle>
+                                  <AlertDialogDescription>Hợp đồng "{c.title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Hủy</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteContract(c)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
                         </TableCell>
                       )}
                     </TableRow>
