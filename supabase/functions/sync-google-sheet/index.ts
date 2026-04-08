@@ -7,27 +7,30 @@ const corsHeaders = {
 
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 
+// CORRECT COLUMN MAPPING:
+// A=title, B=partner, C=taxCode, D=contractType, E=(unused), F=status,
+// G=value, H=effectiveDate, I=expiryDate, J=folderLink, K=pdfLink, L=docLink,
+// M=(unused), N=description, O=approvedPe, P=syncStatus
 interface SheetRow {
   rowIndex: number;
   title: string;         // A
   partnerName: string;   // B
   taxCode: string;       // C
-  status: string;        // D
-  effectiveDate: string; // E
-  expiryDate: string;    // F
+  contractType: string;  // D
+  col_e: string;         // E (unused)
+  status: string;        // F
   value: string;         // G
-  department: string;    // H
-  description: string;   // I
-  contractType: string;  // J
-  phaseName1: string;    // K - phase name
-  phaseAmount1: string;  // L - phase amount
-  phaseDate1: string;    // M - phase due date
-  fileUrl: string;       // N - PDF link
-  approvedPe: string;    // O - Approved PE number
-  syncStatus: string;    // P - READY / DONE
+  effectiveDate: string; // H
+  expiryDate: string;    // I
+  folderLink: string;    // J
+  pdfLink: string;       // K
+  docLink: string;       // L
+  col_m: string;         // M (unused)
+  description: string;   // N
+  approvedPe: string;    // O
+  syncStatus: string;    // P
 }
 
-// Parse Google Service Account JSON and create JWT for auth
 async function getAccessToken(serviceAccountKey: string): Promise<string> {
   const sa = JSON.parse(serviceAccountKey);
   const now = Math.floor(Date.now() / 1000);
@@ -45,7 +48,6 @@ async function getAccessToken(serviceAccountKey: string): Promise<string> {
 
   const unsignedToken = `${enc(header)}.${enc(payload)}`;
 
-  // Import private key
   const pemContents = sa.private_key
     .replace(/-----BEGIN PRIVATE KEY-----/, "")
     .replace(/-----END PRIVATE KEY-----/, "")
@@ -73,7 +75,6 @@ async function getAccessToken(serviceAccountKey: string): Promise<string> {
 
   const jwt = `${unsignedToken}.${sig}`;
 
-  // Exchange JWT for access token
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -129,48 +130,79 @@ async function updateSheetCell(
   }
 }
 
+function normalize(text: string | undefined): string {
+  return (text || "").trim().toLowerCase();
+}
+
 function parseDate(val: string): string | null {
   if (!val || !val.trim()) return null;
-  // Try DD/MM/YYYY
-  const dmy = val.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  const trimmed = val.trim();
+  // Try DD/MM/YYYY or DD-MM-YYYY
+  const dmy = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
   if (dmy) {
-    const [, d, m, y] = dmy;
-    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    let [, d, m, y] = dmy;
+    let yearNum = parseInt(y);
+    if (yearNum < 100) yearNum += 2000;
+    const dayNum = parseInt(d);
+    const monthNum = parseInt(m);
+    if (monthNum < 1 || monthNum > 12 || dayNum < 1 || dayNum > 31) return null;
+    const result = new Date(Date.UTC(yearNum, monthNum - 1, dayNum));
+    if (result.getUTCDate() !== dayNum || result.getUTCMonth() !== monthNum - 1) return null;
+    return `${yearNum}-${String(monthNum).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
   }
   // Try YYYY-MM-DD
-  const ymd = val.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (ymd) return val;
+  const ymd = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (ymd) return trimmed;
   return null;
 }
 
+function isValidUrl(url: string | undefined): boolean {
+  return !!url && url.trim().startsWith("http");
+}
+
 function mapStatus(val: string): string {
-  const lower = val.toLowerCase().trim();
-  if (lower.includes("đã ký") || lower === "da_ky") return "da_ky";
-  if (lower.includes("hết hiệu lực") || lower.includes("het_hieu_luc")) return "het_hieu_luc";
-  if (lower.includes("thanh lý") || lower === "da_thanh_ly") return "da_thanh_ly";
+  const lower = normalize(val);
+  if (!lower) return "da_ky";
+
+  // Exact matches first
+  if (lower === "đã ký" || lower === "da_ky") return "da_ky";
+  if (lower === "đã hết hạn" || lower === "het_hieu_luc") return "het_hieu_luc";
+  if (lower.includes("chưa hoàn thành") || lower.includes("chua_hoan_thanh") || lower.includes("chtnv")) return "het_hieu_luc"; // stored as het_hieu_luc + hidden flag
+  if (lower === "đã thanh lý" || lower === "da_thanh_ly") return "da_thanh_ly";
+
+  // Partial matches
+  if (lower.includes("đã ký")) return "da_ky";
+  if (lower.includes("hết hạn") || lower.includes("hết hiệu lực")) return "het_hieu_luc";
+  if (lower.includes("thanh lý")) return "da_thanh_ly";
+
   return "da_ky"; // default
+}
+
+function needsHiddenFlag(val: string): boolean {
+  const lower = normalize(val);
+  return lower.includes("chưa hoàn thành") || lower.includes("chua_hoan_thanh") || lower.includes("chtnv");
 }
 
 function parseRow(row: string[], rowIndex: number): SheetRow {
   const get = (i: number) => (row[i] || "").trim();
   return {
     rowIndex,
-    title: get(0),
-    partnerName: get(1),
-    taxCode: get(2),
-    status: get(3),
-    effectiveDate: get(4),
-    expiryDate: get(5),
-    value: get(6),
-    department: get(7),
-    description: get(8),
-    contractType: get(9),
-    phaseName1: get(10),
-    phaseAmount1: get(11),
-    phaseDate1: get(12),
-    fileUrl: get(13),
-    approvedPe: get(14),
-    syncStatus: get(15),
+    title: get(0),         // A
+    partnerName: get(1),   // B
+    taxCode: get(2),       // C
+    contractType: get(3),  // D
+    col_e: get(4),         // E (unused)
+    status: get(5),        // F
+    value: get(6),         // G
+    effectiveDate: get(7), // H
+    expiryDate: get(8),    // I
+    folderLink: get(9),    // J
+    pdfLink: get(10),      // K
+    docLink: get(11),      // L
+    col_m: get(12),        // M (unused)
+    description: get(13),  // N
+    approvedPe: get(14),   // O
+    syncStatus: get(15),   // P
   };
 }
 
@@ -202,7 +234,6 @@ Deno.serve(async (req) => {
       const { data: userData, error: authError } = await supabase.auth.getUser(token);
       if (!authError && userData?.user) {
         triggeredBy = "manual";
-        // Check admin role
         const { data: isAdmin } = await supabase.rpc("has_role", {
           _user_id: userData.user.id,
           _role: "admin",
@@ -245,10 +276,7 @@ Deno.serve(async (req) => {
     const logId = logEntry.id;
 
     try {
-      // Get access token
       const accessToken = await getAccessToken(serviceAccountKey);
-
-      // Read sheet data
       const rows = await getSheetData(accessToken, sheetId, tab_name);
 
       if (rows.length <= 1) {
@@ -264,59 +292,68 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Skip header row, parse data rows
-      const dataRows = rows.slice(1).map((r, i) => parseRow(r, i + 2)); // +2 because sheet is 1-indexed + header
-
-      // Filter only READY rows
-      const readyRows = dataRows.filter((r) => r.syncStatus.toUpperCase() === "READY");
+      const dataRows = rows.slice(1).map((r, i) => parseRow(r, i + 2));
+      const readyRows = dataRows.filter((r) => normalize(r.syncStatus) === "ready");
 
       let imported = 0;
       let skipped = 0;
       let errorCount = 0;
       const errors: { row: number; title: string; error: string }[] = [];
 
-      // Get existing file URLs to check duplicates
+      // Check duplicates by all link URLs
+      const { data: existingDocs } = await supabase
+        .from("contract_related_docs")
+        .select("doc_url");
+      const existingDocUrls = new Set(
+        (existingDocs || []).map((d: any) => d.doc_url).filter(Boolean)
+      );
       const { data: existingContracts } = await supabase
         .from("contracts")
         .select("file_url")
         .not("file_url", "is", null);
-      const existingUrls = new Set(
+      const existingFileUrls = new Set(
         (existingContracts || []).map((c: any) => c.file_url).filter(Boolean)
       );
 
-      // Get or create category for this entity + contract type
+      // Category cache
       const categoryCache: Record<string, string> = {};
       const { data: existingCats } = await supabase
         .from("contract_categories")
         .select("id, name");
       (existingCats || []).forEach((c: any) => {
-        categoryCache[c.name.toLowerCase()] = c.id;
+        categoryCache[normalize(c.name)] = c.id;
       });
 
       for (const row of readyRows) {
         try {
-          // Validate required fields
+          // Validate required: title (A)
           if (!row.title) {
-            errors.push({ row: row.rowIndex, title: "(trống)", error: "Thiếu tên hợp đồng" });
+            errors.push({ row: row.rowIndex, title: "(trống)", error: "Thiếu tên hợp đồng (cột A)" });
             errorCount++;
             continue;
           }
 
-          // Check duplicate PDF link
-          if (row.fileUrl && existingUrls.has(row.fileUrl)) {
+          // Validate: at least one link (J/K/L)
+          const links = [
+            { type: "folder", url: row.folderLink },
+            { type: "pdf", url: row.pdfLink },
+            { type: "doc", url: row.docLink },
+          ].filter(l => isValidUrl(l.url));
+
+          // Check duplicate by any link
+          const isDuplicate = links.some(l => existingDocUrls.has(l.url) || existingFileUrls.has(l.url));
+          if (isDuplicate) {
             skipped++;
-            // Still mark as DONE since it's already imported
             await updateSheetCell(accessToken, sheetId, tab_name, row.rowIndex, "DONE");
             continue;
           }
 
-          // Resolve category
+          // Resolve category from contractType (col D)
           const contractTypeName = row.contractType || "Khác";
           const fullCatName = `${entity_name} - ${contractTypeName}`;
-          let categoryId = categoryCache[fullCatName.toLowerCase()];
+          let categoryId = categoryCache[normalize(fullCatName)];
 
           if (!categoryId) {
-            // Create new category
             const { data: newCat, error: catErr } = await supabase
               .from("contract_categories")
               .insert({ name: fullCatName, description: `Tự tạo từ Google Sheet sync` })
@@ -328,12 +365,23 @@ Deno.serve(async (req) => {
               continue;
             }
             categoryId = newCat.id;
-            categoryCache[fullCatName.toLowerCase()] = categoryId;
+            categoryCache[normalize(fullCatName)] = categoryId;
           }
 
           // Parse value
           const rawValue = row.value.replace(/[.,\s]/g, "");
           const numValue = parseInt(rawValue) || 0;
+
+          // Parse dates
+          const effectiveDate = parseDate(row.effectiveDate);
+          const expiryDate = parseDate(row.expiryDate);
+
+          // Map status
+          const dbStatus = mapStatus(row.status);
+          const addHiddenFlag = needsHiddenFlag(row.status);
+
+          // Use first valid link as file_url for backward compatibility
+          const primaryLink = links.length > 0 ? links[0].url : null;
 
           // Insert contract
           const { data: insertedContract, error: insertErr } = await supabase
@@ -342,16 +390,17 @@ Deno.serve(async (req) => {
               title: row.title,
               partner_name: row.partnerName || "",
               tax_code: row.taxCode || "",
-              status: mapStatus(row.status || "da_ky"),
-              effective_date: parseDate(row.effectiveDate),
-              expiry_date: parseDate(row.expiryDate),
+              status: dbStatus,
+              effective_date: effectiveDate,
+              expiry_date: expiryDate,
               value: numValue,
-              department: row.department || "",
+              department: "",
               contract_type: "khac",
               risk_level: "thap",
               category_id: categoryId,
-              file_url: row.fileUrl || null,
+              file_url: primaryLink,
               approved_pe_number: row.approvedPe || "",
+              description: row.description || "",
             })
             .select()
             .single();
@@ -362,21 +411,34 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          // Insert payment phase if provided
-          if (row.phaseName1 && insertedContract) {
-            const phaseAmount = parseInt(row.phaseAmount1.replace(/[.,\s]/g, "")) || 0;
-            await supabase.from("contract_payment_schedules").insert({
-              contract_id: insertedContract.id,
-              phase_name: row.phaseName1,
-              payment_amount: phaseAmount,
-              payment_due_date: parseDate(row.phaseDate1),
-            });
+          // Insert all links as contract_related_docs
+          if (insertedContract) {
+            for (const link of links) {
+              const docType = link.type === "folder" ? "folder" : link.type === "pdf" ? "pdf" : "doc";
+              await supabase.from("contract_related_docs").insert({
+                contract_id: insertedContract.id,
+                doc_type: docType,
+                doc_name: link.type === "folder" ? "Folder" : link.type === "pdf" ? "PDF" : "DOC",
+                doc_url: link.url,
+              });
+              existingDocUrls.add(link.url);
+            }
+
+            // Add hidden flag for CHTNV status
+            if (addHiddenFlag) {
+              await supabase.from("contract_payment_schedules").insert({
+                contract_id: insertedContract.id,
+                phase_name: "[HIDDEN] CHUA_HOAN_THANH",
+                payment_amount: 0,
+                payment_due_date: null,
+              });
+            }
           }
+
+          if (primaryLink) existingFileUrls.add(primaryLink);
 
           // Mark as DONE in sheet
           await updateSheetCell(accessToken, sheetId, tab_name, row.rowIndex, "DONE");
-
-          if (row.fileUrl) existingUrls.add(row.fileUrl);
           imported++;
         } catch (rowErr: any) {
           errors.push({ row: row.rowIndex, title: row.title, error: rowErr.message });
@@ -407,7 +469,6 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } catch (syncErr: any) {
-      // Update log as error
       await supabase.from("sync_logs").update({
         status: "error",
         errors: [{ error: syncErr.message }],
