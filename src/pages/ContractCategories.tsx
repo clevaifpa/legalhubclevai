@@ -1100,6 +1100,22 @@ const ContractCategories = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Description Popup */}
+        <Dialog open={!!descriptionPopupContract} onOpenChange={(open) => { if (!open) setDescriptionPopupContract(null); }}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{descriptionPopupContract?.title || "Mô tả nội dung"}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              {descriptionPopupContract?.description ? (
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{descriptionPopupContract.description}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">Không có mô tả nội dung</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
