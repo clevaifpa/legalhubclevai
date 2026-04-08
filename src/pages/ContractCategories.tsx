@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { EntitySyncButton } from "@/components/EntitySyncButton";
 import { X, Plus, GripVertical } from "lucide-react";
+import { InlineEditCell } from "@/components/contracts/InlineEditCell";
+import { ContractLinkCell, getLinkType } from "@/components/contracts/ContractLinkCell";
+import type { LinkItem } from "@/components/contracts/ContractLinkCell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,6 +77,7 @@ const ContractCategories = () => {
   const isAdmin = role === "admin";
   const canEdit = role === "admin" || role === "accountant" || role === "finance" || role === "manager_chung";
   const canEditContract = (c: any) => isAdmin || ((role === "accountant" || role === "finance" || role === "manager_chung") && c.created_by === user?.id);
+  const canInlineEdit = role === "admin" || role === "manager_chung";
   const isViewOnly = false;
   const [categories, setCategories] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
