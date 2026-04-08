@@ -105,6 +105,8 @@ const ContractCategories = () => {
   const [entityOrder, setEntityOrder] = useState<Record<string, number>>({});
   const [draggedEntity, setDraggedEntity] = useState<string | null>(null);
   const [dragOverEntity, setDragOverEntity] = useState<string | null>(null);
+  // Description popup
+  const [descriptionPopupContract, setDescriptionPopupContract] = useState<any>(null);
   // Related docs add dialog
   const [addDocDialogContractId, setAddDocDialogContractId] = useState<string | null>(null);
   const [newDocType, setNewDocType] = useState("bien_ban_nghiem_thu");
@@ -119,6 +121,9 @@ const ContractCategories = () => {
   ];
 
   const getDocDisplayName = useCallback((doc: any, allDocs: any[]) => {
+    if (doc.doc_type === "folder") return doc.doc_name || "Folder";
+    if (doc.doc_type === "pdf") return doc.doc_name || "PDF";
+    if (doc.doc_type === "doc") return doc.doc_name || "DOC";
     if (doc.doc_type === "phu_luc_hop_dong") {
       const appendices = allDocs.filter(d => d.doc_type === "phu_luc_hop_dong").sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       const idx = appendices.findIndex((d: any) => d.id === doc.id);
@@ -785,45 +790,63 @@ const ContractCategories = () => {
 
                   // Build links array for multi-link cell
                   const contractLinks: LinkItem[] = [];
-                  if (c.file_url) {
+                  // Add links from contract_related_docs (synced + manual)
+                  const docs = contractRelatedDocs[c.id] || [];
+                  docs.forEach((doc: any) => {
+                    // Use stored doc_type for synced items, fallback to URL detection
+                    let linkType: "folder" | "pdf" | "doc" = "doc";
+                    if (doc.doc_type === "folder") linkType = "folder";
+                    else if (doc.doc_type === "pdf") linkType = "pdf";
+                    else if (doc.doc_type === "doc") linkType = "doc";
+                    else linkType = getLinkType(doc.doc_url);
+
                     contractLinks.push({
+                      id: doc.id,
+                      url: doc.doc_url,
+                      name: getDocDisplayName(doc, docs),
+                      type: linkType,
+                    });
+                  });
+                  // Add file_url if not already in docs
+                  if (c.file_url && !docs.some((d: any) => d.doc_url === c.file_url)) {
+                    contractLinks.unshift({
                       id: "main-" + c.id,
                       url: c.file_url,
                       name: "Hợp đồng",
                       type: getLinkType(c.file_url),
                     });
                   }
-                  if (c.liquidation_file_url) {
-                    const docs = contractRelatedDocs[c.id] || [];
-                    if (!docs.some((d: any) => d.doc_type === "thanh_ly")) {
-                      contractLinks.push({
-                        id: "liq-" + c.id,
-                        url: c.liquidation_file_url,
-                        name: "Thanh lý",
-                        type: getLinkType(c.liquidation_file_url),
-                      });
-                    }
-                  }
-                  const docs = contractRelatedDocs[c.id] || [];
-                  docs.forEach((doc: any) => {
+                  // Add liquidation_file_url if not already in docs
+                  if (c.liquidation_file_url && !docs.some((d: any) => d.doc_url === c.liquidation_file_url)) {
                     contractLinks.push({
-                      id: doc.id,
-                      url: doc.doc_url,
-                      name: getDocDisplayName(doc, docs),
-                      type: getLinkType(doc.doc_url),
+                      id: "liq-" + c.id,
+                      url: c.liquidation_file_url,
+                      name: "Thanh lý",
+                      type: getLinkType(c.liquidation_file_url),
                     });
-                  });
+                  }
 
                   return (
                     <TableRow key={c.id} className="hover:bg-muted/30 transition-colors">
                       <TableCell className="font-medium max-w-[200px]">
-                        <InlineEditCell
-                          value={c.title}
-                          type="text"
-                          canEdit={canInlineEdit}
-                          onSave={async (v) => handleInlineEdit(c.id, "title", c.title, v)}
-                          formatDisplay={(v) => v || "—"}
-                        />
+                        <div className="flex flex-col gap-0.5">
+                          <InlineEditCell
+                            value={c.title}
+                            type="text"
+                            canEdit={canInlineEdit}
+                            onSave={async (v) => handleInlineEdit(c.id, "title", c.title, v)}
+                            formatDisplay={(v) => v || "—"}
+                          />
+                          {c.description && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDescriptionPopupContract(c); }}
+                              className="text-xs text-muted-foreground hover:text-foreground hover:underline text-left truncate max-w-[180px] transition-colors"
+                              title="Xem mô tả nội dung"
+                            >
+                              📝 Xem mô tả
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <InlineEditCell
@@ -1078,6 +1101,22 @@ const ContractCategories = () => {
                 Thêm
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Description Popup */}
+        <Dialog open={!!descriptionPopupContract} onOpenChange={(open) => { if (!open) setDescriptionPopupContract(null); }}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{descriptionPopupContract?.title || "Mô tả nội dung"}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              {descriptionPopupContract?.description ? (
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{descriptionPopupContract.description}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">Không có mô tả nội dung</p>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
       </div>
