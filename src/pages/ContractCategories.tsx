@@ -121,6 +121,9 @@ const ContractCategories = () => {
   ];
 
   const getDocDisplayName = useCallback((doc: any, allDocs: any[]) => {
+    if (doc.doc_type === "folder") return doc.doc_name || "Folder";
+    if (doc.doc_type === "pdf") return doc.doc_name || "PDF";
+    if (doc.doc_type === "doc") return doc.doc_name || "DOC";
     if (doc.doc_type === "phu_luc_hop_dong") {
       const appendices = allDocs.filter(d => d.doc_type === "phu_luc_hop_dong").sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       const idx = appendices.findIndex((d: any) => d.id === doc.id);
