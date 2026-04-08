@@ -194,6 +194,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           department: string
+          description: string | null
           effective_date: string | null
           expiry_date: string | null
           file_url: string | null
@@ -215,6 +216,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           department?: string
+          description?: string | null
           effective_date?: string | null
           expiry_date?: string | null
           file_url?: string | null
@@ -236,6 +238,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           department?: string
+          description?: string | null
           effective_date?: string | null
           expiry_date?: string | null
           file_url?: string | null
