@@ -787,34 +787,41 @@ const ContractCategories = () => {
 
                   // Build links array for multi-link cell
                   const contractLinks: LinkItem[] = [];
-                  if (c.file_url) {
+                  // Add links from contract_related_docs (synced + manual)
+                  const docs = contractRelatedDocs[c.id] || [];
+                  docs.forEach((doc: any) => {
+                    // Use stored doc_type for synced items, fallback to URL detection
+                    let linkType: "folder" | "pdf" | "doc" = "doc";
+                    if (doc.doc_type === "folder") linkType = "folder";
+                    else if (doc.doc_type === "pdf") linkType = "pdf";
+                    else if (doc.doc_type === "doc") linkType = "doc";
+                    else linkType = getLinkType(doc.doc_url);
+
                     contractLinks.push({
+                      id: doc.id,
+                      url: doc.doc_url,
+                      name: getDocDisplayName(doc, docs),
+                      type: linkType,
+                    });
+                  });
+                  // Add file_url if not already in docs
+                  if (c.file_url && !docs.some((d: any) => d.doc_url === c.file_url)) {
+                    contractLinks.unshift({
                       id: "main-" + c.id,
                       url: c.file_url,
                       name: "Hợp đồng",
                       type: getLinkType(c.file_url),
                     });
                   }
-                  if (c.liquidation_file_url) {
-                    const docs = contractRelatedDocs[c.id] || [];
-                    if (!docs.some((d: any) => d.doc_type === "thanh_ly")) {
-                      contractLinks.push({
-                        id: "liq-" + c.id,
-                        url: c.liquidation_file_url,
-                        name: "Thanh lý",
-                        type: getLinkType(c.liquidation_file_url),
-                      });
-                    }
-                  }
-                  const docs = contractRelatedDocs[c.id] || [];
-                  docs.forEach((doc: any) => {
+                  // Add liquidation_file_url if not already in docs
+                  if (c.liquidation_file_url && !docs.some((d: any) => d.doc_url === c.liquidation_file_url)) {
                     contractLinks.push({
-                      id: doc.id,
-                      url: doc.doc_url,
-                      name: getDocDisplayName(doc, docs),
-                      type: getLinkType(doc.doc_url),
+                      id: "liq-" + c.id,
+                      url: c.liquidation_file_url,
+                      name: "Thanh lý",
+                      type: getLinkType(c.liquidation_file_url),
                     });
-                  });
+                  }
 
                   return (
                     <TableRow key={c.id} className="hover:bg-muted/30 transition-colors">
