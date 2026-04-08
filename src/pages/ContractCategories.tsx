@@ -826,13 +826,24 @@ const ContractCategories = () => {
                   return (
                     <TableRow key={c.id} className="hover:bg-muted/30 transition-colors">
                       <TableCell className="font-medium max-w-[200px]">
-                        <InlineEditCell
-                          value={c.title}
-                          type="text"
-                          canEdit={canInlineEdit}
-                          onSave={async (v) => handleInlineEdit(c.id, "title", c.title, v)}
-                          formatDisplay={(v) => v || "—"}
-                        />
+                        <div className="flex flex-col gap-0.5">
+                          <InlineEditCell
+                            value={c.title}
+                            type="text"
+                            canEdit={canInlineEdit}
+                            onSave={async (v) => handleInlineEdit(c.id, "title", c.title, v)}
+                            formatDisplay={(v) => v || "—"}
+                          />
+                          {c.description && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDescriptionPopupContract(c); }}
+                              className="text-xs text-muted-foreground hover:text-foreground hover:underline text-left truncate max-w-[180px] transition-colors"
+                              title="Xem mô tả nội dung"
+                            >
+                              📝 Xem mô tả
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <InlineEditCell
