@@ -105,6 +105,8 @@ const ContractCategories = () => {
   const [entityOrder, setEntityOrder] = useState<Record<string, number>>({});
   const [draggedEntity, setDraggedEntity] = useState<string | null>(null);
   const [dragOverEntity, setDragOverEntity] = useState<string | null>(null);
+  // Description popup
+  const [descriptionPopupContract, setDescriptionPopupContract] = useState<any>(null);
   // Related docs add dialog
   const [addDocDialogContractId, setAddDocDialogContractId] = useState<string | null>(null);
   const [newDocType, setNewDocType] = useState("bien_ban_nghiem_thu");
