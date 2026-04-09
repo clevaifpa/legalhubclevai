@@ -93,7 +93,7 @@ export function EntitySyncButton({ entityName, isAdmin }: EntitySyncButtonProps)
         toast.error("Lỗi đồng bộ", { description: result.error || "Lỗi không xác định" });
       } else {
         toast.success(`Đồng bộ ${entityName} hoàn tất`, {
-          description: `Import: ${result.imported} | Bỏ qua: ${result.skipped} | Lỗi: ${result.errors}`,
+          description: `Mới: ${result.imported || 0} | Cập nhật: ${result.updated || 0} | Bỏ qua: ${result.skipped || 0} | Lỗi: ${result.errors || 0}`,
         });
       }
     } catch (err: any) {

@@ -369,13 +369,19 @@ const ContractCategories = () => {
       toast.error("Lỗi xóa", { description: error.message });
     } else {
       toast.success("Đã xóa hợp đồng");
-      if (selectedCategory) fetchContracts(selectedCategory.id);
+      // Optimistic UI update - remove from state immediately
+      setContracts(prev => prev.filter(c => c.id !== contract.id));
+      setCategoryCounts(prev => {
+        if (!contract.category_id) return prev;
+        const newCounts = { ...prev };
+        newCounts[contract.category_id] = Math.max(0, (newCounts[contract.category_id] || 1) - 1);
+        return newCounts;
+      });
 
       // If the current user is NOT an admin, trigger notification to admins
       if (!isAdmin && user && profile) {
         try {
           const uploaderName = user.email ? getEmployeeName(user.email) || profile.full_name || user.email : "Người dùng";
-          // Also pass contractId to the notification so we handle it similarly to upload
           await notifyAdminsOnContractDeletion(contract.title || "Không tên", uploaderName, contract.department || profile.department || "", contract.id, contract.category_id);
         } catch (err) {
           console.error("Failed to notify admins of deletion", err);
