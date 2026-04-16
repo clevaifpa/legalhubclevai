@@ -88,6 +88,22 @@ Chuẩn hóa dữ liệu:
 - loai_van_ban phải là 1 trong: "Hợp đồng nguyên tắc", "Hợp đồng sử dụng 1 lần", "Hợp đồng sử dụng dài hạn", "Hợp đồng/phụ lục gia hạn", "Phụ lục hợp đồng", "NDA", "Văn bản khác"
 - Nếu không xác định được loại → dùng "Văn bản khác"
 
+Trường mo_ta (BẮT BUỘC): Tóm tắt hợp đồng theo format chuẩn sau:
+"[Loại văn bản] giữa [Bên A] và [Bên B] quy định việc [mục đích hợp tác].
+
+1. Nội dung chính:
+- Mục tiêu: [tóm tắt mục tiêu]
+- Nội dung: [tóm tắt nội dung hợp tác]
+- Phối hợp triển khai: [tóm tắt phối hợp]
+
+2. Thời gian hiệu lực:
+[thông tin thời hạn]
+
+3. Chấm dứt:
+[điều kiện chấm dứt]"
+
+Viết ngắn gọn, rõ ràng, đúng tiếng Việt hành chính. Không thêm thông tin ngoài tài liệu.
+
 Chỉ trả về JSON, không trả text ngoài JSON.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -118,6 +134,7 @@ Chỉ trả về JSON, không trả text ngoài JSON.`;
                   gia_tri_hop_dong: { type: ["number", "null"], description: "Giá trị hợp đồng (null nếu có đợt thanh toán)" },
                   ngay_bat_dau: { type: "string", description: "Ngày bắt đầu (yyyy-mm-dd)" },
                   ngay_ket_thuc: { type: "string", description: "Ngày kết thúc (yyyy-mm-dd)" },
+                  mo_ta: { type: "string", description: "Tóm tắt nội dung hợp đồng theo format chuẩn" },
                   dot_thanh_toan: {
                     type: "array",
                     items: {
@@ -132,7 +149,7 @@ Chỉ trả về JSON, không trả text ngoài JSON.`;
                     },
                   },
                 },
-                required: ["loai_van_ban", "ten_van_ban", "ten_doi_tac", "ma_so_thue", "gia_tri_hop_dong", "ngay_bat_dau", "ngay_ket_thuc", "dot_thanh_toan"],
+                required: ["loai_van_ban", "ten_van_ban", "ten_doi_tac", "ma_so_thue", "gia_tri_hop_dong", "ngay_bat_dau", "ngay_ket_thuc", "mo_ta", "dot_thanh_toan"],
                 additionalProperties: false,
               },
             },
