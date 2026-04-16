@@ -178,6 +178,13 @@ const UserDashboard = () => {
       if (data.ma_so_thue) updates.tax_code = data.ma_so_thue;
       if (data.ngay_bat_dau) updates.contract_start_date = data.ngay_bat_dau;
       if (data.ngay_ket_thuc) updates.contract_end_date = data.ngay_ket_thuc;
+      if (data.mo_ta) {
+        if (form.description.trim() && form.description.trim() !== "") {
+          // Don't overwrite if user already typed something
+        } else {
+          updates.description = data.mo_ta;
+        }
+      }
 
       setForm(prev => ({ ...prev, ...updates }));
 
