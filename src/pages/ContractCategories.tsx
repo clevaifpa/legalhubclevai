@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { EntitySyncButton } from "@/components/EntitySyncButton";
-import { X, Plus, GripVertical } from "lucide-react";
+import { X, Plus, GripVertical, Trash2 } from "lucide-react";
 import { InlineEditCell } from "@/components/contracts/InlineEditCell";
 import { ContractLinkCell, getLinkType } from "@/components/contracts/ContractLinkCell";
 import type { LinkItem } from "@/components/contracts/ContractLinkCell";
@@ -26,6 +26,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -76,13 +77,15 @@ const ContractCategories = () => {
   const activeContractId = (routeContractId && !closedRouteIds.has(routeContractId)) ? routeContractId : contractIdParamSearch;
   const isAdmin = role === "admin";
   const canEdit = role === "admin" || role === "accountant" || role === "finance" || role === "manager_chung";
-  const canEditContract = (c: any) => isAdmin || ((role === "accountant" || role === "finance" || role === "manager_chung") && c.created_by === user?.id);
+  const canEditContract = (c: any) => isAdmin || role === "manager_chung" || c.created_by === user?.id;
   const canInlineEdit = role === "admin" || role === "manager_chung";
   const isViewOnly = false;
   const [categories, setCategories] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
   const [contractPayments, setContractPayments] = useState<Record<string, any[]>>({});
   const [contractRelatedDocs, setContractRelatedDocs] = useState<Record<string, any[]>>({});
+  const [selectedContractIds, setSelectedContractIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -363,31 +366,62 @@ const ContractCategories = () => {
     }
   };
 
-  const handleDeleteContract = async (contract: any) => {
-    const { error } = await (supabase.rpc as any)("delete_contract", { _contract_id: contract.id });
-    if (error) {
-      toast.error("Lỗi xóa", { description: error.message });
-    } else {
-      toast.success("Đã xóa hợp đồng");
-      // Optimistic UI update - remove from state immediately
-      setContracts(prev => prev.filter(c => c.id !== contract.id));
-      setCategoryCounts(prev => {
-        if (!contract.category_id) return prev;
-        const newCounts = { ...prev };
-        newCounts[contract.category_id] = Math.max(0, (newCounts[contract.category_id] || 1) - 1);
-        return newCounts;
+  const deleteContractsWithSheetSync = async (contractsToDelete: any[]) => {
+    if (contractsToDelete.length === 0) return;
+    setBulkDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-contracts-sync-sheet", {
+        body: { contractIds: contractsToDelete.map((contract) => contract.id) },
       });
+      if (error) throw error;
 
-      // If the current user is NOT an admin, trigger notification to admins
-      if (!isAdmin && user && profile) {
-        try {
+      const deletedIds = new Set((data?.results || []).filter((result: any) => result.deleted).map((result: any) => result.contractId));
+      const deletedCount = deletedIds.size;
+      const warningCount = data?.warnings || 0;
+      const errorCount = data?.errors || 0;
+
+      if (deletedCount > 0) {
+        setContracts(prev => prev.filter(c => !deletedIds.has(c.id)));
+        setSelectedContractIds(prev => new Set([...prev].filter(id => !deletedIds.has(id))));
+        setCategoryCounts(prev => {
+          const newCounts = { ...prev };
+          contractsToDelete.forEach((contract) => {
+            if (deletedIds.has(contract.id) && contract.category_id) {
+              newCounts[contract.category_id] = Math.max(0, (newCounts[contract.category_id] || 1) - 1);
+            }
+          });
+          return newCounts;
+        });
+
+        if (warningCount > 0) {
+          toast.warning(`Đã xóa ${deletedCount} hợp đồng`, { description: "Một số dòng chưa được cập nhật về READY" });
+        } else {
+          toast.success(`Đã xóa ${deletedCount} hợp đồng`, { description: "Google Sheet đã được cập nhật" });
+        }
+
+        if (!isAdmin && user && profile) {
           const uploaderName = user.email ? getEmployeeName(user.email) || profile.full_name || user.email : "Người dùng";
-          await notifyAdminsOnContractDeletion(contract.title || "Không tên", uploaderName, contract.department || profile.department || "", contract.id, contract.category_id);
-        } catch (err) {
-          console.error("Failed to notify admins of deletion", err);
+          await Promise.all(contractsToDelete.filter((contract) => deletedIds.has(contract.id)).map((contract) =>
+            notifyAdminsOnContractDeletion(contract.title || "Không tên", uploaderName, contract.department || profile.department || "", contract.id, contract.category_id).catch((err) => {
+              console.error("Failed to notify admins of deletion", err);
+            })
+          ));
         }
       }
+
+      if (errorCount > 0) {
+        const firstError = (data?.results || []).find((result: any) => result.error)?.error;
+        toast.error("Một số hợp đồng chưa được xóa", { description: firstError || "Vui lòng kiểm tra log lỗi" });
+      }
+    } catch (err: any) {
+      toast.error("Lỗi xóa", { description: err.message || "Không thể xóa hợp đồng" });
+    } finally {
+      setBulkDeleting(false);
     }
+  };
+
+  const handleDeleteContract = async (contract: any) => {
+    await deleteContractsWithSheetSync([contract]);
   };
 
   const uploadFile = async (file: File, path: string) => {
@@ -606,6 +640,29 @@ const ContractCategories = () => {
     }
     return 0;
   });
+  const selectableContracts = filteredContracts.filter(canEditContract);
+  const selectedContracts = contracts.filter((contract) => selectedContractIds.has(contract.id) && canEditContract(contract));
+  const allVisibleSelected = selectableContracts.length > 0 && selectableContracts.every((contract) => selectedContractIds.has(contract.id));
+
+  const toggleContractSelection = (contractId: string, checked: boolean) => {
+    setSelectedContractIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(contractId);
+      else next.delete(contractId);
+      return next;
+    });
+  };
+
+  const toggleAllVisibleSelection = (checked: boolean) => {
+    setSelectedContractIds((prev) => {
+      const next = new Set(prev);
+      selectableContracts.forEach((contract) => {
+        if (checked) next.add(contract.id);
+        else next.delete(contract.id);
+      });
+      return next;
+    });
+  };
 
   // Get nearest obligation date for a contract
   const getNearestObligation = (contractId: string) => {
@@ -770,11 +827,48 @@ const ContractCategories = () => {
           <Input placeholder="Tìm theo tên hợp đồng, phòng ban, trạng thái, đối tác, MST..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
 
+        {selectedContracts.length > 0 && (
+          <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
+            <span className="text-sm font-medium">Đã chọn {selectedContracts.length} hợp đồng</span>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={bulkDeleting} className="gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Xóa đã chọn
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Xóa {selectedContracts.length} hợp đồng đã chọn?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Hệ thống sẽ cập nhật Google Sheet từ DONE về READY trước khi xóa hợp đồng.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Hủy</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => deleteContractsWithSheetSync(selectedContracts)} disabled={bulkDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Xóa
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+
         <Card className="border-none shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30">
+                  {canEdit && (
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={allVisibleSelected}
+                        onCheckedChange={(checked) => toggleAllVisibleSelection(checked === true)}
+                        aria-label="Chọn tất cả hợp đồng đang hiển thị"
+                      />
+                    </TableHead>
+                  )}
                   <TableHead>Tên hợp đồng</TableHead>
                   <TableHead>Đối tác</TableHead>
                   <TableHead>MST</TableHead>
@@ -834,6 +928,17 @@ const ContractCategories = () => {
 
                   return (
                     <TableRow key={c.id} className="hover:bg-muted/30 transition-colors">
+                      {canEdit && (
+                        <TableCell>
+                          {canEditContract(c) && (
+                            <Checkbox
+                              checked={selectedContractIds.has(c.id)}
+                              onCheckedChange={(checked) => toggleContractSelection(c.id, checked === true)}
+                              aria-label={`Chọn hợp đồng ${c.title}`}
+                            />
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell className="font-medium max-w-[200px]">
                         <div className="flex flex-col gap-0.5">
                           <InlineEditCell

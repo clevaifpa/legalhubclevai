@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.sync-google-sheet]
 verify_jwt = false
+
+[functions.delete-contracts-sync-sheet]
+verify_jwt = false
