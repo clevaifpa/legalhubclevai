@@ -79,7 +79,7 @@ const isValidGoogleDocUrl = (url: string): boolean => {
 const SHARED_GOOGLE_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1Ui7l9o9AQwtecrVLgc3JMp1lALs5QwAr";
 
 const GOOGLE_DOC_FOLDER_ERROR = "Link Google Doc không thuộc folder chung. Vui lòng tạo tài liệu trong folder quy định.";
-const GOOGLE_DOC_CHECK_ERROR = "Không thể kiểm tra file. Vui lòng cấp quyền truy cập.";
+const GOOGLE_DOC_CHECK_ERROR = "Không thể kiểm tra file. Vui lòng đảm bảo file nằm trong folder chung hoặc liên hệ admin.";
 
 const DEPARTMENTS = [
   { id: "LVO", name: "Khối Vận hành" },

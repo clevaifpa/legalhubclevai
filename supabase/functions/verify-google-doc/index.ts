@@ -46,13 +46,13 @@ const getServiceAccountAccessToken = async () => {
 }
 
 const getDriveFileMetadata = async (fileId: string, accessToken: string) => {
-    const apiUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,parents,mimeType&supportsAllDrives=true`
+    const apiUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,parents&supportsAllDrives=true`
     const response = await fetch(apiUrl, { headers: { Authorization: `Bearer ${accessToken}` } })
 
     if (!response.ok) {
         const body = await response.text()
         console.error(`Google API Error for ${fileId}: ${response.status} ${response.statusText} ${body}`)
-        throw new Error('Không thể kiểm tra file. Vui lòng cấp quyền truy cập.')
+        throw new Error('Không thể kiểm tra file. Vui lòng đảm bảo file nằm trong folder chung hoặc liên hệ admin.')
     }
 
     return await response.json()
@@ -108,7 +108,7 @@ serve(async (req) => {
         const fileId = match[1]
         const accessToken = await getServiceAccountAccessToken()
 
-        // Folder membership is mandatory. Allow files inside subfolders by walking parent folders recursively.
+        // Folder membership is the only validation rule. Allow files inside subfolders by walking parent folders recursively.
         const isEditable = true
         const isInSharedFolder = await isInsideSharedFolder(fileId, accessToken)
 
