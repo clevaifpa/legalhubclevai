@@ -847,7 +847,7 @@ const UserDashboard = () => {
                     onClick={handleAiExtract}
                   >
                     {aiExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    {aiExtracting ? "Đang đọc..." : "AI đọc HĐ"}
+                    {aiExtracting ? "Đang cập nhật..." : "AI đọc HĐ"}
                   </Button>
                 </div>
                 {formErrors.google_doc_url && <p className="text-xs text-destructive">{formErrors.google_doc_url}</p>}
@@ -858,7 +858,7 @@ const UserDashboard = () => {
                   <div className="flex items-center gap-2 p-2 rounded bg-accent/10 border border-accent/20">
                     <Loader2 className="h-3 w-3 animate-spin text-accent" />
                     <span className="text-xs text-accent">
-                      {validSupplementaryDocs.length > 0 ? "Đang phân tích hợp đồng + văn bản bổ sung..." : "AI đang đọc và phân tích nội dung hợp đồng..."}
+                      {validSupplementaryDocs.length > 0 ? "Đang cập nhật nội dung mới từ hợp đồng + văn bản bổ sung..." : "Đang cập nhật nội dung mới từ hợp đồng..."}
                     </span>
                   </div>
                 )}
@@ -929,7 +929,8 @@ const UserDashboard = () => {
 
               <div className="space-y-2" id="field-description">
                 <Label className={formErrors.description ? "text-destructive" : ""}>Mô tả chi tiết *</Label>
-                <Textarea className={formErrors.description ? "border-destructive focus-visible:ring-destructive" : ""} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả thêm về hợp đồng cần review..." rows={3} />
+                <Textarea className={`${formErrors.description ? "border-destructive focus-visible:ring-destructive" : ""} ${aiDescriptionUpdated ? "border-accent ring-2 ring-accent/20" : ""}`} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả thêm về hợp đồng cần review..." rows={3} />
+                {aiDescriptionUpdated && <p className="text-xs text-accent">Nội dung đã được cập nhật từ phiên bản mới của tài liệu</p>}
                 {formErrors.description && <p className="text-xs text-destructive">{formErrors.description}</p>}
               </div>
 
