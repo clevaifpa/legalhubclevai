@@ -366,31 +366,62 @@ const ContractCategories = () => {
     }
   };
 
-  const handleDeleteContract = async (contract: any) => {
-    const { error } = await (supabase.rpc as any)("delete_contract", { _contract_id: contract.id });
-    if (error) {
-      toast.error("Lỗi xóa", { description: error.message });
-    } else {
-      toast.success("Đã xóa hợp đồng");
-      // Optimistic UI update - remove from state immediately
-      setContracts(prev => prev.filter(c => c.id !== contract.id));
-      setCategoryCounts(prev => {
-        if (!contract.category_id) return prev;
-        const newCounts = { ...prev };
-        newCounts[contract.category_id] = Math.max(0, (newCounts[contract.category_id] || 1) - 1);
-        return newCounts;
+  const deleteContractsWithSheetSync = async (contractsToDelete: any[]) => {
+    if (contractsToDelete.length === 0) return;
+    setBulkDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-contracts-sync-sheet", {
+        body: { contractIds: contractsToDelete.map((contract) => contract.id) },
       });
+      if (error) throw error;
 
-      // If the current user is NOT an admin, trigger notification to admins
-      if (!isAdmin && user && profile) {
-        try {
+      const deletedIds = new Set((data?.results || []).filter((result: any) => result.deleted).map((result: any) => result.contractId));
+      const deletedCount = deletedIds.size;
+      const warningCount = data?.warnings || 0;
+      const errorCount = data?.errors || 0;
+
+      if (deletedCount > 0) {
+        setContracts(prev => prev.filter(c => !deletedIds.has(c.id)));
+        setSelectedContractIds(prev => new Set([...prev].filter(id => !deletedIds.has(id))));
+        setCategoryCounts(prev => {
+          const newCounts = { ...prev };
+          contractsToDelete.forEach((contract) => {
+            if (deletedIds.has(contract.id) && contract.category_id) {
+              newCounts[contract.category_id] = Math.max(0, (newCounts[contract.category_id] || 1) - 1);
+            }
+          });
+          return newCounts;
+        });
+
+        if (warningCount > 0) {
+          toast.warning(`Đã xóa ${deletedCount} hợp đồng`, { description: "Một số dòng chưa được cập nhật về READY" });
+        } else {
+          toast.success(`Đã xóa ${deletedCount} hợp đồng`, { description: "Google Sheet đã được cập nhật" });
+        }
+
+        if (!isAdmin && user && profile) {
           const uploaderName = user.email ? getEmployeeName(user.email) || profile.full_name || user.email : "Người dùng";
-          await notifyAdminsOnContractDeletion(contract.title || "Không tên", uploaderName, contract.department || profile.department || "", contract.id, contract.category_id);
-        } catch (err) {
-          console.error("Failed to notify admins of deletion", err);
+          await Promise.all(contractsToDelete.filter((contract) => deletedIds.has(contract.id)).map((contract) =>
+            notifyAdminsOnContractDeletion(contract.title || "Không tên", uploaderName, contract.department || profile.department || "", contract.id, contract.category_id).catch((err) => {
+              console.error("Failed to notify admins of deletion", err);
+            })
+          ));
         }
       }
+
+      if (errorCount > 0) {
+        const firstError = (data?.results || []).find((result: any) => result.error)?.error;
+        toast.error("Một số hợp đồng chưa được xóa", { description: firstError || "Vui lòng kiểm tra log lỗi" });
+      }
+    } catch (err: any) {
+      toast.error("Lỗi xóa", { description: err.message || "Không thể xóa hợp đồng" });
+    } finally {
+      setBulkDeleting(false);
     }
+  };
+
+  const handleDeleteContract = async (contract: any) => {
+    await deleteContractsWithSheetSync([contract]);
   };
 
   const uploadFile = async (file: File, path: string) => {
