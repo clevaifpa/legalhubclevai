@@ -764,11 +764,20 @@ const AdminReviewRequests = () => {
           body: { url: legalReviewDocLink }
         });
 
-        if (verifyError) {
-          console.error("verifyError:", verifyError);
+        if (verifyError || verifyData?.error || verifyData?.isInSharedFolder !== true) {
+          const message = verifyData?.isInSharedFolder === false ? GOOGLE_DOC_FOLDER_ERROR : (verifyData?.error || GOOGLE_DOC_CHECK_ERROR);
+          console.error("verify-google-doc failed:", verifyError || verifyData?.error || verifyData);
+          toast.error(verifyData?.isInSharedFolder === false ? "Link Google Doc không thuộc folder chung" : "Không thể kiểm tra file", {
+            description: message
+          });
+          setSaving(false);
+          return;
         }
       } catch (err: any) {
         console.error("Exception verifying Google Doc:", err);
+        toast.error("Không thể kiểm tra file", { description: GOOGLE_DOC_CHECK_ERROR });
+        setSaving(false);
+        return;
       }
       setSaving(false);
     }
