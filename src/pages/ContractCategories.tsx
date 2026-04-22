@@ -640,6 +640,29 @@ const ContractCategories = () => {
     }
     return 0;
   });
+  const selectableContracts = filteredContracts.filter(canEditContract);
+  const selectedContracts = contracts.filter((contract) => selectedContractIds.has(contract.id) && canEditContract(contract));
+  const allVisibleSelected = selectableContracts.length > 0 && selectableContracts.every((contract) => selectedContractIds.has(contract.id));
+
+  const toggleContractSelection = (contractId: string, checked: boolean) => {
+    setSelectedContractIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(contractId);
+      else next.delete(contractId);
+      return next;
+    });
+  };
+
+  const toggleAllVisibleSelection = (checked: boolean) => {
+    setSelectedContractIds((prev) => {
+      const next = new Set(prev);
+      selectableContracts.forEach((contract) => {
+        if (checked) next.add(contract.id);
+        else next.delete(contract.id);
+      });
+      return next;
+    });
+  };
 
   // Get nearest obligation date for a contract
   const getNearestObligation = (contractId: string) => {
