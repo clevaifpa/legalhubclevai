@@ -147,6 +147,7 @@ const UserDashboard = () => {
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [aiExtracting, setAiExtracting] = useState(false);
+  const [aiDescriptionUpdated, setAiDescriptionUpdated] = useState(false);
 
   const validSupplementaryDocs = supplementaryDocs.filter(d => d.doc_name.trim() && d.doc_url.trim());
 
@@ -155,11 +156,17 @@ const UserDashboard = () => {
       toast.error("Vui lòng dán link Google Doc trước");
       return;
     }
+    if (form.description.trim()) {
+      const shouldOverwrite = window.confirm("Bạn có muốn cập nhật lại nội dung từ AI không?");
+      if (!shouldOverwrite) return;
+    }
     setAiExtracting(true);
     try {
       const { data, error } = await supabase.functions.invoke("extract-contract-from-doc", {
         body: {
           googleDocUrl: form.google_doc_url,
+          forceRefresh: true,
+          cacheBust: Date.now(),
           attachments: validSupplementaryDocs.map(d => ({
             type: d.doc_name,
             name: d.doc_name,
@@ -188,11 +195,9 @@ const UserDashboard = () => {
       if (data.ngay_bat_dau) updates.contract_start_date = data.ngay_bat_dau;
       if (data.ngay_ket_thuc) updates.contract_end_date = data.ngay_ket_thuc;
       if (data.mo_ta) {
-        if (form.description.trim() && form.description.trim() !== "") {
-          // Don't overwrite if user already typed something
-        } else {
-          updates.description = data.mo_ta;
-        }
+        updates.description = data.mo_ta;
+        setAiDescriptionUpdated(true);
+        window.setTimeout(() => setAiDescriptionUpdated(false), 4500);
       }
 
       setForm(prev => ({ ...prev, ...updates }));
@@ -215,7 +220,7 @@ const UserDashboard = () => {
         }]);
       }
 
-      toast.success("AI đã điền form thành công!", { description: "Vui lòng kiểm tra và bổ sung thông tin còn thiếu." });
+      toast.success("Nội dung đã được cập nhật từ phiên bản mới của tài liệu", { description: "Vui lòng kiểm tra và bổ sung thông tin còn thiếu." });
     } catch (err: any) {
       console.error("AI extract error:", err);
       toast.error("Lỗi hệ thống khi phân tích");
@@ -842,7 +847,7 @@ const UserDashboard = () => {
                     onClick={handleAiExtract}
                   >
                     {aiExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    {aiExtracting ? "Đang đọc..." : "AI đọc HĐ"}
+                    {aiExtracting ? "Đang cập nhật..." : "AI đọc HĐ"}
                   </Button>
                 </div>
                 {formErrors.google_doc_url && <p className="text-xs text-destructive">{formErrors.google_doc_url}</p>}
@@ -853,7 +858,7 @@ const UserDashboard = () => {
                   <div className="flex items-center gap-2 p-2 rounded bg-accent/10 border border-accent/20">
                     <Loader2 className="h-3 w-3 animate-spin text-accent" />
                     <span className="text-xs text-accent">
-                      {validSupplementaryDocs.length > 0 ? "Đang phân tích hợp đồng + văn bản bổ sung..." : "AI đang đọc và phân tích nội dung hợp đồng..."}
+                      {validSupplementaryDocs.length > 0 ? "Đang cập nhật nội dung mới từ hợp đồng + văn bản bổ sung..." : "Đang cập nhật nội dung mới từ hợp đồng..."}
                     </span>
                   </div>
                 )}
@@ -924,7 +929,8 @@ const UserDashboard = () => {
 
               <div className="space-y-2" id="field-description">
                 <Label className={formErrors.description ? "text-destructive" : ""}>Mô tả chi tiết *</Label>
-                <Textarea className={formErrors.description ? "border-destructive focus-visible:ring-destructive" : ""} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả thêm về hợp đồng cần review..." rows={3} />
+                <Textarea className={`${formErrors.description ? "border-destructive focus-visible:ring-destructive" : ""} ${aiDescriptionUpdated ? "border-accent ring-2 ring-accent/20" : ""}`} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả thêm về hợp đồng cần review..." rows={3} />
+                {aiDescriptionUpdated && <p className="text-xs text-accent">Nội dung đã được cập nhật từ phiên bản mới của tài liệu</p>}
                 {formErrors.description && <p className="text-xs text-destructive">{formErrors.description}</p>}
               </div>
 
