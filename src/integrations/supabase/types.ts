@@ -202,6 +202,9 @@ export type Database = {
           liquidation_file_url: string | null
           partner_name: string
           risk_level: Database["public"]["Enums"]["risk_level"]
+          sheet_entity_name: string | null
+          sheet_row_index: number | null
+          sheet_tab_name: string | null
           signed_file_url: string | null
           status: Database["public"]["Enums"]["contract_status"]
           tax_code: string | null
@@ -224,6 +227,9 @@ export type Database = {
           liquidation_file_url?: string | null
           partner_name?: string
           risk_level?: Database["public"]["Enums"]["risk_level"]
+          sheet_entity_name?: string | null
+          sheet_row_index?: number | null
+          sheet_tab_name?: string | null
           signed_file_url?: string | null
           status?: Database["public"]["Enums"]["contract_status"]
           tax_code?: string | null
@@ -246,6 +252,9 @@ export type Database = {
           liquidation_file_url?: string | null
           partner_name?: string
           risk_level?: Database["public"]["Enums"]["risk_level"]
+          sheet_entity_name?: string | null
+          sheet_row_index?: number | null
+          sheet_tab_name?: string | null
           signed_file_url?: string | null
           status?: Database["public"]["Enums"]["contract_status"]
           tax_code?: string | null
