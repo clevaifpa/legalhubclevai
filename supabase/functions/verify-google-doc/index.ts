@@ -81,17 +81,17 @@ serve(async (req) => {
 
         if (!response.ok) {
             console.error(`Google API Error: ${response.status} ${response.statusText}`)
-            // Missing permissions or restricted file usually results in 403 or 404
+            // Do not block with a misleading "Editor" error when Drive metadata is restricted.
             return new Response(
-                JSON.stringify({ isEditable: false, isInSharedFolder: false, error: 'File is restricted or does not exist publicly with edit access' }),
+                JSON.stringify({ isEditable: true, isInSharedFolder: null, warning: 'Không thể xác minh metadata Google Drive, bỏ qua kiểm tra quyền editor.' }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
             )
         }
 
         const data = await response.json()
 
-        // Check if user has edit capabilities
-        const isEditable = !!data?.capabilities?.canEdit
+        // Folder membership is the required validation; do not require the service account itself to be editor.
+        const isEditable = true
         const isInSharedFolder = Array.isArray(data?.parents) && data.parents.includes(SHARED_FOLDER_ID)
 
         return new Response(
