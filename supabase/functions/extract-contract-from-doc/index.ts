@@ -6,6 +6,45 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+type AttachmentInput = {
+  type?: string;
+  name?: string;
+  url?: string;
+  content?: string;
+};
+
+const normalizeAttachmentType = (text = "") => {
+  const normalized = text.trim().toLowerCase();
+  if (normalized.includes("nda") || normalized.includes("bảo mật")) return "NDA";
+  if (normalized.includes("thanh lý")) return "Biên bản thanh lý";
+  if (normalized.includes("bbnt") || normalized.includes("nghiệm thu")) return "Biên bản nghiệm thu";
+  if (normalized.includes("phụ lục") || normalized.includes("phu luc")) return "Phụ lục hợp đồng";
+  return text.trim() || "Văn bản bổ sung";
+};
+
+const extractGoogleDocId = (url: string) => url.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9-_]+)/)?.[1] ?? null;
+
+const fetchDocumentText = async (url: string) => {
+  const fileId = extractGoogleDocId(url);
+  if (fileId) {
+    const docResponse = await fetch(`https://docs.google.com/document/d/${fileId}/export?format=txt`);
+    if (!docResponse.ok) throw new Error("Không đọc được nội dung Google Doc");
+    return await docResponse.text();
+  }
+
+  if (!url.trim().toLowerCase().startsWith("http")) {
+    throw new Error("Link văn bản bổ sung không hợp lệ");
+  }
+
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Không đọc được văn bản bổ sung");
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("text") && !contentType.includes("json")) {
+    throw new Error("Văn bản bổ sung không phải định dạng text/Google Doc có thể đọc tự động");
+  }
+  return await response.text();
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -30,7 +69,7 @@ serve(async (req) => {
       });
     }
 
-    const { googleDocUrl } = await req.json();
+    const { googleDocUrl, attachments = [] } = await req.json();
 
     if (!googleDocUrl || typeof googleDocUrl !== "string") {
       return new Response(JSON.stringify({ error: "Thiếu googleDocUrl" }), {
@@ -38,34 +77,37 @@ serve(async (req) => {
       });
     }
 
-    // Extract file ID from Google Docs URL
-    const match = googleDocUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
-    if (!match || !match[1]) {
-      return new Response(JSON.stringify({ error: "Không thể lấy ID từ URL Google Docs" }), {
+    if (!extractGoogleDocId(googleDocUrl)) {
+      return new Response(JSON.stringify({ error: "Link không hợp lệ hoặc chưa cấp quyền Editor" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const fileId = match[1];
-
-    // Fetch content as plain text via Google Docs export
-    const exportUrl = `https://docs.google.com/document/d/${fileId}/export?format=txt`;
-    const docResponse = await fetch(exportUrl);
-
-    if (!docResponse.ok) {
-      console.error("Google export error:", docResponse.status);
+    let docText = "";
+    try {
+      docText = await fetchDocumentText(googleDocUrl);
+    } catch (error) {
+      console.error("Google export error:", error);
       return new Response(JSON.stringify({ error: "Không thể đọc nội dung Google Doc. Vui lòng đảm bảo tài liệu đã được chia sẻ công khai hoặc quyền 'Anyone with the link can view'." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const docText = await docResponse.text();
 
     if (!docText || docText.trim().length < 10) {
       return new Response(JSON.stringify({ error: "Nội dung tài liệu quá ngắn hoặc rỗng" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const readableAttachments = await Promise.all(
+      (Array.isArray(attachments) ? attachments : [])
+        .filter((item: AttachmentInput) => item && (item.content || item.url))
+        .map(async (item: AttachmentInput) => {
+          const type = normalizeAttachmentType(item.type || item.name || "");
+          const rawContent = item.content || (item.url ? await fetchDocumentText(item.url) : "");
+          return { type, content: rawContent.slice(0, 20000) };
+        })
+    );
 
     // Truncate to 80000 chars
     const truncated = docText.slice(0, 80000);
