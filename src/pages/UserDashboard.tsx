@@ -3,7 +3,7 @@ import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { createWorkflowNotifications } from "@/lib/notifications";
-import { Loader2, Sparkles } from "lucide-react";
+import { FolderOpen, Loader2, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,8 @@ const isValidGoogleDocUrl = (url: string): boolean => {
   if (!url.includes('/edit')) return false;
   return true;
 };
+
+const SHARED_GOOGLE_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1Ui7l9o9AQwtecrVLgc3JMp1lALs5QwAr";
 
 const DEPARTMENTS = [
   { id: "LVO", name: "Khối Vận hành" },
@@ -228,6 +230,10 @@ const UserDashboard = () => {
       setAiExtracting(false);
     }
   };
+
+  const openSharedGoogleDriveFolder = () => {
+    window.open(SHARED_GOOGLE_DRIVE_FOLDER_URL, "_blank", "noopener,noreferrer");
+  };
   useEffect(() => {
     setFormErrors(prev => {
       if (Object.keys(prev).length === 0) return prev;
@@ -410,6 +416,13 @@ const UserDashboard = () => {
         toast.error("Link không có quyền Chỉnh sửa (Editor)", {
           description: "Vui lòng cấp mức quyền 'Editor' hoặc 'Người chỉnh sửa' trên Google Docs."
         });
+        setSubmitting(false);
+        return;
+      } else if (verifyData && verifyData.isInSharedFolder === false) {
+        toast.error("Link không thuộc folder chung", {
+          description: "Vui lòng tạo lại Google Doc trong folder quy định."
+        });
+        setFormErrors(prev => ({ ...prev, google_doc_url: "Link không thuộc folder chung. Vui lòng tạo lại trong folder quy định." }));
         setSubmitting(false);
         return;
       }
@@ -843,6 +856,17 @@ const UserDashboard = () => {
                     variant="outline"
                     size="sm"
                     className="shrink-0 gap-1.5"
+                    onClick={openSharedGoogleDriveFolder}
+                    title="Mở folder chung để tạo hợp đồng"
+                  >
+                    <FolderOpen className="h-4 w-4" />
+                    Tạo Google Doc
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-1.5"
                     disabled={aiExtracting || !form.google_doc_url}
                     onClick={handleAiExtract}
                   >
@@ -852,7 +876,7 @@ const UserDashboard = () => {
                 </div>
                 {formErrors.google_doc_url && <p className="text-xs text-destructive">{formErrors.google_doc_url}</p>}
                 <p className="text-xs text-muted-foreground">
-                  ⚠️ Cấp quyền <strong>Editor</strong> cho reviewer. Nhấn <strong>"AI đọc HĐ"</strong> để tự động điền form từ nội dung Google Doc.
+                  ⚠️ Vui lòng tạo Google Doc trong folder chung để đảm bảo quản lý tập trung. Cấp quyền <strong>Editor</strong> cho reviewer.
                 </p>
                 {aiExtracting && (
                   <div className="flex items-center gap-2 p-2 rounded bg-accent/10 border border-accent/20">
