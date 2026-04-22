@@ -179,6 +179,7 @@ const AdminReviewRequests = () => {
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [aiExtracting, setAiExtracting] = useState(false);
+  const [aiDescriptionUpdated, setAiDescriptionUpdated] = useState(false);
 
   const validSupplementaryDocs = supplementaryDocs.filter(d => d.doc_name.trim() && d.doc_url.trim());
 
@@ -187,11 +188,17 @@ const AdminReviewRequests = () => {
       toast.error("Vui lòng dán link Google Doc trước");
       return;
     }
+    if (form.description.trim()) {
+      const shouldOverwrite = window.confirm("Bạn có muốn cập nhật lại nội dung từ AI không?");
+      if (!shouldOverwrite) return;
+    }
     setAiExtracting(true);
     try {
       const { data, error } = await supabase.functions.invoke("extract-contract-from-doc", {
         body: {
           googleDocUrl: form.google_doc_url,
+          forceRefresh: true,
+          cacheBust: Date.now(),
           attachments: validSupplementaryDocs.map(d => ({
             type: d.doc_name,
             name: d.doc_name,
@@ -219,11 +226,9 @@ const AdminReviewRequests = () => {
       if (data.ngay_bat_dau) updates.contract_start_date = data.ngay_bat_dau;
       if (data.ngay_ket_thuc) updates.contract_end_date = data.ngay_ket_thuc;
       if (data.mo_ta) {
-        if (form.description.trim() && form.description.trim() !== "") {
-          // Don't overwrite if user already typed something
-        } else {
-          updates.description = data.mo_ta;
-        }
+        updates.description = data.mo_ta;
+        setAiDescriptionUpdated(true);
+        window.setTimeout(() => setAiDescriptionUpdated(false), 4500);
       }
 
       setForm(prev => ({ ...prev, ...updates }));
@@ -244,7 +249,7 @@ const AdminReviewRequests = () => {
         }]);
       }
 
-      toast.success("AI đã điền form thành công!", { description: "Vui lòng kiểm tra và bổ sung thông tin còn thiếu." });
+      toast.success("Nội dung đã được cập nhật từ phiên bản mới của tài liệu", { description: "Vui lòng kiểm tra và bổ sung thông tin còn thiếu." });
     } catch (err: any) {
       console.error("AI extract error:", err);
       toast.error("Lỗi hệ thống khi phân tích");
