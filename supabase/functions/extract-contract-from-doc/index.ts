@@ -123,12 +123,15 @@ Quy tắc bắt buộc:
 1. Nếu hợp đồng CÓ các đợt thanh toán → trích xuất ĐẦY ĐỦ từng đợt (tên đợt, giá trị, ngày thanh toán) và ĐẶT gia_tri_hop_dong = null
 2. Nếu hợp đồng KHÔNG có đợt thanh toán → trả về gia_tri_hop_dong là tổng giá trị hợp đồng (chỉ số, không có đơn vị)
 3. Ưu tiên trích xuất đợt thanh toán trước
+4. Thời gian hiệu lực: nếu có ngày cụ thể (dd/mm/yyyy, dd-mm-yyyy hoặc yyyy-mm-dd) → BẮT BUỘC dùng ngày cụ thể, không được viết "X tháng". Chỉ dùng thời hạn theo tháng khi tài liệu không có ngày bắt đầu/kết thúc cụ thể.
+5. Nếu có văn bản bổ sung → phải đọc tất cả, phân loại rõ từng loại và thêm mục "4. Văn bản bổ sung" trong mo_ta.
 
 Chuẩn hóa dữ liệu:
 - Ngày: yyyy-mm-dd (ví dụ: 2025-01-15)
 - Tiền: chỉ lấy số nguyên (VD: 1.000.000 → 1000000, 50 triệu → 50000000)
 - loai_van_ban phải là 1 trong: "Hợp đồng nguyên tắc", "Hợp đồng sử dụng 1 lần", "Hợp đồng sử dụng dài hạn", "Hợp đồng/phụ lục gia hạn", "Phụ lục hợp đồng", "NDA", "Văn bản khác"
 - Nếu không xác định được loại → dùng "Văn bản khác"
+- Loại văn bản bổ sung hiển thị đúng: Phụ lục → "Phụ lục hợp đồng"; BBNT → "Biên bản nghiệm thu"; Thanh lý → "Biên bản thanh lý"; NDA → "NDA".
 
 Trường mo_ta (BẮT BUỘC): Tóm tắt hợp đồng theo format chuẩn sau:
 "[Loại văn bản] giữa [Bên A] và [Bên B] quy định việc [mục đích hợp tác].
@@ -139,14 +142,26 @@ Trường mo_ta (BẮT BUỘC): Tóm tắt hợp đồng theo format chuẩn sau
 - Phối hợp triển khai: [tóm tắt phối hợp]
 
 2. Thời gian hiệu lực:
-[thông tin thời hạn]
+[Ưu tiên: Từ ngày dd/mm/yyyy đến ngày dd/mm/yyyy. Nếu không có ngày cụ thể mới dùng thời hạn theo tháng]
 
 3. Chấm dứt:
-[điều kiện chấm dứt]"
+[điều kiện chấm dứt]
+
+4. Văn bản bổ sung:
+- [Loại văn bản bổ sung]:
+[Tóm tắt nội dung]
+"
+
+Chỉ thêm mục 4 nếu input có văn bản bổ sung. Không gộp chung, không viết mơ hồ "tài liệu liên quan".
 
 Viết ngắn gọn, rõ ràng, đúng tiếng Việt hành chính. Không thêm thông tin ngoài tài liệu.
 
 Chỉ trả về JSON, không trả text ngoài JSON.`;
+
+    const userPayload = {
+      main_contract: truncated,
+      attachments: readableAttachments,
+    };
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -158,7 +173,7 @@ Chỉ trả về JSON, không trả text ngoài JSON.`;
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Phân tích hợp đồng sau và trích xuất thông tin:\n\n${truncated}` },
+          { role: "user", content: `Phân tích hợp đồng và văn bản bổ sung sau, trích xuất thông tin theo đúng format:\n\n${JSON.stringify(userPayload)}` },
         ],
         tools: [
           {
