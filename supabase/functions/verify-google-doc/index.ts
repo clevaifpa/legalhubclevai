@@ -52,6 +52,9 @@ const getDriveFileMetadata = async (fileId: string, accessToken: string) => {
     if (!response.ok) {
         const body = await response.text()
         console.error(`Google API Error for ${fileId}: ${response.status} ${response.statusText} ${body}`)
+        if (body.includes('SERVICE_DISABLED') || body.includes('accessNotConfigured') || body.includes('drive.googleapis.com')) {
+            throw new Error('Google Drive API của tài khoản service đang chưa bật. Vui lòng liên hệ admin bật Drive API cho project service account rồi thử lại.')
+        }
         throw new Error('Không thể kiểm tra file. Vui lòng đảm bảo file nằm trong folder chung hoặc liên hệ admin.')
     }
 
