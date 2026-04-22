@@ -45,6 +45,37 @@ const getServiceAccountAccessToken = async () => {
     return tokenData.access_token as string
 }
 
+const getDriveFileMetadata = async (fileId: string, accessToken: string) => {
+    const apiUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,parents,mimeType&supportsAllDrives=true`
+    const response = await fetch(apiUrl, { headers: { Authorization: `Bearer ${accessToken}` } })
+
+    if (!response.ok) {
+        const body = await response.text()
+        console.error(`Google API Error for ${fileId}: ${response.status} ${response.statusText} ${body}`)
+        throw new Error('Không thể kiểm tra file. Vui lòng cấp quyền truy cập.')
+    }
+
+    return await response.json()
+}
+
+const isInsideSharedFolder = async (fileId: string, accessToken: string) => {
+    const visited = new Set<string>()
+    let queue = [fileId]
+
+    while (queue.length > 0) {
+        const currentId = queue.shift()!
+        if (visited.has(currentId)) continue
+        visited.add(currentId)
+
+        const metadata = await getDriveFileMetadata(currentId, accessToken)
+        const parents = Array.isArray(metadata?.parents) ? metadata.parents : []
+        if (parents.includes(SHARED_FOLDER_ID)) return true
+        queue = queue.concat(parents.filter((parentId: string) => parentId && !visited.has(parentId)))
+    }
+
+    return false
+}
+
 serve(async (req) => {
     // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
@@ -76,23 +107,10 @@ serve(async (req) => {
 
         const fileId = match[1]
         const accessToken = await getServiceAccountAccessToken()
-        const apiUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,parents,capabilities(canEdit)&supportsAllDrives=true`
-        const response = await fetch(apiUrl, { headers: { Authorization: `Bearer ${accessToken}` } })
 
-        if (!response.ok) {
-            console.error(`Google API Error: ${response.status} ${response.statusText}`)
-            // Do not block with a misleading "Editor" error when Drive metadata is restricted.
-            return new Response(
-                JSON.stringify({ isEditable: true, isInSharedFolder: null, warning: 'Không thể xác minh metadata Google Drive, bỏ qua kiểm tra quyền editor.' }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-            )
-        }
-
-        const data = await response.json()
-
-        // Folder membership is the required validation; do not require the service account itself to be editor.
+        // Folder membership is mandatory. Allow files inside subfolders by walking parent folders recursively.
         const isEditable = true
-        const isInSharedFolder = Array.isArray(data?.parents) && data.parents.includes(SHARED_FOLDER_ID)
+        const isInSharedFolder = await isInsideSharedFolder(fileId, accessToken)
 
         return new Response(
             JSON.stringify({ isEditable, isInSharedFolder }),

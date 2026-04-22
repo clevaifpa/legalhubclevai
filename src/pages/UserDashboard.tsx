@@ -37,6 +37,9 @@ const isValidGoogleDocUrl = (url: string): boolean => {
 
 const SHARED_GOOGLE_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1Ui7l9o9AQwtecrVLgc3JMp1lALs5QwAr";
 
+const GOOGLE_DOC_FOLDER_ERROR = "Link Google Doc không thuộc folder chung. Vui lòng tạo tài liệu trong folder quy định.";
+const GOOGLE_DOC_CHECK_ERROR = "Không thể kiểm tra file. Vui lòng cấp quyền truy cập.";
+
 const DEPARTMENTS = [
   { id: "LVO", name: "Khối Vận hành" },
   { id: "LVS", name: "Khối Kinh doanh" },
@@ -410,18 +413,22 @@ const UserDashboard = () => {
         body: { url: form.google_doc_url }
       });
 
-      if (verifyError) {
-        console.error("verifyError:", verifyError);
-      } else if (verifyData && verifyData.isInSharedFolder === false) {
-        toast.error("Link không thuộc folder chung", {
-          description: "Vui lòng tạo lại Google Doc trong folder quy định."
+      if (verifyError || verifyData?.error || verifyData?.isInSharedFolder !== true) {
+        const message = verifyData?.isInSharedFolder === false ? GOOGLE_DOC_FOLDER_ERROR : (verifyData?.error || GOOGLE_DOC_CHECK_ERROR);
+        console.error("verify-google-doc failed:", verifyError || verifyData?.error || verifyData);
+        toast.error(verifyData?.isInSharedFolder === false ? "Link Google Doc không thuộc folder chung" : "Không thể kiểm tra file", {
+          description: message
         });
-        setFormErrors(prev => ({ ...prev, google_doc_url: "Link không thuộc folder chung. Vui lòng tạo lại trong folder quy định." }));
+        setFormErrors(prev => ({ ...prev, google_doc_url: message }));
         setSubmitting(false);
         return;
       }
     } catch (err: any) {
       console.error("Exception verifying Google Doc:", err);
+      toast.error("Không thể kiểm tra file", { description: GOOGLE_DOC_CHECK_ERROR });
+      setFormErrors(prev => ({ ...prev, google_doc_url: GOOGLE_DOC_CHECK_ERROR }));
+      setSubmitting(false);
+      return;
     }
 
     const employeeName = getEmployeeName(user.email);
