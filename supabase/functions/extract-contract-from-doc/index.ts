@@ -24,28 +24,93 @@ const normalizeAttachmentType = (text = "") => {
 
 const extractGoogleDocId = (url: string) => url.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9-_]+)/)?.[1] ?? null;
 
-const fetchGoogleDocText = async (fileId: string, cacheBust: number) => {
-  const endpoints = [
-    `https://docs.google.com/document/d/${fileId}/export?format=txt&_=${cacheBust}`,
-    `https://docs.google.com/document/export?format=txt&id=${fileId}&_=${cacheBust}`,
-  ];
+const SHARED_FOLDER_ID = "1Ui7l9o9AQwtecrVLgc3JMp1lALs5QwAr";
 
-  for (const endpoint of endpoints) {
-    const docResponse = await fetch(endpoint, {
-      headers: {
-        "Cache-Control": "no-cache, no-store, max-age=0",
-        Pragma: "no-cache",
-        "User-Agent": "Mozilla/5.0 LovableContractReader/1.0",
-      },
-    });
-    if (docResponse.ok) {
-      const text = await docResponse.text();
-      if (text.trim().length > 0 && !text.toLowerCase().includes("<!doctype html")) return text;
-    }
-    console.error("Google Doc export failed:", docResponse.status, docResponse.statusText, await docResponse.text());
+const base64Url = (input: ArrayBuffer | string) => {
+  const bytes = typeof input === "string" ? new TextEncoder().encode(input) : new Uint8Array(input);
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+};
+
+const getServiceAccountAccessToken = async () => {
+  const rawKey = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_KEY");
+  if (!rawKey) throw new Error("GOOGLE_SERVICE_ACCOUNT_KEY environment variable is missing");
+  const key = JSON.parse(rawKey);
+  const now = Math.floor(Date.now() / 1000);
+  const unsignedToken = `${base64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }))}.${base64Url(JSON.stringify({
+    iss: key.client_email,
+    scope: "https://www.googleapis.com/auth/drive.readonly",
+    aud: "https://oauth2.googleapis.com/token",
+    exp: now + 3600,
+    iat: now,
+  }))}`;
+  const privateKey = await crypto.subtle.importKey(
+    "pkcs8",
+    Uint8Array.from(atob(key.private_key.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\n/g, "")), c => c.charCodeAt(0)),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", privateKey, new TextEncoder().encode(unsignedToken));
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: `${unsignedToken}.${base64Url(signature)}` }),
+  });
+  if (!response.ok) throw new Error(`Google auth failed: ${response.status}`);
+  return (await response.json()).access_token as string;
+};
+
+const getDriveFileMetadata = async (fileId: string, accessToken: string) => {
+  const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,parents&supportsAllDrives=true`, {
+    headers: { Authorization: `Bearer ${accessToken}`, "Cache-Control": "no-cache" },
+  });
+  if (!response.ok) {
+    console.error(`Google Drive metadata failed for ${fileId}:`, response.status, await response.text());
+    throw new Error("Không thể kiểm tra file. Vui lòng đảm bảo file nằm trong folder chung hoặc liên hệ admin.");
+  }
+  return await response.json();
+};
+
+const isInsideSharedFolder = async (fileId: string, accessToken: string) => {
+  const visited = new Set<string>();
+  let queue = [fileId];
+  while (queue.length > 0) {
+    const currentId = queue.shift()!;
+    if (visited.has(currentId)) continue;
+    visited.add(currentId);
+    const metadata = await getDriveFileMetadata(currentId, accessToken);
+    const parents = Array.isArray(metadata?.parents) ? metadata.parents : [];
+    if (parents.includes(SHARED_FOLDER_ID)) return true;
+    queue = queue.concat(parents.filter((parentId: string) => parentId && !visited.has(parentId)));
+  }
+  return false;
+};
+
+const fetchGoogleDocText = async (fileId: string, cacheBust: number) => {
+  const accessToken = await getServiceAccountAccessToken();
+  const isInSharedFolder = await isInsideSharedFolder(fileId, accessToken);
+  if (!isInSharedFolder) {
+    throw new Error("Link không thuộc folder quy định. Vui lòng tạo file trong folder chung.");
   }
 
-  throw new Error("Không đọc được nội dung Google Doc. Vui lòng mở quyền 'Anyone with the link can view' rồi bấm AI đọc HĐ lại.");
+  const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=text/plain&supportsAllDrives=true&_=${cacheBust}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Cache-Control": "no-cache, no-store, max-age=0",
+      Pragma: "no-cache",
+    },
+  });
+
+  if (!response.ok) {
+    console.error("Google Doc service-account export failed:", response.status, response.statusText, await response.text());
+    throw new Error("Không đọc được nội dung Google Doc. Vui lòng đảm bảo file nằm trong folder chung hoặc liên hệ admin.");
+  }
+
+  const text = await response.text();
+  if (text.trim().length === 0 || text.toLowerCase().includes("<!doctype html")) {
+    throw new Error("Nội dung tài liệu quá ngắn hoặc rỗng");
+  }
+  return text;
 };
 
 const fetchDocumentText = async (url: string, cacheBust = Date.now()) => {
