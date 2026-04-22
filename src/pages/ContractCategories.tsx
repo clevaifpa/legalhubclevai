@@ -827,11 +827,48 @@ const ContractCategories = () => {
           <Input placeholder="Tìm theo tên hợp đồng, phòng ban, trạng thái, đối tác, MST..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
 
+        {selectedContracts.length > 0 && (
+          <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
+            <span className="text-sm font-medium">Đã chọn {selectedContracts.length} hợp đồng</span>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={bulkDeleting} className="gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Xóa đã chọn
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Xóa {selectedContracts.length} hợp đồng đã chọn?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Hệ thống sẽ cập nhật Google Sheet từ DONE về READY trước khi xóa hợp đồng.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Hủy</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => deleteContractsWithSheetSync(selectedContracts)} disabled={bulkDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Xóa
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+
         <Card className="border-none shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30">
+                  {canEdit && (
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={allVisibleSelected}
+                        onCheckedChange={(checked) => toggleAllVisibleSelection(checked === true)}
+                        aria-label="Chọn tất cả hợp đồng đang hiển thị"
+                      />
+                    </TableHead>
+                  )}
                   <TableHead>Tên hợp đồng</TableHead>
                   <TableHead>Đối tác</TableHead>
                   <TableHead>MST</TableHead>
@@ -891,6 +928,17 @@ const ContractCategories = () => {
 
                   return (
                     <TableRow key={c.id} className="hover:bg-muted/30 transition-colors">
+                      {canEdit && (
+                        <TableCell>
+                          {canEditContract(c) && (
+                            <Checkbox
+                              checked={selectedContractIds.has(c.id)}
+                              onCheckedChange={(checked) => toggleContractSelection(c.id, checked === true)}
+                              aria-label={`Chọn hợp đồng ${c.title}`}
+                            />
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell className="font-medium max-w-[200px]">
                         <div className="flex flex-col gap-0.5">
                           <InlineEditCell
