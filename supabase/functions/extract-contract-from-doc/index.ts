@@ -168,7 +168,7 @@ serve(async (req) => {
     }
 
     if (!extractGoogleDocId(googleDocUrl)) {
-      return new Response(JSON.stringify({ error: "Link không hợp lệ hoặc chưa cấp quyền Editor" }), {
+      return new Response(JSON.stringify({ error: "Link Google Doc không hợp lệ" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
