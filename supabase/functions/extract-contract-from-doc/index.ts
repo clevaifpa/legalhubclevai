@@ -24,14 +24,34 @@ const normalizeAttachmentType = (text = "") => {
 
 const extractGoogleDocId = (url: string) => url.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9-_]+)/)?.[1] ?? null;
 
+const fetchGoogleDocText = async (fileId: string, cacheBust: number) => {
+  const endpoints = [
+    `https://docs.google.com/document/d/${fileId}/export?format=txt&_=${cacheBust}`,
+    `https://docs.google.com/document/export?format=txt&id=${fileId}&_=${cacheBust}`,
+  ];
+
+  for (const endpoint of endpoints) {
+    const docResponse = await fetch(endpoint, {
+      headers: {
+        "Cache-Control": "no-cache, no-store, max-age=0",
+        Pragma: "no-cache",
+        "User-Agent": "Mozilla/5.0 LovableContractReader/1.0",
+      },
+    });
+    if (docResponse.ok) {
+      const text = await docResponse.text();
+      if (text.trim().length > 0 && !text.toLowerCase().includes("<!doctype html")) return text;
+    }
+    console.error("Google Doc export failed:", docResponse.status, docResponse.statusText, await docResponse.text());
+  }
+
+  throw new Error("Không đọc được nội dung Google Doc. Vui lòng mở quyền 'Anyone with the link can view' rồi bấm AI đọc HĐ lại.");
+};
+
 const fetchDocumentText = async (url: string, cacheBust = Date.now()) => {
   const fileId = extractGoogleDocId(url);
   if (fileId) {
-    const docResponse = await fetch(`https://docs.google.com/document/d/${fileId}/export?format=txt&_=${cacheBust}`, {
-      headers: { "Cache-Control": "no-cache, no-store, max-age=0", Pragma: "no-cache" },
-    });
-    if (!docResponse.ok) throw new Error("Không đọc được nội dung Google Doc");
-    return await docResponse.text();
+    return await fetchGoogleDocText(fileId, cacheBust);
   }
 
   if (!url.trim().toLowerCase().startsWith("http")) {
@@ -93,8 +113,8 @@ serve(async (req) => {
       docText = await fetchDocumentText(googleDocUrl, cacheBust);
     } catch (error) {
       console.error("Google export error:", error);
-      return new Response(JSON.stringify({ error: "Không thể đọc nội dung Google Doc. Vui lòng đảm bảo tài liệu đã được chia sẻ công khai hoặc quyền 'Anyone with the link can view'." }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Không thể đọc nội dung Google Doc" }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
