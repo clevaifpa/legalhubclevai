@@ -3,7 +3,7 @@ import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { createWorkflowNotifications, notifyReviewerAssigned } from "@/lib/notifications";
-import { Loader2, Sparkles } from "lucide-react";
+import { FolderOpen, Loader2, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +75,8 @@ const isValidGoogleDocUrl = (url: string): boolean => {
   if (!url.includes('/edit')) return false;
   return true;
 };
+
+const SHARED_GOOGLE_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1Ui7l9o9AQwtecrVLgc3JMp1lALs5QwAr";
 
 const DEPARTMENTS = [
   { id: "LVO", name: "Khối Vận hành" },
@@ -256,6 +258,10 @@ const AdminReviewRequests = () => {
     } finally {
       setAiExtracting(false);
     }
+  };
+
+  const openSharedGoogleDriveFolder = () => {
+    window.open(SHARED_GOOGLE_DRIVE_FOLDER_URL, "_blank", "noopener,noreferrer");
   };
 
   useEffect(() => {
