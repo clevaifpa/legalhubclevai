@@ -24,10 +24,12 @@ const normalizeAttachmentType = (text = "") => {
 
 const extractGoogleDocId = (url: string) => url.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9-_]+)/)?.[1] ?? null;
 
-const fetchDocumentText = async (url: string) => {
+const fetchDocumentText = async (url: string, cacheBust = Date.now()) => {
   const fileId = extractGoogleDocId(url);
   if (fileId) {
-    const docResponse = await fetch(`https://docs.google.com/document/d/${fileId}/export?format=txt`);
+    const docResponse = await fetch(`https://docs.google.com/document/d/${fileId}/export?format=txt&_=${cacheBust}`, {
+      headers: { "Cache-Control": "no-cache, no-store, max-age=0", Pragma: "no-cache" },
+    });
     if (!docResponse.ok) throw new Error("Không đọc được nội dung Google Doc");
     return await docResponse.text();
   }
@@ -36,7 +38,10 @@ const fetchDocumentText = async (url: string) => {
     throw new Error("Link văn bản bổ sung không hợp lệ");
   }
 
-  const response = await fetch(url);
+  const separator = url.includes("?") ? "&" : "?";
+  const response = await fetch(`${url}${separator}_=${cacheBust}`, {
+    headers: { "Cache-Control": "no-cache, no-store, max-age=0", Pragma: "no-cache" },
+  });
   if (!response.ok) throw new Error("Không đọc được văn bản bổ sung");
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("text") && !contentType.includes("json")) {
@@ -69,7 +74,7 @@ serve(async (req) => {
       });
     }
 
-    const { googleDocUrl, attachments = [] } = await req.json();
+    const { googleDocUrl, attachments = [], cacheBust = Date.now() } = await req.json();
 
     if (!googleDocUrl || typeof googleDocUrl !== "string") {
       return new Response(JSON.stringify({ error: "Thiếu googleDocUrl" }), {
@@ -85,7 +90,7 @@ serve(async (req) => {
 
     let docText = "";
     try {
-      docText = await fetchDocumentText(googleDocUrl);
+      docText = await fetchDocumentText(googleDocUrl, cacheBust);
     } catch (error) {
       console.error("Google export error:", error);
       return new Response(JSON.stringify({ error: "Không thể đọc nội dung Google Doc. Vui lòng đảm bảo tài liệu đã được chia sẻ công khai hoặc quyền 'Anyone with the link can view'." }), {
@@ -104,7 +109,7 @@ serve(async (req) => {
         .filter((item: AttachmentInput) => item && (item.content || item.url))
         .map(async (item: AttachmentInput) => {
           const type = normalizeAttachmentType(item.type || item.name || "");
-          const rawContent = item.content || (item.url ? await fetchDocumentText(item.url) : "");
+          const rawContent = item.content || (item.url ? await fetchDocumentText(item.url, cacheBust) : "");
           return { type, content: rawContent.slice(0, 20000) };
         })
     );
