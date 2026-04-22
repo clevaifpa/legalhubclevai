@@ -180,6 +180,8 @@ const AdminReviewRequests = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [aiExtracting, setAiExtracting] = useState(false);
 
+  const validSupplementaryDocs = supplementaryDocs.filter(d => d.doc_name.trim() && d.doc_url.trim());
+
   const handleAiExtract = async () => {
     if (!form.google_doc_url) {
       toast.error("Vui lòng dán link Google Doc trước");
@@ -188,7 +190,14 @@ const AdminReviewRequests = () => {
     setAiExtracting(true);
     try {
       const { data, error } = await supabase.functions.invoke("extract-contract-from-doc", {
-        body: { googleDocUrl: form.google_doc_url },
+        body: {
+          googleDocUrl: form.google_doc_url,
+          attachments: validSupplementaryDocs.map(d => ({
+            type: d.doc_name,
+            name: d.doc_name,
+            url: d.doc_url,
+          })),
+        },
       });
 
       if (error) {
@@ -1217,7 +1226,9 @@ const AdminReviewRequests = () => {
                   {aiExtracting && (
                     <div className="flex items-center gap-2 p-2 rounded bg-accent/10 border border-accent/20">
                       <Loader2 className="h-3 w-3 animate-spin text-accent" />
-                      <span className="text-xs text-accent">AI đang đọc và phân tích nội dung hợp đồng...</span>
+                      <span className="text-xs text-accent">
+                        {validSupplementaryDocs.length > 0 ? "Đang phân tích hợp đồng + văn bản bổ sung..." : "AI đang đọc và phân tích nội dung hợp đồng..."}
+                      </span>
                     </div>
                   )}
                 </div>
