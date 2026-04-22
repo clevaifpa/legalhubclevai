@@ -370,6 +370,9 @@ Deno.serve(async (req) => {
                 category_id: categoryId,
                 description: row.description || "",
                 approved_pe_number: row.approvedPe || "",
+                sheet_row_index: row.rowIndex,
+                sheet_tab_name: tab_name,
+                sheet_entity_name: entity_name,
               })
               .eq("id", existingContractId);
 
@@ -460,6 +463,9 @@ Deno.serve(async (req) => {
               file_url: primaryLink,
               approved_pe_number: row.approvedPe || "",
               description: row.description || "",
+              sheet_row_index: row.rowIndex,
+              sheet_tab_name: tab_name,
+              sheet_entity_name: entity_name,
             })
             .select()
             .single();
