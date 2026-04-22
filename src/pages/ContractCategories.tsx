@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { EntitySyncButton } from "@/components/EntitySyncButton";
-import { X, Plus, GripVertical } from "lucide-react";
+import { X, Plus, GripVertical, Trash2 } from "lucide-react";
 import { InlineEditCell } from "@/components/contracts/InlineEditCell";
 import { ContractLinkCell, getLinkType } from "@/components/contracts/ContractLinkCell";
 import type { LinkItem } from "@/components/contracts/ContractLinkCell";
@@ -26,6 +26,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -76,13 +77,15 @@ const ContractCategories = () => {
   const activeContractId = (routeContractId && !closedRouteIds.has(routeContractId)) ? routeContractId : contractIdParamSearch;
   const isAdmin = role === "admin";
   const canEdit = role === "admin" || role === "accountant" || role === "finance" || role === "manager_chung";
-  const canEditContract = (c: any) => isAdmin || ((role === "accountant" || role === "finance" || role === "manager_chung") && c.created_by === user?.id);
+  const canEditContract = (c: any) => isAdmin || role === "manager_chung" || c.created_by === user?.id;
   const canInlineEdit = role === "admin" || role === "manager_chung";
   const isViewOnly = false;
   const [categories, setCategories] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
   const [contractPayments, setContractPayments] = useState<Record<string, any[]>>({});
   const [contractRelatedDocs, setContractRelatedDocs] = useState<Record<string, any[]>>({});
+  const [selectedContractIds, setSelectedContractIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [loading, setLoading] = useState(true);
