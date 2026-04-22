@@ -412,12 +412,6 @@ const UserDashboard = () => {
 
       if (verifyError) {
         console.error("verifyError:", verifyError);
-      } else if (verifyData && verifyData.isEditable === false) {
-        toast.error("Link không có quyền Chỉnh sửa (Editor)", {
-          description: "Vui lòng cấp mức quyền 'Editor' hoặc 'Người chỉnh sửa' trên Google Docs."
-        });
-        setSubmitting(false);
-        return;
       } else if (verifyData && verifyData.isInSharedFolder === false) {
         toast.error("Link không thuộc folder chung", {
           description: "Vui lòng tạo lại Google Doc trong folder quy định."
@@ -876,7 +870,7 @@ const UserDashboard = () => {
                 </div>
                 {formErrors.google_doc_url && <p className="text-xs text-destructive">{formErrors.google_doc_url}</p>}
                 <p className="text-xs text-muted-foreground">
-                  ⚠️ Vui lòng tạo Google Doc trong folder chung để đảm bảo quản lý tập trung. Cấp quyền <strong>Editor</strong> cho reviewer.
+                  ⚠️ Vui lòng tạo Google Doc trong folder chung để đảm bảo quản lý tập trung.
                 </p>
                 {aiExtracting && (
                   <div className="flex items-center gap-2 p-2 rounded bg-accent/10 border border-accent/20">
