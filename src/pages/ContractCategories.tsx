@@ -950,15 +950,13 @@ const ContractCategories = () => {
                             onSave={async (v) => handleInlineEdit(c.id, "title", c.title, v)}
                             formatDisplay={(v) => v || "—"}
                           />
-                          {c.description && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setDescriptionPopupContract(c); }}
-                              className="text-xs text-muted-foreground hover:text-foreground hover:underline text-left truncate max-w-[180px] transition-colors"
-                              title="Xem mô tả nội dung"
-                            >
-                              📝 Xem mô tả
-                            </button>
-                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDescriptionPopupContract(c); setDescriptionDraft(c.description || ""); }}
+                            className="text-xs text-muted-foreground hover:text-foreground hover:underline text-left truncate max-w-[180px] transition-colors"
+                            title="Xem / chỉnh sửa mô tả nội dung"
+                          >
+                            📝 {c.description ? "Xem mô tả" : "Thêm mô tả"}
+                          </button>
                         </div>
                       </TableCell>
                       <TableCell>
