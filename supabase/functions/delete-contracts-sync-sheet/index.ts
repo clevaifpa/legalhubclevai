@@ -80,7 +80,7 @@ async function updateSheetStatus(
   spreadsheetId: string,
   tabName: string,
   rowIndex: number,
-  value: "READY" | "DONE",
+  value: "READY" | "DONE" | "REJECT",
 ): Promise<void> {
   const range = `${tabName}!P${rowIndex}`;
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
