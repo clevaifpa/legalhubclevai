@@ -177,9 +177,6 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      let sheetUpdated = false;
-      let warning: string | undefined;
-
       if (contract.sheet_row_index && contract.sheet_tab_name) {
         try {
           await updateSheetStatus(accessToken, sheetId, contract.sheet_tab_name, contract.sheet_row_index, "REJECT");
