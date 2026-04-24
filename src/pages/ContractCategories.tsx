@@ -1293,7 +1293,7 @@ const ContractCategories = () => {
                           table_name: "contracts",
                           record_id: descriptionPopupContract.id,
                           editor_id: user?.id,
-                          editor_name: getEmployeeName(profile, user),
+                          editor_name: getEmployeeName(profile?.email || user?.email),
                           changes: { description: { old: oldVal, new: newVal } },
                         } as any);
                       } catch { /* ignore */ }
