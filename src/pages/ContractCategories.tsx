@@ -1194,19 +1194,123 @@ const ContractCategories = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Description Popup */}
-        <Dialog open={!!descriptionPopupContract} onOpenChange={(open) => { if (!open) setDescriptionPopupContract(null); }}>
-          <DialogContent className="sm:max-w-lg">
+        {/* Description Popup (editable + AI) */}
+        <Dialog
+          open={!!descriptionPopupContract}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDescriptionPopupContract(null);
+              setDescriptionDraft("");
+              setDescriptionAiLoading(false);
+              setDescriptionSaving(false);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{descriptionPopupContract?.title || "Mô tả nội dung"}</DialogTitle>
+              <DialogTitle>Mô tả hợp đồng — {descriptionPopupContract?.title || ""}</DialogTitle>
             </DialogHeader>
-            <div className="py-4">
-              {descriptionPopupContract?.description ? (
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{descriptionPopupContract.description}</p>
-              ) : (
-                <p className="text-sm text-muted-foreground italic">Không có mô tả nội dung</p>
-              )}
+            <div className="py-2 space-y-3">
+              {(() => {
+                const c = descriptionPopupContract;
+                const canEditDesc = !!c && (isAdmin || role === "manager_chung");
+                return (
+                  <>
+                    <Textarea
+                      value={descriptionDraft}
+                      onChange={(e) => setDescriptionDraft(e.target.value)}
+                      placeholder="Nhập mô tả hợp đồng hoặc bấm '🤖 AI đọc lại' để hệ thống tự sinh từ file đính kèm..."
+                      className="min-h-[280px] text-sm leading-relaxed font-mono"
+                      readOnly={!canEditDesc}
+                    />
+                    {!canEditDesc && (
+                      <p className="text-xs text-muted-foreground italic">
+                        Bạn chỉ có quyền xem. Chỉ Admin và Quản lý chung có thể chỉnh sửa hoặc tái tạo mô tả.
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
             </div>
+            <DialogFooter className="gap-2">
+              {(isAdmin || role === "manager_chung") && (
+                <>
+                  <Button
+                    variant="outline"
+                    disabled={descriptionAiLoading || descriptionSaving || !descriptionPopupContract?.file_url}
+                    onClick={async () => {
+                      if (!descriptionPopupContract) return;
+                      setDescriptionAiLoading(true);
+                      try {
+                        const { data, error } = await supabase.functions.invoke("regenerate-contract-description", {
+                          body: { contractId: descriptionPopupContract.id },
+                        });
+                        if (error) throw error;
+                        if (data?.error) throw new Error(data.error);
+                        if (data?.description) {
+                          setDescriptionDraft(data.description);
+                          toast.success("AI đã sinh mô tả mới");
+                        } else {
+                          toast.error("AI không trả về mô tả");
+                        }
+                      } catch (err: any) {
+                        toast.error("Lỗi AI", { description: err?.message || "Không thể đọc file" });
+                      } finally {
+                        setDescriptionAiLoading(false);
+                      }
+                    }}
+                    title={!descriptionPopupContract?.file_url ? "Hợp đồng chưa có link file" : "AI đọc file hợp đồng và viết lại mô tả"}
+                  >
+                    {descriptionAiLoading ? "🤖 Đang đọc..." : "🤖 AI đọc lại"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={descriptionSaving || descriptionAiLoading}
+                    onClick={() => { setDescriptionPopupContract(null); setDescriptionDraft(""); }}
+                  >
+                    Hủy
+                  </Button>
+                  <Button
+                    className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                    disabled={descriptionSaving || descriptionAiLoading}
+                    onClick={async () => {
+                      if (!descriptionPopupContract) return;
+                      setDescriptionSaving(true);
+                      const oldVal = descriptionPopupContract.description || "";
+                      const newVal = descriptionDraft;
+                      const { error } = await supabase
+                        .from("contracts")
+                        .update({ description: newVal })
+                        .eq("id", descriptionPopupContract.id);
+                      setDescriptionSaving(false);
+                      if (error) {
+                        toast.error("Lỗi lưu", { description: error.message });
+                        return;
+                      }
+                      // Audit log (best-effort)
+                      try {
+                        await supabase.from("edit_logs").insert({
+                          table_name: "contracts",
+                          record_id: descriptionPopupContract.id,
+                          editor_id: user?.id,
+                          editor_name: getEmployeeName(profile, user),
+                          changes: { description: { old: oldVal, new: newVal } },
+                        } as any);
+                      } catch { /* ignore */ }
+                      toast.success("Đã lưu mô tả");
+                      setContracts(prev => prev.map(x => x.id === descriptionPopupContract.id ? { ...x, description: newVal } : x));
+                      setDescriptionPopupContract(null);
+                      setDescriptionDraft("");
+                    }}
+                  >
+                    {descriptionSaving ? "Đang lưu..." : "💾 Lưu"}
+                  </Button>
+                </>
+              )}
+              {!(isAdmin || role === "manager_chung") && (
+                <Button variant="outline" onClick={() => setDescriptionPopupContract(null)}>Đóng</Button>
+              )}
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
