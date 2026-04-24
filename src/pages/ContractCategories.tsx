@@ -1245,7 +1245,15 @@ const ContractCategories = () => {
                         const { data, error } = await supabase.functions.invoke("regenerate-contract-description", {
                           body: { contractId: descriptionPopupContract.id },
                         });
-                        if (error) throw error;
+                        // Try to extract real server message even on non-2xx
+                        let serverMsg: string | undefined;
+                        if (error && (error as any).context?.json) {
+                          try { serverMsg = (await (error as any).context.json())?.error; } catch {}
+                        }
+                        if (!serverMsg && error && (error as any).context?.text) {
+                          try { serverMsg = await (error as any).context.text(); } catch {}
+                        }
+                        if (error) throw new Error(serverMsg || error.message);
                         if (data?.error) throw new Error(data.error);
                         if (data?.description) {
                           setDescriptionDraft(data.description);
@@ -1254,6 +1262,7 @@ const ContractCategories = () => {
                           toast.error("AI không trả về mô tả");
                         }
                       } catch (err: any) {
+                        console.error("AI regenerate error:", err);
                         toast.error("Lỗi AI", { description: err?.message || "Không thể đọc file" });
                       } finally {
                         setDescriptionAiLoading(false);
