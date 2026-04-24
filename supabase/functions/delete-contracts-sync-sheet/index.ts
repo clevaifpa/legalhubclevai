@@ -163,40 +163,38 @@ Deno.serve(async (req) => {
       let sheetUpdated = false;
       let warning: string | undefined;
 
-      if (contract.sheet_row_index && contract.sheet_tab_name) {
-        try {
-          await updateSheetStatus(accessToken, sheetId, contract.sheet_tab_name, contract.sheet_row_index, "READY");
-          sheetUpdated = true;
-        } catch (sheetErr) {
-          const message = sheetErr instanceof Error ? sheetErr.message : "Lỗi cập nhật Google Sheet";
-          console.error("Sheet update failed before deletion", { contractId: contract.id, row: contract.sheet_row_index, error: message });
-          results.push({ contractId: contract.id, title: contract.title, deleted: false, sheetUpdated: false, error: message });
-          continue;
-        }
-      } else {
-        warning = "Hợp đồng chưa có mapping dòng Google Sheet nên không cập nhật được Sheet";
-        console.warn("Missing sheet mapping", { contractId: contract.id, title: contract.title });
-      }
-
+      // First delete the contract from DB, then update Sheet to REJECT
       try {
         await supabase.from("contract_related_docs").delete().eq("contract_id", contract.id);
         await supabase.from("contract_payment_schedules").delete().eq("contract_id", contract.id);
         await supabase.from("edit_logs").delete().eq("record_id", contract.id).eq("table_name", "contracts");
         const { error: deleteError } = await supabase.from("contracts").delete().eq("id", contract.id);
         if (deleteError) throw deleteError;
-        results.push({ contractId: contract.id, title: contract.title, deleted: true, sheetUpdated, warning });
       } catch (deleteErr) {
         const message = deleteErr instanceof Error ? deleteErr.message : "Lỗi xóa hợp đồng";
         console.error("Contract delete failed", { contractId: contract.id, error: message });
-        if (sheetUpdated && contract.sheet_row_index && contract.sheet_tab_name) {
-          try {
-            await updateSheetStatus(accessToken, sheetId, contract.sheet_tab_name, contract.sheet_row_index, "DONE");
-          } catch (rollbackErr) {
-            console.error("Rollback Sheet status failed", { contractId: contract.id, error: rollbackErr });
-          }
-        }
         results.push({ contractId: contract.id, title: contract.title, deleted: false, sheetUpdated: false, error: message });
+        continue;
       }
+
+      let sheetUpdated = false;
+      let warning: string | undefined;
+
+      if (contract.sheet_row_index && contract.sheet_tab_name) {
+        try {
+          await updateSheetStatus(accessToken, sheetId, contract.sheet_tab_name, contract.sheet_row_index, "REJECT");
+          sheetUpdated = true;
+        } catch (sheetErr) {
+          const message = sheetErr instanceof Error ? sheetErr.message : "Lỗi cập nhật Google Sheet";
+          console.error("Sheet update failed after deletion", { contractId: contract.id, row: contract.sheet_row_index, error: message });
+          warning = `Đã xóa nhưng chưa cập nhật Google Sheet sang REJECT: ${message}`;
+        }
+      } else {
+        warning = "Đã xóa nhưng hợp đồng không có mapping dòng Google Sheet";
+        console.warn("Missing sheet mapping", { contractId: contract.id, title: contract.title });
+      }
+
+      results.push({ contractId: contract.id, title: contract.title, deleted: true, sheetUpdated, warning });
     }
 
     const deleted = results.filter((r) => r.deleted).length;
