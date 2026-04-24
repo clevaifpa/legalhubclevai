@@ -876,8 +876,7 @@ const ContractCategories = () => {
                   <TableHead>Giá trị HĐ</TableHead>
                   <TableHead>Ngày hiệu lực</TableHead>
                   <TableHead>Ngày hết hạn</TableHead>
-                  <TableHead>Link hợp đồng</TableHead>
-                  {canEdit && <TableHead>Thao tác</TableHead>}
+                   <TableHead>Link hợp đồng</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1041,27 +1040,6 @@ const ContractCategories = () => {
                           }}
                         />
                       </TableCell>
-                      {canEdit && (
-                        <TableCell>
-                          {canEditContract(c) && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive">Xóa</Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Bạn có chắc chắn muốn xóa hợp đồng này không?</AlertDialogTitle>
-                                  <AlertDialogDescription>Hợp đồng "{c.title}" sẽ bị xóa vĩnh viễn.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Hủy</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteContract(c)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                        </TableCell>
-                      )}
                     </TableRow>
                   );
                 })}
