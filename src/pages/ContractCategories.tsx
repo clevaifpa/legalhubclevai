@@ -108,8 +108,11 @@ const ContractCategories = () => {
   const [entityOrder, setEntityOrder] = useState<Record<string, number>>({});
   const [draggedEntity, setDraggedEntity] = useState<string | null>(null);
   const [dragOverEntity, setDragOverEntity] = useState<string | null>(null);
-  // Description popup
+  // Description popup (editable + AI)
   const [descriptionPopupContract, setDescriptionPopupContract] = useState<any>(null);
+  const [descriptionDraft, setDescriptionDraft] = useState("");
+  const [descriptionSaving, setDescriptionSaving] = useState(false);
+  const [descriptionAiLoading, setDescriptionAiLoading] = useState(false);
   // Related docs add dialog
   const [addDocDialogContractId, setAddDocDialogContractId] = useState<string | null>(null);
   const [newDocType, setNewDocType] = useState("bien_ban_nghiem_thu");
