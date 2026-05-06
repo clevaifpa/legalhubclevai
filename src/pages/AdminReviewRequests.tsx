@@ -580,6 +580,7 @@ const AdminReviewRequests = () => {
         tax_code: form.tax_code,
         manager_id: isDirectSubmit ? null : (form.manager_id || null),
         global_manager_id: isDirectSubmit ? (form.global_manager_id || null) : null,
+        legal_review_doc_link: form.legal_review_doc_link?.trim() || null,
       }).eq("id", editingReqId);
       submitError = error;
 
