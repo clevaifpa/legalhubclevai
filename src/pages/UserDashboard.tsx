@@ -144,6 +144,7 @@ const UserDashboard = () => {
     legal_reviewer_id: "",
     accountant_reviewer_id: "",
     finance_reviewer_id: "",
+    legal_review_doc_link: "",
   });
 
   const [paymentPhases, setPaymentPhases] = useState<PaymentPhase[]>([
@@ -455,6 +456,7 @@ const UserDashboard = () => {
         tax_code: form.tax_code,
         manager_id: isDirectSubmit ? null : (form.manager_id || null),
         global_manager_id: isDirectSubmit ? (form.global_manager_id || null) : null,
+        legal_review_doc_link: form.legal_review_doc_link?.trim() || null,
       }).eq("id", editingReqId);
       submitError = error;
 
@@ -563,7 +565,7 @@ const UserDashboard = () => {
 
   const resetFormData = () => {
     setEditingReqId(null);
-    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "", global_manager_id: "", legal_reviewer_id: "", accountant_reviewer_id: "", finance_reviewer_id: "" });
+    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "", global_manager_id: "", legal_reviewer_id: "", accountant_reviewer_id: "", finance_reviewer_id: "", legal_review_doc_link: "" });
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
     setSupplementaryDocs([]);
   };
@@ -598,6 +600,7 @@ const UserDashboard = () => {
       legal_reviewer_id: req.legal_reviewer_id || "",
       accountant_reviewer_id: req.accountant_reviewer_id || "",
       finance_reviewer_id: req.finance_reviewer_id || "",
+      legal_review_doc_link: req.legal_review_doc_link || "",
     });
 
     if (schedules.length > 0) {
@@ -958,6 +961,23 @@ const UserDashboard = () => {
                 {aiDescriptionUpdated && <p className="text-xs text-accent">Nội dung đã được cập nhật từ phiên bản mới của tài liệu</p>}
                 {formErrors.description && <p className="text-xs text-destructive">{formErrors.description}</p>}
               </div>
+
+              {editingReqId && (
+                <div className="space-y-2">
+                  <Label>Link tài liệu đã review</Label>
+                  <Input
+                    type="url"
+                    value={form.legal_review_doc_link}
+                    onChange={(e) => setForm({ ...form, legal_review_doc_link: e.target.value })}
+                    placeholder="Dán link Google Doc đã review (có /edit)"
+                    className={form.legal_review_doc_link && !isValidGoogleDocUrl(form.legal_review_doc_link) ? "border-destructive focus-visible:ring-destructive" : ""}
+                  />
+                  {form.legal_review_doc_link && !isValidGoogleDocUrl(form.legal_review_doc_link) && (
+                    <p className="text-xs text-destructive">Link Google Doc phải có quyền chỉnh sửa (/edit), không phải /view hay /preview.</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">Để trống nếu chưa có. Có thể cập nhật/sửa link tài liệu đã review tại đây.</p>
+                </div>
+              )}
 
               {/* Supplementary Documents */}
               <div className="space-y-3 p-4 rounded-lg border bg-muted/20">
