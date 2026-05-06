@@ -213,6 +213,19 @@ serve(async (req) => {
 
 Nhiệm vụ: Đọc nội dung hợp đồng (text) và trích xuất thông tin chính xác nhất có thể.
 
+PHÁP NHÂN NỘI BỘ (BÊN CÔNG TY - cần bảo vệ quyền lợi):
+- Công ty cổ phần Công nghệ LKO Việt Nam
+- Công ty cổ phần Công nghệ CHV Việt Nam
+- Công ty cổ phần Công nghệ C2V Việt Nam
+- Công ty cổ phần Công nghệ LKV Việt Nam
+
+QUY TẮC XÁC ĐỊNH "ten_doi_tac" (CỰC KỲ QUAN TRỌNG):
+- "ten_doi_tac" PHẢI là bên CÒN LẠI trong hợp đồng, KHÔNG được là một trong 4 pháp nhân nội bộ ở trên.
+- Nếu hợp đồng có nhiều bên, BÊN CÔNG TY là (các) pháp nhân thuộc danh sách trên (LKO/CHV/C2V/LKV); BÊN ĐỐI TÁC là tổ chức/cá nhân KHÔNG thuộc danh sách trên.
+- Tuyệt đối KHÔNG đặt "ten_doi_tac" = LKO / CHV / C2V / LKV / "Công nghệ ... Việt Nam" thuộc danh sách trên.
+- Nếu không tìm thấy đối tác hợp lệ, đặt ten_doi_tac = "Chưa xác định" và ma_so_thue = "".
+- Trong "mo_ta", [Bên A] phải là bên công ty (pháp nhân nội bộ), [Bên B] phải là bên đối tác.
+
 Quy tắc bắt buộc:
 1. Nếu hợp đồng CÓ các đợt thanh toán → trích xuất ĐẦY ĐỦ từng đợt (tên đợt, giá trị, ngày thanh toán) và ĐẶT gia_tri_hop_dong = null
 2. Nếu hợp đồng KHÔNG có đợt thanh toán → trả về gia_tri_hop_dong là tổng giá trị hợp đồng (chỉ số, không có đơn vị)
@@ -343,6 +356,18 @@ Chỉ trả về JSON, không trả text ngoài JSON.`;
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+    }
+
+    // Safeguard: ten_doi_tac must NOT be one of internal entities
+    const INTERNAL_KEYWORDS = ["LKO", "CHV", "C2V", "LKV"];
+    const isInternal = (name: string) => {
+      if (!name) return false;
+      const upper = name.toUpperCase();
+      return INTERNAL_KEYWORDS.some((kw) => new RegExp(`(^|[^A-Z0-9])${kw}([^A-Z0-9]|$)`).test(upper));
+    };
+    if (result && isInternal(result.ten_doi_tac || "")) {
+      result.ten_doi_tac = "Chưa xác định";
+      result.ma_so_thue = "";
     }
 
     return new Response(JSON.stringify(result), {
