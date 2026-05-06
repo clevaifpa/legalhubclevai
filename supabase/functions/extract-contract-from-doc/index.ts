@@ -358,6 +358,18 @@ Chỉ trả về JSON, không trả text ngoài JSON.`;
       }
     }
 
+    // Safeguard: ten_doi_tac must NOT be one of internal entities
+    const INTERNAL_KEYWORDS = ["LKO", "CHV", "C2V", "LKV"];
+    const isInternal = (name: string) => {
+      if (!name) return false;
+      const upper = name.toUpperCase();
+      return INTERNAL_KEYWORDS.some((kw) => new RegExp(`(^|[^A-Z0-9])${kw}([^A-Z0-9]|$)`).test(upper));
+    };
+    if (result && isInternal(result.ten_doi_tac || "")) {
+      result.ten_doi_tac = "Chưa xác định";
+      result.ma_so_thue = "";
+    }
+
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
