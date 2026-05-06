@@ -962,6 +962,23 @@ const UserDashboard = () => {
                 {formErrors.description && <p className="text-xs text-destructive">{formErrors.description}</p>}
               </div>
 
+              {editingReqId && (
+                <div className="space-y-2">
+                  <Label>Link tài liệu đã review</Label>
+                  <Input
+                    type="url"
+                    value={form.legal_review_doc_link}
+                    onChange={(e) => setForm({ ...form, legal_review_doc_link: e.target.value })}
+                    placeholder="Dán link Google Doc đã review (có /edit)"
+                    className={form.legal_review_doc_link && !isValidGoogleDocUrl(form.legal_review_doc_link) ? "border-destructive focus-visible:ring-destructive" : ""}
+                  />
+                  {form.legal_review_doc_link && !isValidGoogleDocUrl(form.legal_review_doc_link) && (
+                    <p className="text-xs text-destructive">Link Google Doc phải có quyền chỉnh sửa (/edit), không phải /view hay /preview.</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">Để trống nếu chưa có. Có thể cập nhật/sửa link tài liệu đã review tại đây.</p>
+                </div>
+              )}
+
               {/* Supplementary Documents */}
               <div className="space-y-3 p-4 rounded-lg border bg-muted/20">
                 <div className="flex items-center justify-between">
