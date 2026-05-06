@@ -144,6 +144,7 @@ const UserDashboard = () => {
     legal_reviewer_id: "",
     accountant_reviewer_id: "",
     finance_reviewer_id: "",
+    legal_review_doc_link: "",
   });
 
   const [paymentPhases, setPaymentPhases] = useState<PaymentPhase[]>([
