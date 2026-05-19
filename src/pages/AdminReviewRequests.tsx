@@ -25,6 +25,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTracker";
+import { InternalChat } from "@/components/review/InternalChat";
 import {
   type ReviewDepartment,
   type DepartmentReviewStatus,
