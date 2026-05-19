@@ -514,6 +514,69 @@ export type Database = {
           },
         ]
       }
+      review_request_message_viewers: {
+        Row: {
+          created_at: string
+          id: string
+          request_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          request_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          request_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      review_request_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_deleted: boolean
+          mentioned_user_ids: string[]
+          message: string
+          request_id: string
+          sender_department: string | null
+          sender_id: string
+          sender_name: string
+          sender_role: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_deleted?: boolean
+          mentioned_user_ids?: string[]
+          message: string
+          request_id: string
+          sender_department?: string | null
+          sender_id: string
+          sender_name?: string
+          sender_role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_deleted?: boolean
+          mentioned_user_ids?: string[]
+          message?: string
+          request_id?: string
+          sender_department?: string | null
+          sender_id?: string
+          sender_name?: string
+          sender_role?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       review_requests: {
         Row: {
           accountant_reviewer_id: string | null
@@ -712,6 +775,10 @@ export type Database = {
     Functions: {
       admin_delete_user: { Args: { _user_id: string }; Returns: undefined }
       auto_expire_contracts: { Args: never; Returns: undefined }
+      can_access_review_request_chat: {
+        Args: { _req_id: string; _user_id: string }
+        Returns: boolean
+      }
       delete_contract: { Args: { _contract_id: string }; Returns: undefined }
       delete_review_request: { Args: { _req_id: string }; Returns: undefined }
       get_all_reviewers_with_names: {
