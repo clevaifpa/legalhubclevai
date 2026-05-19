@@ -40,11 +40,46 @@ const ROLE_LABELS: Record<string, string> = {
 const ASSIGNABLE_ROLES = ["admin", "manager_chung", "manager", "accountant", "finance", "user"] as const;
 
 const EmployeeManagement = () => {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isAdmin = role === "admin";
   const [profiles, setProfiles] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  const startEditName = (p: any) => {
+    setEditingId(p.user_id);
+    setEditingName(p.full_name || "");
+  };
+  const cancelEditName = () => {
+    setEditingId(null);
+    setEditingName("");
+  };
+  const saveEditName = async (userId: string) => {
+    const trimmed = editingName.trim();
+    if (!trimmed) {
+      toast.error("Tên nhân viên không được để trống");
+      return;
+    }
+    setSavingId(userId);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-update-user", {
+        body: { userId, full_name: trimmed },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      setProfiles((prev) => prev.map((p) => p.user_id === userId ? { ...p, full_name: trimmed } : p));
+      toast.success("Đã cập nhật tên nhân viên");
+      cancelEditName();
+    } catch (err: any) {
+      toast.error("Không thể cập nhật tên nhân viên. Vui lòng thử lại.", { description: err.message });
+    } finally {
+      setSavingId(null);
+    }
+  };
 
   const fetchData = async () => {
     const [profilesRes, rolesRes] = await Promise.all([
