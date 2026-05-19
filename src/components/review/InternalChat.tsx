@@ -128,8 +128,8 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
           filter: `request_id=eq.${requestId}`,
         },
         (payload) => {
-          const m = payload.new as ChatMessage;
-          if (m.is_deleted as any) return;
+          const m = payload.new as ChatMessage & { is_deleted?: boolean };
+          if (m.is_deleted) return;
           setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
         }
       )
