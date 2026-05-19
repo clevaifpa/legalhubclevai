@@ -1594,6 +1594,12 @@ const AdminReviewRequests = () => {
                     ) : null;
                   })()}
 
+                  <InternalChat
+                    requestId={req.id}
+                    contractTitle={req.contract_title}
+                    shouldScrollOnMount={routeReqId === req.id && typeof window !== "undefined" && window.location.hash.includes("internal-chat")}
+                  />
+
                   <div className="space-y-1">
                     {req.file_url && (
                       <button
