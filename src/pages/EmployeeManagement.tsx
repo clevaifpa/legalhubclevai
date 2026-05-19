@@ -193,7 +193,56 @@ const EmployeeManagement = () => {
                   const displayName = p.full_name || (p.email ? p.email.split("@")[0] : "—");
                   return (
                     <TableRow key={p.user_id}>
-                      <TableCell className="font-medium">{displayName}</TableCell>
+                      <TableCell className="font-medium">
+                        {editingId === p.user_id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              autoFocus
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveEditName(p.user_id);
+                                if (e.key === "Escape") cancelEditName();
+                              }}
+                              className="h-8 text-sm w-44"
+                              disabled={savingId === p.user_id}
+                            />
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              onClick={() => saveEditName(p.user_id)}
+                              disabled={savingId === p.user_id}
+                            >
+                              {savingId === p.user_id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              onClick={cancelEditName}
+                              disabled={savingId === p.user_id}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 group">
+                            <span>{displayName}</span>
+                            {isAdmin && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => startEditName(p)}
+                                title="Sửa tên"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{p.email || "—"}</TableCell>
                       <TableCell>
                         <Select
