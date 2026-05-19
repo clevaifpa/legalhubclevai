@@ -25,6 +25,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTracker";
+import { InternalChat } from "@/components/review/InternalChat";
 import { extractDeptReviews, decodeDeptReview, getVisibleDeptNotes, WORKFLOW_STATUSES, REVIEW_DEPARTMENTS } from "@/types/reviewDepartments";
 
 const isValidGoogleDocUrl = (url: string): boolean => {
@@ -1160,6 +1161,12 @@ const UserDashboard = () => {
                   ) : null;
                 })()}
 
+                <InternalChat
+                  requestId={req.id}
+                  contractTitle={req.contract_title}
+                  shouldScrollOnMount={routeReqId === req.id && typeof window !== "undefined" && window.location.hash.includes("internal-chat")}
+                />
+
                 {notes[req.id] && notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length > 0 && (
                   <div className="space-y-2">
                     <p className="text-sm font-medium">Lịch sử xử lý ({notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length})</p>
@@ -1337,6 +1344,12 @@ const UserDashboard = () => {
                       </div>
                     ) : null;
                   })()}
+
+                  <InternalChat
+                    requestId={req.id}
+                    contractTitle={req.contract_title}
+                    shouldScrollOnMount={routeReqId === req.id && typeof window !== "undefined" && window.location.hash.includes("internal-chat")}
+                  />
 
                   {notes[req.id] && notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length > 0 && (
                     <div className="space-y-2 mt-4">

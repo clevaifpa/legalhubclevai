@@ -25,6 +25,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTracker";
+import { InternalChat } from "@/components/review/InternalChat";
 import {
   type ReviewDepartment,
   type DepartmentReviewStatus,
@@ -1592,6 +1593,12 @@ const AdminReviewRequests = () => {
                       </div>
                     ) : null;
                   })()}
+
+                  <InternalChat
+                    requestId={req.id}
+                    contractTitle={req.contract_title}
+                    shouldScrollOnMount={routeReqId === req.id && typeof window !== "undefined" && window.location.hash.includes("internal-chat")}
+                  />
 
                   <div className="space-y-1">
                     {req.file_url && (

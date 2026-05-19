@@ -65,11 +65,12 @@ export default function Notifications() {
         let targetId = n.review_request_id || (reqMatch ? reqMatch[1] : null);
 
         if (targetId) {
+            const hash = n.content.includes("SCROLL:internal-chat") ? "#internal-chat" : "";
             // Normal users go to Dashboard, others go to AdminReviewRequests
             if (!role || role === "user") {
-                navigate(`/request/${targetId}`);
+                navigate(`/request/${targetId}${hash}`);
             } else {
-                navigate(`/admin-request/${targetId}`);
+                navigate(`/admin-request/${targetId}${hash}`);
             }
             return;
         }
