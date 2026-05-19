@@ -43,13 +43,21 @@ serve(async (req) => {
             throw new Error("Not authorized. Admin access required.");
         }
 
-        const { userId, department } = await req.json();
-        if (!userId || !department) throw new Error("Missing userId or department");
+        const { userId, department, full_name } = await req.json();
+        if (!userId) throw new Error("Missing userId");
 
-        // Update the profile department
+        const updates: Record<string, any> = {};
+        if (typeof department === "string" && department.length > 0) updates.department = department;
+        if (typeof full_name === "string") {
+            const trimmed = full_name.trim();
+            if (!trimmed) throw new Error("Tên nhân viên không được để trống");
+            updates.full_name = trimmed;
+        }
+        if (Object.keys(updates).length === 0) throw new Error("Không có dữ liệu cập nhật");
+
         const { error: updateError } = await supabaseAdmin
             .from('profiles')
-            .update({ department })
+            .update(updates)
             .eq('user_id', userId);
 
         if (updateError) throw updateError;

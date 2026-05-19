@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { Pencil, Check, X, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,11 +40,46 @@ const ROLE_LABELS: Record<string, string> = {
 const ASSIGNABLE_ROLES = ["admin", "manager_chung", "manager", "accountant", "finance", "user"] as const;
 
 const EmployeeManagement = () => {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isAdmin = role === "admin";
   const [profiles, setProfiles] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  const startEditName = (p: any) => {
+    setEditingId(p.user_id);
+    setEditingName(p.full_name || "");
+  };
+  const cancelEditName = () => {
+    setEditingId(null);
+    setEditingName("");
+  };
+  const saveEditName = async (userId: string) => {
+    const trimmed = editingName.trim();
+    if (!trimmed) {
+      toast.error("Tên nhân viên không được để trống");
+      return;
+    }
+    setSavingId(userId);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-update-user", {
+        body: { userId, full_name: trimmed },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      setProfiles((prev) => prev.map((p) => p.user_id === userId ? { ...p, full_name: trimmed } : p));
+      toast.success("Đã cập nhật tên nhân viên");
+      cancelEditName();
+    } catch (err: any) {
+      toast.error("Không thể cập nhật tên nhân viên. Vui lòng thử lại.", { description: err.message });
+    } finally {
+      setSavingId(null);
+    }
+  };
 
   const fetchData = async () => {
     const [profilesRes, rolesRes] = await Promise.all([
@@ -157,7 +193,56 @@ const EmployeeManagement = () => {
                   const displayName = p.full_name || (p.email ? p.email.split("@")[0] : "—");
                   return (
                     <TableRow key={p.user_id}>
-                      <TableCell className="font-medium">{displayName}</TableCell>
+                      <TableCell className="font-medium">
+                        {editingId === p.user_id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              autoFocus
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveEditName(p.user_id);
+                                if (e.key === "Escape") cancelEditName();
+                              }}
+                              className="h-8 text-sm w-44"
+                              disabled={savingId === p.user_id}
+                            />
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              onClick={() => saveEditName(p.user_id)}
+                              disabled={savingId === p.user_id}
+                            >
+                              {savingId === p.user_id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              onClick={cancelEditName}
+                              disabled={savingId === p.user_id}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 group">
+                            <span>{displayName}</span>
+                            {isAdmin && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => startEditName(p)}
+                                title="Sửa tên"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{p.email || "—"}</TableCell>
                       <TableCell>
                         <Select
