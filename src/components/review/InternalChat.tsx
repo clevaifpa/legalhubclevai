@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Loader2,
   Send,
@@ -14,6 +15,12 @@ import {
   Trash2,
   X,
   Check,
+  ImagePlus,
+  Paperclip,
+  FolderPlus,
+  FileIcon,
+  ImageIcon,
+  FolderOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -33,6 +40,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Attachment,
+  classifyFile,
+  isValidDriveFolderUrl,
+  listAttachmentsForRequest,
+  MAX_FILES_PER_MESSAGE,
+  MAX_FILE_SIZE,
+  insertAttachmentRow,
+  uploadFileToBucket,
+} from "@/lib/attachments";
+import { AttachmentRenderer } from "./AttachmentRenderer";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Profile {
