@@ -262,7 +262,8 @@ export async function notifyAdminsOnContractDeletion(
   const content = [
     `• Tên hợp đồng: ${contractTitle}`,
     `• Người thực hiện: ${actorName}`,
-    `• Phòng ban: ${department || "—"}`
+    `• Phòng ban: ${department || "—"}`,
+    `• Thời gian: ${timeStr}`,
   ];
 
   if (contractId) content.push(`\n<!--CONTRACT_ID:${contractId}-->`);
