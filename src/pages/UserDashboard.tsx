@@ -1437,7 +1437,7 @@ const UserDashboard = () => {
                     </div>
                   )}
 
-                  {["cho_xu_ly", "cho_quan_ly", "cho_quan_ly_chung", "cho_phap_che", "dang_review"].includes(req.status) && (
+                  {canDeleteRequest(req) && (
                     <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
                       <Button variant="outline" size="sm" className="text-xs" onClick={() => {
                         handleEdit(req);
