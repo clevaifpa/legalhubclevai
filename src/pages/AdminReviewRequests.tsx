@@ -755,6 +755,7 @@ const AdminReviewRequests = () => {
   // Approve current step and advance workflow
   const handleApproveStep = async () => {
     if (!selectedReq || !user) return;
+    if (!ensureCanAct(selectedReq)) return;
 
     // Block general management step if no valid review doc link
     if (selectedReq.status === "cho_quan_ly_chung" && !isValidGoogleDocUrl(legalReviewDocLink)) {
