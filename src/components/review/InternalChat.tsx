@@ -870,14 +870,21 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
                             </div>
                           </div>
                         ) : (
-                          <div className="text-sm text-foreground whitespace-pre-wrap break-words mt-0.5">
-                            <MessageText text={m.message} profilesByName={profilesByName} />
-                            {m.edited_at && (
-                              <span className="ml-1 text-[10px] text-muted-foreground italic">
-                                (đã chỉnh sửa)
-                              </span>
+                          <>
+                            {m.message && (
+                              <div className="text-sm text-foreground whitespace-pre-wrap break-words mt-0.5">
+                                <MessageText text={m.message} profilesByName={profilesByName} />
+                                {m.edited_at && (
+                                  <span className="ml-1 text-[10px] text-muted-foreground italic">
+                                    (đã chỉnh sửa)
+                                  </span>
+                                )}
+                              </div>
                             )}
-                          </div>
+                            {attachmentsByMsg[m.id]?.length ? (
+                              <AttachmentRenderer attachments={attachmentsByMsg[m.id]} compact />
+                            ) : null}
+                          </>
                         )}
                       </div>
                     </div>
