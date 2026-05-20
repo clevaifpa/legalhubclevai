@@ -755,6 +755,7 @@ const AdminReviewRequests = () => {
   // Approve current step and advance workflow
   const handleApproveStep = async () => {
     if (!selectedReq || !user) return;
+    if (!ensureCanAct(selectedReq)) return;
 
     // Block general management step if no valid review doc link
     if (selectedReq.status === "cho_quan_ly_chung" && !isValidGoogleDocUrl(legalReviewDocLink)) {
@@ -867,6 +868,7 @@ const AdminReviewRequests = () => {
 
   const handleReject = async () => {
     if (!selectedReq || !user) return;
+    if (!ensureCanAct(selectedReq)) return;
     setSaving(true);
 
     const currentStatus = selectedReq.status;
@@ -950,18 +952,30 @@ const AdminReviewRequests = () => {
   // Can this user act on this request?
   const canActOnRequest = (req: any): boolean => {
     if (!req) return false;
+    // Admin/Pháp chế luôn được duyệt hộ tất cả các bước cần duyệt
     if (isAdmin) return true;
     if (isManager && req.status === 'cho_quan_ly') {
       if (req.manager_id) return req.manager_id === user?.id;
       return true;
     }
-    // Global manager can act on cho_quan_ly_chung
     if (isGlobalManager && req.status === 'cho_quan_ly_chung') {
       if (req.global_manager_id) return req.global_manager_id === user?.id;
       return true;
     }
-    if (isAccountant && req.status === 'cho_ke_toan') return true;
-    if (isFinance && req.status === 'cho_tai_chinh') return true;
+    // Kế toán: chỉ đúng người được phân công mới duyệt được
+    if (isAccountant && req.status === 'cho_ke_toan') {
+      return !!req.accountant_reviewer_id && req.accountant_reviewer_id === user?.id;
+    }
+    // Tài chính: chỉ đúng người được phân công mới duyệt được
+    if (isFinance && req.status === 'cho_tai_chinh') {
+      return !!req.finance_reviewer_id && req.finance_reviewer_id === user?.id;
+    }
+    return false;
+  };
+
+  const ensureCanAct = (req: any): boolean => {
+    if (canActOnRequest(req)) return true;
+    toast.error("Bạn không phải người được phân công duyệt bước này.");
     return false;
   };
 
