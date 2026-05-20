@@ -190,6 +190,17 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
 
   const [highlightId, setHighlightId] = useState<string | null>(null);
 
+  // Attachments state
+  const [attachmentsByMsg, setAttachmentsByMsg] = useState<Record<string, Attachment[]>>({});
+  const [pending, setPending] = useState<
+    { tempId: string; file?: File; previewUrl?: string; folderUrl?: string; folderName?: string; uploading?: boolean }[]
+  >([]);
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
+  const [folderUrlInput, setFolderUrlInput] = useState("");
+  const [folderNameInput, setFolderNameInput] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
   const listRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
