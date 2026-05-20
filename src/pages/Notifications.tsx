@@ -65,7 +65,8 @@ export default function Notifications() {
         let targetId = n.review_request_id || (reqMatch ? reqMatch[1] : null);
 
         if (targetId) {
-            const hash = n.content.includes("SCROLL:internal-chat") ? "#internal-chat" : "";
+            const scrollMatch = n.content.match(/<!--SCROLL:(.*?)-->/);
+            const hash = scrollMatch ? `#${scrollMatch[1]}` : "";
             // Normal users go to Dashboard, others go to AdminReviewRequests
             if (!role || role === "user") {
                 navigate(`/request/${targetId}${hash}`);
