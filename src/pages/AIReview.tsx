@@ -59,10 +59,14 @@ const AIReview = () => {
     if (!confirm("Bạn có chắc chắn muốn xóa bản ghi lịch sử này không?")) return;
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { error } = await supabase
         .from("ai_review_history")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .eq("user_id", user.id);
 
       if (error) throw error;
 
@@ -80,12 +84,20 @@ const AIReview = () => {
       if (pageNumber === 1) setLoadingHistory(true);
       else setLoadingMore(true);
 
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setHistory([]);
+        setHasMore(false);
+        return;
+      }
+
       const from = (pageNumber - 1) * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
       const { data, error } = await supabase
         .from("ai_review_history")
         .select("id, contract_text, summary, risk_level, issues, missing_clauses, recommendations, created_at")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .range(from, to);
 
@@ -107,6 +119,7 @@ const AIReview = () => {
       setLoadingMore(false);
     }
   };
+
 
   const handleLoadMore = () => {
     const nextPage = page + 1;
