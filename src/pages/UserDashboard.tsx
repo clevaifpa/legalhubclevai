@@ -565,6 +565,15 @@ const UserDashboard = () => {
     }
 
     setSubmitting(false);
+    if (editingReqId && finalReqId) {
+      notifyReviewRequestEdited({
+        reviewRequestId: finalReqId,
+        contractTitle: form.contract_title,
+        actorName: profile?.full_name || "Người dùng",
+        requesterId: user?.id || "",
+        department: form.department || profile?.department || "",
+      }).catch(console.error);
+    }
     toast.success(editingReqId ? "Cập nhật thành công!" : (isDirectSubmit ? "Yêu cầu đã tạo!" : "Yêu cầu review đã được tạo!"));
     handleResetForm();
     fetchRequests();
