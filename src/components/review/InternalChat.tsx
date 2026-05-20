@@ -945,6 +945,61 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
                   ))}
                 </div>
               )}
+
+              {/* Pending attachment chips */}
+              {pending.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {pending.map((p) => (
+                    <div
+                      key={p.tempId}
+                      className="relative flex items-center gap-1.5 bg-muted border rounded-md pl-1 pr-6 py-1 max-w-[200px]"
+                    >
+                      {p.previewUrl ? (
+                        <img src={p.previewUrl} alt="" className="w-8 h-8 rounded object-cover" />
+                      ) : p.folderUrl ? (
+                        <FolderOpen className="w-4 h-4 text-accent shrink-0 ml-1" />
+                      ) : (
+                        <FileIcon className="w-4 h-4 text-accent shrink-0 ml-1" />
+                      )}
+                      <span className="text-xs truncate">
+                        {p.folderName || p.file?.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removePending(p.tempId)}
+                        className="absolute right-0.5 top-0.5 w-5 h-5 rounded hover:bg-muted-foreground/20 flex items-center justify-center"
+                        aria-label="Bỏ"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Hidden file inputs */}
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  addFiles(e.target.files, "image");
+                  if (imageInputRef.current) imageInputRef.current.value = "";
+                }}
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  addFiles(e.target.files, "file");
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+              />
+
               <div className="flex gap-2 items-end">
                 <Textarea
                   ref={taRef}
@@ -965,19 +1020,56 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
                   }}
                   disabled={sending}
                 />
-                <Button
-                  onClick={handleSend}
-                  disabled={sending || !text.trim()}
-                  size="sm"
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                >
-                  {sending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
-                  <span className="ml-1 hidden sm:inline">Gửi</span>
-                </Button>
+                <div className="flex flex-col gap-1">
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={sending}
+                      title="Đính kèm ảnh"
+                    >
+                      <ImagePlus className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={sending}
+                      title="Đính kèm file"
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => setFolderDialogOpen(true)}
+                      disabled={sending}
+                      title="Đính kèm link folder Drive"
+                    >
+                      <FolderPlus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <Button
+                    onClick={handleSend}
+                    disabled={sending || (!text.trim() && pending.length === 0)}
+                    size="sm"
+                    className="bg-accent hover:bg-accent/90 text-accent-foreground h-8"
+                  >
+                    {sending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    <span className="ml-1 hidden sm:inline">Gửi</span>
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
