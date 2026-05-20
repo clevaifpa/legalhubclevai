@@ -692,6 +692,20 @@ const AdminReviewRequests = () => {
     // Notification already sent in the create/update block above
 
     setSubmitting(false);
+    if (editingReqId && finalReqId) {
+      const { data: editedReq } = await supabase
+        .from("review_requests")
+        .select("requester_id, department")
+        .eq("id", finalReqId)
+        .single();
+      notifyReviewRequestEdited({
+        reviewRequestId: finalReqId,
+        contractTitle: form.contract_title,
+        actorName: profile?.full_name || employeeName || "Người dùng",
+        requesterId: (editedReq as any)?.requester_id || user.id,
+        department: form.department || (editedReq as any)?.department || profile?.department || "",
+      }).catch(console.error);
+    }
     toast.success(editingReqId ? "Cập nhật thành công!" : (isDirectSubmit
       ? "Yêu cầu đã tạo, chuyển cho Quản lý chung duyệt!"
       : "Yêu cầu review đã được tạo!"));
