@@ -262,7 +262,51 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
     };
   }, [requestId]);
 
-  // Profiles for mention picker + tooltips
+  // Load attachments for this request (message-level only)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const list = await listAttachmentsForRequest(requestId, "messages");
+      if (cancelled) return;
+      const map: Record<string, Attachment[]> = {};
+      list.forEach((a) => {
+        if (!a.message_id) return;
+        (map[a.message_id] = map[a.message_id] || []).push(a);
+      });
+      setAttachmentsByMsg(map);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [requestId]);
+
+  // Realtime attachments
+  useEffect(() => {
+    const channel = supabase
+      .channel(`chat-att-${requestId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "review_attachments",
+          filter: `review_request_id=eq.${requestId}`,
+        },
+        (payload) => {
+          const a = payload.new as Attachment;
+          if (!a.message_id) return;
+          setAttachmentsByMsg((prev) => {
+            const arr = prev[a.message_id!] || [];
+            if (arr.some((x) => x.id === a.id)) return prev;
+            return { ...prev, [a.message_id!]: [...arr, a] };
+          });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [requestId]);
   useEffect(() => {
     (async () => {
       const { data } = await supabase
