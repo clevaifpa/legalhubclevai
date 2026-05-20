@@ -479,6 +479,48 @@ export type Database = {
         }
         Relationships: []
       }
+      review_attachments: {
+        Row: {
+          attachment_type: string
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string
+          file_url: string
+          id: string
+          message_id: string | null
+          review_request_id: string
+          storage_path: string | null
+          uploaded_by: string
+        }
+        Insert: {
+          attachment_type: string
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string
+          file_url: string
+          id?: string
+          message_id?: string | null
+          review_request_id: string
+          storage_path?: string | null
+          uploaded_by: string
+        }
+        Update: {
+          attachment_type?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          message_id?: string | null
+          review_request_id?: string
+          storage_path?: string | null
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
       review_notes: {
         Row: {
           author_id: string | null
@@ -785,6 +827,10 @@ export type Database = {
       admin_delete_user: { Args: { _user_id: string }; Returns: undefined }
       auto_expire_contracts: { Args: never; Returns: undefined }
       can_access_review_request_chat: {
+        Args: { _req_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_review_request: {
         Args: { _req_id: string; _user_id: string }
         Returns: boolean
       }

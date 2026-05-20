@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Loader2,
   Send,
@@ -14,6 +15,12 @@ import {
   Trash2,
   X,
   Check,
+  ImagePlus,
+  Paperclip,
+  FolderPlus,
+  FileIcon,
+  ImageIcon,
+  FolderOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -33,6 +40,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Attachment,
+  classifyFile,
+  isValidDriveFolderUrl,
+  listAttachmentsForRequest,
+  MAX_FILES_PER_MESSAGE,
+  MAX_FILE_SIZE,
+  insertAttachmentRow,
+  uploadFileToBucket,
+} from "@/lib/attachments";
+import { AttachmentRenderer } from "./AttachmentRenderer";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Profile {
@@ -165,6 +190,17 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
 
   const [highlightId, setHighlightId] = useState<string | null>(null);
 
+  // Attachments state
+  const [attachmentsByMsg, setAttachmentsByMsg] = useState<Record<string, Attachment[]>>({});
+  const [pending, setPending] = useState<
+    { tempId: string; file?: File; previewUrl?: string; folderUrl?: string; folderName?: string; uploading?: boolean }[]
+  >([]);
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
+  const [folderUrlInput, setFolderUrlInput] = useState("");
+  const [folderNameInput, setFolderNameInput] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
   const listRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -226,7 +262,51 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
     };
   }, [requestId]);
 
-  // Profiles for mention picker + tooltips
+  // Load attachments for this request (message-level only)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const list = await listAttachmentsForRequest(requestId, "messages");
+      if (cancelled) return;
+      const map: Record<string, Attachment[]> = {};
+      list.forEach((a) => {
+        if (!a.message_id) return;
+        (map[a.message_id] = map[a.message_id] || []).push(a);
+      });
+      setAttachmentsByMsg(map);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [requestId]);
+
+  // Realtime attachments
+  useEffect(() => {
+    const channel = supabase
+      .channel(`chat-att-${requestId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "review_attachments",
+          filter: `review_request_id=eq.${requestId}`,
+        },
+        (payload) => {
+          const a = payload.new as Attachment;
+          if (!a.message_id) return;
+          setAttachmentsByMsg((prev) => {
+            const arr = prev[a.message_id!] || [];
+            if (arr.some((x) => x.id === a.id)) return prev;
+            return { ...prev, [a.message_id!]: [...arr, a] };
+          });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [requestId]);
   useEffect(() => {
     (async () => {
       const { data } = await supabase
@@ -360,7 +440,8 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
 
   const handleSend = async () => {
     const msg = text.trim();
-    if (!msg || !user) return;
+    if (!user) return;
+    if (!msg && pending.length === 0) return;
     setSending(true);
     try {
       const mentionedIds = extractMentionedIds(msg);
@@ -374,7 +455,7 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
           sender_name: senderName,
           sender_role: role || null,
           sender_department: profile?.department || null,
-          message: msg,
+          message: msg || "",
           mentioned_user_ids: mentionedIds,
           reply_to_message_id: replyTo?.id || null,
         } as any)
@@ -382,11 +463,58 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
         .single();
 
       if (error) throw error;
+      const insertedMsg = inserted as unknown as ChatMessage | null;
+      const insertedId = insertedMsg?.id;
 
-      if (inserted) {
+      if (insertedMsg) {
         setMessages((prev) =>
-          prev.some((x) => x.id === (inserted as any).id) ? prev : [...prev, inserted as any]
+          prev.some((x) => x.id === insertedMsg.id) ? prev : [...prev, insertedMsg]
         );
+      }
+
+      // Upload + insert attachments for this message
+      if (insertedId && pending.length > 0) {
+        const newAtts: Attachment[] = [];
+        for (const p of pending) {
+          try {
+            if (p.folderUrl) {
+              const row = await insertAttachmentRow({
+                review_request_id: requestId,
+                message_id: insertedId,
+                attachment_type: "folder",
+                file_url: p.folderUrl,
+                storage_path: null,
+                file_name: p.folderName || "Google Drive folder",
+                file_type: "folder",
+                file_size: null,
+                uploaded_by: user.id,
+              });
+              newAtts.push(row);
+            } else if (p.file) {
+              const { path, url } = await uploadFileToBucket(p.file, requestId, user.id);
+              const row = await insertAttachmentRow({
+                review_request_id: requestId,
+                message_id: insertedId,
+                attachment_type: classifyFile(p.file),
+                file_url: url,
+                storage_path: path,
+                file_name: p.file.name,
+                file_type: p.file.type,
+                file_size: p.file.size,
+                uploaded_by: user.id,
+              });
+              newAtts.push(row);
+            }
+          } catch (e: any) {
+            toast.error(`Tải đính kèm thất bại`, { description: e?.message });
+          }
+        }
+        if (newAtts.length) {
+          setAttachmentsByMsg((prev) => ({
+            ...prev,
+            [insertedId]: [...(prev[insertedId] || []), ...newAtts],
+          }));
+        }
       }
 
       // Targets: mentioned users + reply recipient (dedup, exclude self)
@@ -400,8 +528,7 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
           .from("review_request_message_viewers" as any)
           .insert(targets.map((uid) => ({ request_id: requestId, user_id: uid })) as any);
 
-        const insertedId = (inserted as any)?.id;
-        const ex = excerpt(msg, 140);
+        const ex = excerpt(msg || "(đính kèm)", 140);
         const notifs = targets.map((uid) => {
           const isReplyTarget = replyTo && uid === replyTo.sender_id;
           const title = isReplyTarget
@@ -423,12 +550,76 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
       setText("");
       setMentionMap({});
       setReplyTo(null);
+      // Revoke preview URLs
+      pending.forEach((p) => p.previewUrl && URL.revokeObjectURL(p.previewUrl));
+      setPending([]);
     } catch (e: any) {
       toast.error(e?.message || "Gửi tin nhắn thất bại");
     } finally {
       setSending(false);
     }
   };
+
+  // Attachment pickers
+  const addFiles = (files: FileList | null, kind: "image" | "file") => {
+    if (!files) return;
+    const arr = Array.from(files);
+    setPending((prev) => {
+      const next = [...prev];
+      for (const f of arr) {
+        if (next.length >= MAX_FILES_PER_MESSAGE) {
+          toast.error(`Tối đa ${MAX_FILES_PER_MESSAGE} đính kèm mỗi tin nhắn`);
+          break;
+        }
+        if (f.size > MAX_FILE_SIZE) {
+          toast.error(`"${f.name}" vượt quá 20MB`);
+          continue;
+        }
+        if (kind === "image" && !f.type.startsWith("image/")) {
+          toast.error(`"${f.name}" không phải là ảnh`);
+          continue;
+        }
+        next.push({
+          tempId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          file: f,
+          previewUrl: f.type.startsWith("image/") ? URL.createObjectURL(f) : undefined,
+        });
+      }
+      return next;
+    });
+  };
+
+  const removePending = (tempId: string) => {
+    setPending((prev) => {
+      const item = prev.find((p) => p.tempId === tempId);
+      if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      return prev.filter((p) => p.tempId !== tempId);
+    });
+  };
+
+  const submitFolder = () => {
+    const url = folderUrlInput.trim();
+    if (!isValidDriveFolderUrl(url)) {
+      toast.error("Link Drive không hợp lệ", { description: "Chỉ chấp nhận link dạng drive.google.com/drive/folders/..." });
+      return;
+    }
+    if (pending.length >= MAX_FILES_PER_MESSAGE) {
+      toast.error(`Tối đa ${MAX_FILES_PER_MESSAGE} đính kèm`);
+      return;
+    }
+    setPending((prev) => [
+      ...prev,
+      {
+        tempId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        folderUrl: url,
+        folderName: folderNameInput.trim() || "Google Drive folder",
+      },
+    ]);
+    setFolderUrlInput("");
+    setFolderNameInput("");
+    setFolderDialogOpen(false);
+  };
+
 
   const startEdit = (m: ChatMessage) => {
     setEditingId(m.id);
@@ -679,14 +870,21 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
                             </div>
                           </div>
                         ) : (
-                          <div className="text-sm text-foreground whitespace-pre-wrap break-words mt-0.5">
-                            <MessageText text={m.message} profilesByName={profilesByName} />
-                            {m.edited_at && (
-                              <span className="ml-1 text-[10px] text-muted-foreground italic">
-                                (đã chỉnh sửa)
-                              </span>
+                          <>
+                            {m.message && (
+                              <div className="text-sm text-foreground whitespace-pre-wrap break-words mt-0.5">
+                                <MessageText text={m.message} profilesByName={profilesByName} />
+                                {m.edited_at && (
+                                  <span className="ml-1 text-[10px] text-muted-foreground italic">
+                                    (đã chỉnh sửa)
+                                  </span>
+                                )}
+                              </div>
                             )}
-                          </div>
+                            {attachmentsByMsg[m.id]?.length ? (
+                              <AttachmentRenderer attachments={attachmentsByMsg[m.id]} compact />
+                            ) : null}
+                          </>
                         )}
                       </div>
                     </div>
@@ -747,6 +945,61 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
                   ))}
                 </div>
               )}
+
+              {/* Pending attachment chips */}
+              {pending.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {pending.map((p) => (
+                    <div
+                      key={p.tempId}
+                      className="relative flex items-center gap-1.5 bg-muted border rounded-md pl-1 pr-6 py-1 max-w-[200px]"
+                    >
+                      {p.previewUrl ? (
+                        <img src={p.previewUrl} alt="" className="w-8 h-8 rounded object-cover" />
+                      ) : p.folderUrl ? (
+                        <FolderOpen className="w-4 h-4 text-accent shrink-0 ml-1" />
+                      ) : (
+                        <FileIcon className="w-4 h-4 text-accent shrink-0 ml-1" />
+                      )}
+                      <span className="text-xs truncate">
+                        {p.folderName || p.file?.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removePending(p.tempId)}
+                        className="absolute right-0.5 top-0.5 w-5 h-5 rounded hover:bg-muted-foreground/20 flex items-center justify-center"
+                        aria-label="Bỏ"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Hidden file inputs */}
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  addFiles(e.target.files, "image");
+                  if (imageInputRef.current) imageInputRef.current.value = "";
+                }}
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  addFiles(e.target.files, "file");
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+              />
+
               <div className="flex gap-2 items-end">
                 <Textarea
                   ref={taRef}
@@ -767,19 +1020,56 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
                   }}
                   disabled={sending}
                 />
-                <Button
-                  onClick={handleSend}
-                  disabled={sending || !text.trim()}
-                  size="sm"
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                >
-                  {sending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
-                  <span className="ml-1 hidden sm:inline">Gửi</span>
-                </Button>
+                <div className="flex flex-col gap-1">
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={sending}
+                      title="Đính kèm ảnh"
+                    >
+                      <ImagePlus className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={sending}
+                      title="Đính kèm file"
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => setFolderDialogOpen(true)}
+                      disabled={sending}
+                      title="Đính kèm link folder Drive"
+                    >
+                      <FolderPlus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <Button
+                    onClick={handleSend}
+                    disabled={sending || (!text.trim() && pending.length === 0)}
+                    size="sm"
+                    className="bg-accent hover:bg-accent/90 text-accent-foreground h-8"
+                  >
+                    {sending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    <span className="ml-1 hidden sm:inline">Gửi</span>
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -810,6 +1100,30 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Đính kèm link folder Google Drive</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Input
+              placeholder="https://drive.google.com/drive/folders/..."
+              value={folderUrlInput}
+              onChange={(e) => setFolderUrlInput(e.target.value)}
+            />
+            <Input
+              placeholder="Tên hiển thị (tuỳ chọn)"
+              value={folderNameInput}
+              onChange={(e) => setFolderNameInput(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setFolderDialogOpen(false)}>Hủy</Button>
+            <Button onClick={submitFolder}>Thêm</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Collapsible>
   );
 }
