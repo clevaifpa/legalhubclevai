@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
-import { createWorkflowNotifications } from "@/lib/notifications";
+import { createWorkflowNotifications, notifyReviewRequestEdited } from "@/lib/notifications";
 import { FolderOpen, Loader2, Sparkles, FileText, MessageCircle, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
