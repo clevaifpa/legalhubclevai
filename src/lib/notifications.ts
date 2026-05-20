@@ -199,6 +199,7 @@ export async function notifyAdminsOnContractUpload(
     `• Tên hợp đồng: ${contractTitle}`,
     `• Người upload: ${actorName}`,
     `• Phòng ban: ${department || "—"}`,
+    `• Thời gian: ${timeStr}`,
   ];
   if (contractId) content.push(`\n<!--CONTRACT_ID:${contractId}-->`);
   if (categoryId) content.push(`\n<!--CATEGORY_ID:${categoryId}-->`);
