@@ -1724,14 +1724,14 @@ const AdminReviewRequests = () => {
                     )}
                   </div>
 
-                  {(isAdmin || (user?.id === req.requester_id && ["cho_xu_ly", "cho_quan_ly", "cho_quan_ly_chung", "cho_phap_che", "dang_review"].includes(req.status))) && (
+                  {(isAdmin || canDeleteRequest(req) || user?.id === req.requester_id) && (
                     <div onClick={(e) => e.stopPropagation()}>
                       <Separator />
                       <div className="flex justify-end gap-2 pt-2">
                         <Button variant="outline" size="sm" className="text-xs" onClick={() => handleEdit(req)}>
                           Chỉnh sửa
                         </Button>
-                        {user?.id === req.requester_id && (
+                        {canDeleteRequest(req) && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10">
