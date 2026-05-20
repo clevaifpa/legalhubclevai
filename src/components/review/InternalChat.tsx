@@ -463,7 +463,7 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
         .single();
 
       if (error) throw error;
-      const insertedMsg = inserted as ChatMessage | null;
+      const insertedMsg = inserted as unknown as ChatMessage | null;
       const insertedId = insertedMsg?.id;
 
       if (insertedMsg) {
