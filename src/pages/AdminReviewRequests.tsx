@@ -868,6 +868,7 @@ const AdminReviewRequests = () => {
 
   const handleReject = async () => {
     if (!selectedReq || !user) return;
+    if (!ensureCanAct(selectedReq)) return;
     setSaving(true);
 
     const currentStatus = selectedReq.status;
