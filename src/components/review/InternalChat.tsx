@@ -1100,6 +1100,30 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Đính kèm link folder Google Drive</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Input
+              placeholder="https://drive.google.com/drive/folders/..."
+              value={folderUrlInput}
+              onChange={(e) => setFolderUrlInput(e.target.value)}
+            />
+            <Input
+              placeholder="Tên hiển thị (tuỳ chọn)"
+              value={folderNameInput}
+              onChange={(e) => setFolderNameInput(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setFolderDialogOpen(false)}>Hủy</Button>
+            <Button onClick={submitFolder}>Thêm</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Collapsible>
   );
 }
