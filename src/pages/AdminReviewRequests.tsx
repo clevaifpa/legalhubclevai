@@ -1738,7 +1738,7 @@ const AdminReviewRequests = () => {
                     )}
                   </div>
 
-                  {(isAdmin || canDeleteRequest(req) || user?.id === req.requester_id) && (
+                  {(isAdmin || canDeleteRequest(req)) && (
                     <div onClick={(e) => e.stopPropagation()}>
                       <Separator />
                       <div className="flex justify-end gap-2 pt-2">
