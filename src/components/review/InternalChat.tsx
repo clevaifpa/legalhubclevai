@@ -440,7 +440,8 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
 
   const handleSend = async () => {
     const msg = text.trim();
-    if (!msg || !user) return;
+    if (!user) return;
+    if (!msg && pending.length === 0) return;
     setSending(true);
     try {
       const mentionedIds = extractMentionedIds(msg);
@@ -454,7 +455,7 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
           sender_name: senderName,
           sender_role: role || null,
           sender_department: profile?.department || null,
-          message: msg,
+          message: msg || "",
           mentioned_user_ids: mentionedIds,
           reply_to_message_id: replyTo?.id || null,
         } as any)
@@ -462,11 +463,58 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
         .single();
 
       if (error) throw error;
+      const insertedMsg = inserted as ChatMessage | null;
+      const insertedId = insertedMsg?.id;
 
-      if (inserted) {
+      if (insertedMsg) {
         setMessages((prev) =>
-          prev.some((x) => x.id === (inserted as any).id) ? prev : [...prev, inserted as any]
+          prev.some((x) => x.id === insertedMsg.id) ? prev : [...prev, insertedMsg]
         );
+      }
+
+      // Upload + insert attachments for this message
+      if (insertedId && pending.length > 0) {
+        const newAtts: Attachment[] = [];
+        for (const p of pending) {
+          try {
+            if (p.folderUrl) {
+              const row = await insertAttachmentRow({
+                review_request_id: requestId,
+                message_id: insertedId,
+                attachment_type: "folder",
+                file_url: p.folderUrl,
+                storage_path: null,
+                file_name: p.folderName || "Google Drive folder",
+                file_type: "folder",
+                file_size: null,
+                uploaded_by: user.id,
+              });
+              newAtts.push(row);
+            } else if (p.file) {
+              const { path, url } = await uploadFileToBucket(p.file, requestId, user.id);
+              const row = await insertAttachmentRow({
+                review_request_id: requestId,
+                message_id: insertedId,
+                attachment_type: classifyFile(p.file),
+                file_url: url,
+                storage_path: path,
+                file_name: p.file.name,
+                file_type: p.file.type,
+                file_size: p.file.size,
+                uploaded_by: user.id,
+              });
+              newAtts.push(row);
+            }
+          } catch (e: any) {
+            toast.error(`Tải đính kèm thất bại`, { description: e?.message });
+          }
+        }
+        if (newAtts.length) {
+          setAttachmentsByMsg((prev) => ({
+            ...prev,
+            [insertedId]: [...(prev[insertedId] || []), ...newAtts],
+          }));
+        }
       }
 
       // Targets: mentioned users + reply recipient (dedup, exclude self)
@@ -480,8 +528,7 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
           .from("review_request_message_viewers" as any)
           .insert(targets.map((uid) => ({ request_id: requestId, user_id: uid })) as any);
 
-        const insertedId = (inserted as any)?.id;
-        const ex = excerpt(msg, 140);
+        const ex = excerpt(msg || "(đính kèm)", 140);
         const notifs = targets.map((uid) => {
           const isReplyTarget = replyTo && uid === replyTo.sender_id;
           const title = isReplyTarget
@@ -503,12 +550,76 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
       setText("");
       setMentionMap({});
       setReplyTo(null);
+      // Revoke preview URLs
+      pending.forEach((p) => p.previewUrl && URL.revokeObjectURL(p.previewUrl));
+      setPending([]);
     } catch (e: any) {
       toast.error(e?.message || "Gửi tin nhắn thất bại");
     } finally {
       setSending(false);
     }
   };
+
+  // Attachment pickers
+  const addFiles = (files: FileList | null, kind: "image" | "file") => {
+    if (!files) return;
+    const arr = Array.from(files);
+    setPending((prev) => {
+      const next = [...prev];
+      for (const f of arr) {
+        if (next.length >= MAX_FILES_PER_MESSAGE) {
+          toast.error(`Tối đa ${MAX_FILES_PER_MESSAGE} đính kèm mỗi tin nhắn`);
+          break;
+        }
+        if (f.size > MAX_FILE_SIZE) {
+          toast.error(`"${f.name}" vượt quá 20MB`);
+          continue;
+        }
+        if (kind === "image" && !f.type.startsWith("image/")) {
+          toast.error(`"${f.name}" không phải là ảnh`);
+          continue;
+        }
+        next.push({
+          tempId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          file: f,
+          previewUrl: f.type.startsWith("image/") ? URL.createObjectURL(f) : undefined,
+        });
+      }
+      return next;
+    });
+  };
+
+  const removePending = (tempId: string) => {
+    setPending((prev) => {
+      const item = prev.find((p) => p.tempId === tempId);
+      if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      return prev.filter((p) => p.tempId !== tempId);
+    });
+  };
+
+  const submitFolder = () => {
+    const url = folderUrlInput.trim();
+    if (!isValidDriveFolderUrl(url)) {
+      toast.error("Link Drive không hợp lệ", { description: "Chỉ chấp nhận link dạng drive.google.com/drive/folders/..." });
+      return;
+    }
+    if (pending.length >= MAX_FILES_PER_MESSAGE) {
+      toast.error(`Tối đa ${MAX_FILES_PER_MESSAGE} đính kèm`);
+      return;
+    }
+    setPending((prev) => [
+      ...prev,
+      {
+        tempId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        folderUrl: url,
+        folderName: folderNameInput.trim() || "Google Drive folder",
+      },
+    ]);
+    setFolderUrlInput("");
+    setFolderNameInput("");
+    setFolderDialogOpen(false);
+  };
+
 
   const startEdit = (m: ChatMessage) => {
     setEditingId(m.id);
