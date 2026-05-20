@@ -63,6 +63,7 @@ export async function createWorkflowNotifications(params: NotifyParams) {
       `• Tên hợp đồng: ${contractTitle}`,
       `• Người yêu cầu: ${actorName}`,
       `• Phòng ban: ${dept}`,
+      `• Thời gian: ${timeStr}`,
       `• Trạng thái: ${STATUS_LABELS[newStatus] || newStatus}`,
       `\n<!--REQUEST_ID:${reviewRequestId}-->`
     ].join("\n");
@@ -73,6 +74,7 @@ export async function createWorkflowNotifications(params: NotifyParams) {
       `• Trạng thái: ${STATUS_LABELS[oldStatus] || oldStatus} → ${STATUS_LABELS[newStatus] || newStatus}`,
       `• Người thực hiện: ${actorName}`,
       `• Phòng ban: ${dept}`,
+      `• Thời gian: ${timeStr}`,
       `\n<!--REQUEST_ID:${reviewRequestId}-->`
     ].join("\n");
   }
