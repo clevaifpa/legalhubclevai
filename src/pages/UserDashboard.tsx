@@ -624,10 +624,6 @@ const UserDashboard = () => {
   };
 
   const handleDelete = async (reqId: string) => {
-    // Workaround: To bypass the strict validation in the SQL RPC `delete_review_request`
-    // protecting states other than cho_xu_ly and cho_quan_ly without needing SQL execution.
-    await supabase.from("review_requests").update({ status: "cho_xu_ly" as any }).eq("id", reqId);
-
     const { error } = await (supabase.rpc as any)("delete_review_request", { _req_id: reqId });
     if (error) {
       toast.error("Lỗi xóa", { description: error.message });
@@ -635,6 +631,20 @@ const UserDashboard = () => {
       toast.success("Đã xóa yêu cầu");
       fetchRequests();
     }
+  };
+
+  // First-step status based on requester's role workflow
+  const firstStepForRole = (r: string | null | undefined): string => {
+    if (r === 'manager') return 'cho_quan_ly_chung';
+    if (r === 'manager_chung') return 'cho_phap_che';
+    if (r === 'admin' || r === 'accountant' || r === 'finance') return 'cho_quan_ly_chung';
+    return 'cho_quan_ly'; // user
+  };
+  const canDeleteRequest = (req: any): boolean => {
+    if (!req) return false;
+    if (role === 'admin') return true; // Pháp chế/admin có quyền rộng hơn
+    if (user?.id !== req.requester_id) return false;
+    return req.status === firstStepForRole(role);
   };
 
   if (loading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Đang tải dữ liệu...</div>;
@@ -1214,7 +1224,7 @@ const UserDashboard = () => {
                   </div>
                 )}
 
-                {["cho_xu_ly", "cho_quan_ly", "cho_quan_ly_chung", "cho_phap_che", "dang_review"].includes(req.status) && (
+                {canDeleteRequest(req) && (
                   <>
                     <Separator />
                     <div className="flex justify-end gap-2">
@@ -1427,7 +1437,7 @@ const UserDashboard = () => {
                     </div>
                   )}
 
-                  {["cho_xu_ly", "cho_quan_ly", "cho_quan_ly_chung", "cho_phap_che", "dang_review"].includes(req.status) && (
+                  {canDeleteRequest(req) && (
                     <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
                       <Button variant="outline" size="sm" className="text-xs" onClick={() => {
                         handleEdit(req);
