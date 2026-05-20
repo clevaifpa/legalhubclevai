@@ -350,3 +350,77 @@ export async function notifyReviewerAssigned(
     status: "sent",
   }] as any);
 }
+
+/**
+ * Notify relevant people when a review request has been edited
+ * (without status change).
+ */
+export async function notifyReviewRequestEdited(params: {
+  reviewRequestId: string;
+  contractTitle: string;
+  actorName: string;
+  requesterId: string;
+  department?: string;
+}) {
+  const { reviewRequestId, contractTitle, actorName, requesterId, department } = params;
+
+  const { data: request } = await supabase
+    .from("review_requests")
+    .select("status, manager_id, global_manager_id, legal_reviewer_id, accountant_reviewer_id, finance_reviewer_id, department")
+    .eq("id", reviewRequestId)
+    .single();
+
+  const status = (request?.status as string) || "";
+  const dept = department || (request as any)?.department || "—";
+  const statusLabel = STATUS_LABELS[status] || status || "—";
+
+  const title = "Yêu cầu review đã được chỉnh sửa";
+  const content = [
+    `• Tên hợp đồng: ${contractTitle}`,
+    `• Người chỉnh sửa: ${actorName}`,
+    `• Phòng ban: ${dept}`,
+    `• Trạng thái hiện tại: ${statusLabel}`,
+    `• Nội dung yêu cầu vừa được cập nhật. Vui lòng kiểm tra lại trước khi duyệt.`,
+    `\n<!--REQUEST_ID:${reviewRequestId}-->`,
+  ].join("\n");
+
+  const recipientIds = new Set<string>();
+  if (requesterId) recipientIds.add(requesterId);
+
+  if (request) {
+    if (status === "cho_quan_ly" && request.manager_id) recipientIds.add(request.manager_id);
+    else if (status === "cho_quan_ly_chung" && request.global_manager_id) recipientIds.add(request.global_manager_id);
+    else if (status === "cho_phap_che" && request.legal_reviewer_id) recipientIds.add(request.legal_reviewer_id);
+    else if (status === "cho_ke_toan" && request.accountant_reviewer_id) recipientIds.add(request.accountant_reviewer_id);
+    else if (status === "cho_tai_chinh" && request.finance_reviewer_id) recipientIds.add(request.finance_reviewer_id);
+  }
+
+  // Admin/pháp chế theo dõi toàn bộ
+  const { data: adminLegal } = await (supabase.rpc as any)("get_users_by_roles", { _roles: ["admin"] });
+  if (adminLegal) (adminLegal as any[]).forEach((u: any) => recipientIds.add(u.user_id));
+  if (request?.legal_reviewer_id) recipientIds.add(request.legal_reviewer_id);
+
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  if (currentUser) recipientIds.delete(currentUser.id);
+
+  if (recipientIds.size === 0) return;
+
+  const notifications = Array.from(recipientIds).map((userId) => ({
+    user_id: userId,
+    title,
+    content,
+    review_request_id: reviewRequestId,
+    is_read: false,
+  }));
+  await supabase.from("notifications").insert(notifications as any);
+
+  const logs = Array.from(recipientIds).map((userId) => ({
+    notification_type: "in_app",
+    review_request_id: reviewRequestId,
+    recipient_user_id: userId,
+    title,
+    content,
+    status: "sent",
+  }));
+  await supabase.from("notification_logs").insert(logs as any);
+}
