@@ -538,10 +538,13 @@ export type Database = {
       review_request_messages: {
         Row: {
           created_at: string
+          deleted_at: string | null
+          edited_at: string | null
           id: string
           is_deleted: boolean
           mentioned_user_ids: string[]
           message: string
+          reply_to_message_id: string | null
           request_id: string
           sender_department: string | null
           sender_id: string
@@ -551,10 +554,13 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
           id?: string
           is_deleted?: boolean
           mentioned_user_ids?: string[]
           message: string
+          reply_to_message_id?: string | null
           request_id: string
           sender_department?: string | null
           sender_id: string
@@ -564,10 +570,13 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
           id?: string
           is_deleted?: boolean
           mentioned_user_ids?: string[]
           message?: string
+          reply_to_message_id?: string | null
           request_id?: string
           sender_department?: string | null
           sender_id?: string

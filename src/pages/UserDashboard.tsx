@@ -3,7 +3,8 @@ import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { createWorkflowNotifications } from "@/lib/notifications";
-import { FolderOpen, Loader2, Sparkles } from "lucide-react";
+import { FolderOpen, Loader2, Sparkles, FileText, MessageCircle, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1087,11 +1088,26 @@ const UserDashboard = () => {
                   </div>
                 </div>
 
-                {/* Mô tả chi tiết */}
-                <div className="p-3 rounded-lg bg-muted/20 border space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">Mô tả chi tiết</p>
-                  <p className="text-sm whitespace-pre-wrap">{req.description || "Không có mô tả"}</p>
-                </div>
+                {/* Mô tả chi tiết - collapsible */}
+                <Collapsible>
+                  <div className="rounded-lg border bg-card">
+                    <CollapsibleTrigger asChild>
+                      <button type="button" onClick={(e) => e.stopPropagation()} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/40 rounded-lg transition-colors group">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-accent" />
+                          <span className="text-sm font-medium">Mô tả chi tiết</span>
+                        </div>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="px-3 pb-3 pt-1 text-sm whitespace-pre-wrap" onClick={(e) => e.stopPropagation()}>
+                        {req.description || <span className="text-muted-foreground italic">Không có mô tả</span>}
+                      </div>
+                    </CollapsibleContent>
+                  </div>
+                </Collapsible>
+
 
                 {/* Payment Schedule */}
                 {paymentSchedules[req.id] && paymentSchedules[req.id].length > 0 && (
@@ -1131,7 +1147,7 @@ const UserDashboard = () => {
                   </div>
                 )}
 
-                {/* Nhận xét các bước duyệt - filtered by role */}
+                {/* Nhận xét các bước duyệt - filtered by role, collapsible */}
                 {(() => {
                   const deptReviews = extractDeptReviews(notes[req.id] || []);
                   const visibleNotes = getVisibleDeptNotes(
@@ -1141,31 +1157,44 @@ const UserDashboard = () => {
                     !!req.admin_notes?.includes("Quản lý chung duyệt")
                   );
                   return visibleNotes.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">Nhận xét các bước duyệt</p>
-                      <div className="space-y-1.5">
-                        {visibleNotes.map(({ dept, review, label }) => (
-                          <div key={dept} className="p-2.5 rounded-lg bg-muted/30 border text-sm">
-                            <div className="flex items-center justify-between mb-0.5">
-                              <span className="font-medium text-xs">{label}</span>
-                              <div className="flex items-center gap-2">
-                                {review.reviewerName && <span className="text-xs text-muted-foreground">{review.reviewerName}</span>}
-                                {review.reviewedAt && <span className="text-xs text-muted-foreground">{formatDate(review.reviewedAt)}</span>}
-                              </div>
+                    <Collapsible>
+                      <div className="rounded-lg border bg-card">
+                        <CollapsibleTrigger asChild>
+                          <button type="button" onClick={(e) => e.stopPropagation()} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/40 rounded-lg transition-colors group">
+                            <div className="flex items-center gap-2">
+                              <MessageCircle className="w-4 h-4 text-accent" />
+                              <span className="text-sm font-medium">Nhận xét các bước duyệt ({visibleNotes.length})</span>
                             </div>
-                            <p className="text-muted-foreground italic text-xs">"{review.notes}"</p>
+                            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                          </button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="px-3 pb-3 pt-1 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                            {visibleNotes.map(({ dept, review, label }) => (
+                              <div key={dept} className="p-2.5 rounded-lg bg-muted/30 border text-sm">
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="font-medium text-xs">{label}</span>
+                                  <div className="flex items-center gap-2">
+                                    {review.reviewerName && <span className="text-xs text-muted-foreground">{review.reviewerName}</span>}
+                                    {review.reviewedAt && <span className="text-xs text-muted-foreground">{formatDate(review.reviewedAt)}</span>}
+                                  </div>
+                                </div>
+                                <p className="text-muted-foreground italic text-xs">"{review.notes}"</p>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        </CollapsibleContent>
                       </div>
-                    </div>
+                    </Collapsible>
                   ) : null;
                 })()}
 
                 <InternalChat
                   requestId={req.id}
                   contractTitle={req.contract_title}
-                  shouldScrollOnMount={routeReqId === req.id && typeof window !== "undefined" && window.location.hash.includes("internal-chat")}
+                  shouldScrollOnMount={routeReqId === req.id && typeof window !== "undefined" && (window.location.hash.includes("internal-chat") || window.location.hash.includes("msg-"))}
                 />
+
 
                 {notes[req.id] && notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length > 0 && (
                   <div className="space-y-2">
@@ -1277,10 +1306,26 @@ const UserDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-lg bg-muted/20 border space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground">Mô tả chi tiết</p>
-                    <p className="text-sm whitespace-pre-wrap">{req.description || "Không có mô tả"}</p>
-                  </div>
+                  {/* Mô tả chi tiết - collapsible */}
+                  <Collapsible>
+                    <div className="rounded-lg border bg-card">
+                      <CollapsibleTrigger asChild>
+                        <button type="button" onClick={(e) => e.stopPropagation()} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/40 rounded-lg transition-colors group">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-accent" />
+                            <span className="text-sm font-medium">Mô tả chi tiết</span>
+                          </div>
+                          <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="px-3 pb-3 pt-1 text-sm whitespace-pre-wrap" onClick={(e) => e.stopPropagation()}>
+                          {req.description || <span className="text-muted-foreground italic">Không có mô tả</span>}
+                        </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+
 
                   {paymentSchedules[req.id] && paymentSchedules[req.id].length > 0 && (
                     <div className="p-3 rounded-lg bg-muted/30 space-y-2">
@@ -1316,7 +1361,7 @@ const UserDashboard = () => {
                     </div>
                   )}
 
-                  {/* Nhận xét các bước duyệt - filtered by role */}
+                  {/* Nhận xét các bước duyệt - filtered by role, collapsible */}
                   {(() => {
                     const visibleNotes = getVisibleDeptNotes(
                       deptReviews,
@@ -1325,31 +1370,44 @@ const UserDashboard = () => {
                       !!req.admin_notes?.includes("Quản lý chung duyệt")
                     );
                     return visibleNotes.length > 0 ? (
-                      <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Nhận xét các bước duyệt</p>
-                        <div className="space-y-1.5">
-                          {visibleNotes.map(({ dept, review, label }) => (
-                            <div key={dept} className="p-2.5 rounded-lg bg-muted/30 border text-sm">
-                              <div className="flex items-center justify-between mb-0.5">
-                                <span className="font-medium text-xs">{label}</span>
-                                <div className="flex items-center gap-2">
-                                  {review.reviewerName && <span className="text-xs text-muted-foreground">{review.reviewerName}</span>}
-                                  {review.reviewedAt && <span className="text-xs text-muted-foreground">{formatDate(review.reviewedAt)}</span>}
-                                </div>
+                      <Collapsible>
+                        <div className="rounded-lg border bg-card">
+                          <CollapsibleTrigger asChild>
+                            <button type="button" onClick={(e) => e.stopPropagation()} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/40 rounded-lg transition-colors group">
+                              <div className="flex items-center gap-2">
+                                <MessageCircle className="w-4 h-4 text-accent" />
+                                <span className="text-sm font-medium">Nhận xét các bước duyệt ({visibleNotes.length})</span>
                               </div>
-                              <p className="text-muted-foreground italic text-xs">"{review.notes}"</p>
+                              <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                            </button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="px-3 pb-3 pt-1 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                              {visibleNotes.map(({ dept, review, label }) => (
+                                <div key={dept} className="p-2.5 rounded-lg bg-muted/30 border text-sm">
+                                  <div className="flex items-center justify-between mb-0.5">
+                                    <span className="font-medium text-xs">{label}</span>
+                                    <div className="flex items-center gap-2">
+                                      {review.reviewerName && <span className="text-xs text-muted-foreground">{review.reviewerName}</span>}
+                                      {review.reviewedAt && <span className="text-xs text-muted-foreground">{formatDate(review.reviewedAt)}</span>}
+                                    </div>
+                                  </div>
+                                  <p className="text-muted-foreground italic text-xs">"{review.notes}"</p>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          </CollapsibleContent>
                         </div>
-                      </div>
+                      </Collapsible>
                     ) : null;
                   })()}
 
                   <InternalChat
                     requestId={req.id}
                     contractTitle={req.contract_title}
-                    shouldScrollOnMount={routeReqId === req.id && typeof window !== "undefined" && window.location.hash.includes("internal-chat")}
+                    shouldScrollOnMount={routeReqId === req.id && typeof window !== "undefined" && (window.location.hash.includes("internal-chat") || window.location.hash.includes("msg-"))}
                   />
+
 
                   {notes[req.id] && notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length > 0 && (
                     <div className="space-y-2 mt-4">
