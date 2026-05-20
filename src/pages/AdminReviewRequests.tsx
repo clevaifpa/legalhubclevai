@@ -147,6 +147,11 @@ const AdminReviewRequests = () => {
 
   const [managers, setManagers] = useState<any[]>([]);
   const [reviewers, setReviewers] = useState<any[]>([]);
+  // Group reviewers by role (declared early so handlers like handleEdit can safely use them)
+  const globalManagers = reviewers.filter(r => r.role === 'manager_chung');
+  const legalReviewers = reviewers.filter(r => r.role === 'admin');
+  const accountantReviewers = reviewers.filter(r => r.role === 'accountant');
+  const financeReviewers = reviewers.filter(r => r.role === 'finance');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -997,11 +1002,6 @@ const AdminReviewRequests = () => {
     return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Đang tải...</p></div>;
   }
 
-  // Group reviewers by role for the UI
-  const globalManagers = reviewers.filter(r => r.role === 'manager_chung');
-  const legalReviewers = reviewers.filter(r => r.role === 'admin');
-  const accountantReviewers = reviewers.filter(r => r.role === 'accountant');
-  const financeReviewers = reviewers.filter(r => r.role === 'finance');
 
   const hasAllReviewerRoles = globalManagers.length > 0 && legalReviewers.length > 0 && accountantReviewers.length > 0 && financeReviewers.length > 0;
 
