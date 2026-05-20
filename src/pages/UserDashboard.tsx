@@ -1361,7 +1361,7 @@ const UserDashboard = () => {
                     </div>
                   )}
 
-                  {/* Nhận xét các bước duyệt - filtered by role */}
+                  {/* Nhận xét các bước duyệt - filtered by role, collapsible */}
                   {(() => {
                     const visibleNotes = getVisibleDeptNotes(
                       deptReviews,
@@ -1370,31 +1370,44 @@ const UserDashboard = () => {
                       !!req.admin_notes?.includes("Quản lý chung duyệt")
                     );
                     return visibleNotes.length > 0 ? (
-                      <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Nhận xét các bước duyệt</p>
-                        <div className="space-y-1.5">
-                          {visibleNotes.map(({ dept, review, label }) => (
-                            <div key={dept} className="p-2.5 rounded-lg bg-muted/30 border text-sm">
-                              <div className="flex items-center justify-between mb-0.5">
-                                <span className="font-medium text-xs">{label}</span>
-                                <div className="flex items-center gap-2">
-                                  {review.reviewerName && <span className="text-xs text-muted-foreground">{review.reviewerName}</span>}
-                                  {review.reviewedAt && <span className="text-xs text-muted-foreground">{formatDate(review.reviewedAt)}</span>}
-                                </div>
+                      <Collapsible>
+                        <div className="rounded-lg border bg-card">
+                          <CollapsibleTrigger asChild>
+                            <button type="button" onClick={(e) => e.stopPropagation()} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/40 rounded-lg transition-colors group">
+                              <div className="flex items-center gap-2">
+                                <MessageCircle className="w-4 h-4 text-accent" />
+                                <span className="text-sm font-medium">Nhận xét các bước duyệt ({visibleNotes.length})</span>
                               </div>
-                              <p className="text-muted-foreground italic text-xs">"{review.notes}"</p>
+                              <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                            </button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="px-3 pb-3 pt-1 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                              {visibleNotes.map(({ dept, review, label }) => (
+                                <div key={dept} className="p-2.5 rounded-lg bg-muted/30 border text-sm">
+                                  <div className="flex items-center justify-between mb-0.5">
+                                    <span className="font-medium text-xs">{label}</span>
+                                    <div className="flex items-center gap-2">
+                                      {review.reviewerName && <span className="text-xs text-muted-foreground">{review.reviewerName}</span>}
+                                      {review.reviewedAt && <span className="text-xs text-muted-foreground">{formatDate(review.reviewedAt)}</span>}
+                                    </div>
+                                  </div>
+                                  <p className="text-muted-foreground italic text-xs">"{review.notes}"</p>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          </CollapsibleContent>
                         </div>
-                      </div>
+                      </Collapsible>
                     ) : null;
                   })()}
 
                   <InternalChat
                     requestId={req.id}
                     contractTitle={req.contract_title}
-                    shouldScrollOnMount={routeReqId === req.id && typeof window !== "undefined" && window.location.hash.includes("internal-chat")}
+                    shouldScrollOnMount={routeReqId === req.id && typeof window !== "undefined" && (window.location.hash.includes("internal-chat") || window.location.hash.includes("msg-"))}
                   />
+
 
                   {notes[req.id] && notes[req.id].filter((n: any) => !decodeDeptReview(n.content)).length > 0 && (
                     <div className="space-y-2 mt-4">
