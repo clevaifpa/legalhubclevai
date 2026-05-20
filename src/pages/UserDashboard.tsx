@@ -1306,10 +1306,26 @@ const UserDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-lg bg-muted/20 border space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground">Mô tả chi tiết</p>
-                    <p className="text-sm whitespace-pre-wrap">{req.description || "Không có mô tả"}</p>
-                  </div>
+                  {/* Mô tả chi tiết - collapsible */}
+                  <Collapsible>
+                    <div className="rounded-lg border bg-card">
+                      <CollapsibleTrigger asChild>
+                        <button type="button" onClick={(e) => e.stopPropagation()} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/40 rounded-lg transition-colors group">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-accent" />
+                            <span className="text-sm font-medium">Mô tả chi tiết</span>
+                          </div>
+                          <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="px-3 pb-3 pt-1 text-sm whitespace-pre-wrap" onClick={(e) => e.stopPropagation()}>
+                          {req.description || <span className="text-muted-foreground italic">Không có mô tả</span>}
+                        </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+
 
                   {paymentSchedules[req.id] && paymentSchedules[req.id].length > 0 && (
                     <div className="p-3 rounded-lg bg-muted/30 space-y-2">
