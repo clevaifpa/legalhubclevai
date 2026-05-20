@@ -936,10 +936,6 @@ const AdminReviewRequests = () => {
   };
 
   const handleDelete = async (reqId: string) => {
-    // Workaround: To bypass the strict validation in the SQL RPC `delete_review_request`
-    // protecting states other than cho_xu_ly and cho_quan_ly without needing SQL execution.
-    await supabase.from("review_requests").update({ status: "cho_xu_ly" as any }).eq("id", reqId);
-
     const { error } = await (supabase.rpc as any)("delete_review_request", { _req_id: reqId });
     if (error) {
       toast.error("Lỗi xóa", { description: error.message });
@@ -947,6 +943,19 @@ const AdminReviewRequests = () => {
       toast.success("Đã xóa yêu cầu");
       fetchRequests();
     }
+  };
+
+  const firstStepForRole = (r: string | null | undefined): string => {
+    if (r === 'manager') return 'cho_quan_ly_chung';
+    if (r === 'manager_chung') return 'cho_phap_che';
+    if (r === 'admin' || r === 'accountant' || r === 'finance') return 'cho_quan_ly_chung';
+    return 'cho_quan_ly';
+  };
+  const canDeleteRequest = (req: any): boolean => {
+    if (!req) return false;
+    if (isAdmin) return true;
+    if (user?.id !== req.requester_id) return false;
+    return req.status === firstStepForRole(role);
   };
 
   // Can this user act on this request?
