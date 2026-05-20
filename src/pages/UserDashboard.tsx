@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
-import { createWorkflowNotifications } from "@/lib/notifications";
+import { createWorkflowNotifications, notifyReviewRequestEdited } from "@/lib/notifications";
 import { FolderOpen, Loader2, Sparkles, FileText, MessageCircle, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -565,6 +565,15 @@ const UserDashboard = () => {
     }
 
     setSubmitting(false);
+    if (editingReqId && finalReqId) {
+      notifyReviewRequestEdited({
+        reviewRequestId: finalReqId,
+        contractTitle: form.contract_title,
+        actorName: profile?.full_name || "Người dùng",
+        requesterId: user?.id || "",
+        department: form.department || profile?.department || "",
+      }).catch(console.error);
+    }
     toast.success(editingReqId ? "Cập nhật thành công!" : (isDirectSubmit ? "Yêu cầu đã tạo!" : "Yêu cầu review đã được tạo!"));
     handleResetForm();
     fetchRequests();

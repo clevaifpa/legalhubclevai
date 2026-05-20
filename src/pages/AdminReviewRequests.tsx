@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
-import { createWorkflowNotifications, notifyReviewerAssigned } from "@/lib/notifications";
+import { createWorkflowNotifications, notifyReviewerAssigned, notifyReviewRequestEdited } from "@/lib/notifications";
 import { FolderOpen, Loader2, Sparkles, FileText, MessageCircle, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -692,6 +692,20 @@ const AdminReviewRequests = () => {
     // Notification already sent in the create/update block above
 
     setSubmitting(false);
+    if (editingReqId && finalReqId) {
+      const { data: editedReq } = await supabase
+        .from("review_requests")
+        .select("requester_id, department")
+        .eq("id", finalReqId)
+        .single();
+      notifyReviewRequestEdited({
+        reviewRequestId: finalReqId,
+        contractTitle: form.contract_title,
+        actorName: profile?.full_name || employeeName || "Người dùng",
+        requesterId: (editedReq as any)?.requester_id || user.id,
+        department: form.department || (editedReq as any)?.department || profile?.department || "",
+      }).catch(console.error);
+    }
     toast.success(editingReqId ? "Cập nhật thành công!" : (isDirectSubmit
       ? "Yêu cầu đã tạo, chuyển cho Quản lý chung duyệt!"
       : "Yêu cầu review đã được tạo!"));
