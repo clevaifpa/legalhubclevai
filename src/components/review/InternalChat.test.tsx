@@ -199,23 +199,22 @@ describe("InternalChat — gửi tin có @mention", () => {
 
 describe("InternalChat — reply tin nhắn", () => {
   it("hiển thị quote tin gốc và tạo notification cho sender ban đầu", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
     seedMessages([
       { id: "msg-orig", sender_id: "user-anh", sender_name: "Anh PV", message: "Gốc đây" },
     ]);
     renderChat();
-    fireEvent.click(await screen.findByRole("button", { name: /Trao đổi nội bộ/i }));
+    await user.click(await screen.findByRole("button", { name: /Trao đổi nội bộ/i }));
     await screen.findByText("Gốc đây");
 
-    // Open action menu for the message
-    fireEvent.click(screen.getByRole("button", { name: /Thao tác/i }));
-    fireEvent.click(await screen.findByText(/Trả lời/i));
+    await user.click(screen.getByRole("button", { name: /Thao tác/i }));
+    await user.click(await screen.findByText(/Trả lời/i));
 
-    // Reply preview shown
     expect(await screen.findByText(/Đang trả lời Anh PV/i)).toBeInTheDocument();
 
     const ta = screen.getByPlaceholderText(/Gõ @/) as HTMLTextAreaElement;
     fireEvent.change(ta, { target: { value: "đã rõ" } });
-    fireEvent.click(screen.getByRole("button", { name: /Gửi/i }));
+    await user.click(screen.getByRole("button", { name: /Gửi/i }));
 
     await waitFor(() => {
       const msgIns = inserts.find((i) => i.table === "review_request_messages");
@@ -230,21 +229,22 @@ describe("InternalChat — reply tin nhắn", () => {
 
 describe("InternalChat — chỉnh sửa tin nhắn của mình", () => {
   it("cập nhật DB và hiển thị (đã chỉnh sửa)", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
     seedMessages([
       { id: "m1", sender_id: "user-self", sender_name: "Linh NT", message: "Nội dung cũ" },
     ]);
     renderChat();
-    fireEvent.click(await screen.findByRole("button", { name: /Trao đổi nội bộ/i }));
+    await user.click(await screen.findByRole("button", { name: /Trao đổi nội bộ/i }));
     await screen.findByText("Nội dung cũ");
 
-    fireEvent.click(screen.getByRole("button", { name: /Thao tác/i }));
-    fireEvent.click(await screen.findByText(/Chỉnh sửa/i));
+    await user.click(screen.getByRole("button", { name: /Thao tác/i }));
+    await user.click(await screen.findByText(/Chỉnh sửa/i));
 
     const editTa = screen.getAllByRole("textbox").find(
       (el) => (el as HTMLTextAreaElement).value === "Nội dung cũ"
     ) as HTMLTextAreaElement;
     fireEvent.change(editTa, { target: { value: "Nội dung mới" } });
-    fireEvent.click(screen.getByRole("button", { name: /Lưu/i }));
+    await user.click(screen.getByRole("button", { name: /Lưu/i }));
 
     await waitFor(() => {
       const upd = updates.find(
@@ -259,19 +259,22 @@ describe("InternalChat — chỉnh sửa tin nhắn của mình", () => {
 
 describe("InternalChat — xoá mềm", () => {
   it("đánh dấu is_deleted và hiển thị 'Tin nhắn đã bị xóa'", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
     seedMessages([
       { id: "m1", sender_id: "user-self", sender_name: "Linh NT", message: "Sẽ xoá" },
     ]);
     renderChat();
-    fireEvent.click(await screen.findByRole("button", { name: /Trao đổi nội bộ/i }));
+    await user.click(await screen.findByRole("button", { name: /Trao đổi nội bộ/i }));
     await screen.findByText("Sẽ xoá");
 
-    fireEvent.click(screen.getByRole("button", { name: /Thao tác/i }));
-    fireEvent.click(await screen.findByText(/^Xóa$/));
+    await user.click(screen.getByRole("button", { name: /Thao tác/i }));
+    // Menu item "Xóa"
+    const menuDelete = await screen.findByRole("menuitem", { name: /Xóa/i });
+    await user.click(menuDelete);
 
-    // Confirm dialog
+    // AlertDialog confirm button
     const confirm = await screen.findByRole("button", { name: /^Xóa$/ });
-    fireEvent.click(confirm);
+    await user.click(confirm);
 
     await waitFor(() => {
       const upd = updates.find(
