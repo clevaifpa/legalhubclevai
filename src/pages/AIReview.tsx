@@ -622,40 +622,50 @@ const AIReview = () => {
               ) : history.length === 0 ? (
                 <div className="text-sm text-muted-foreground">Chưa có dữ liệu lịch sử.</div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {history.map((item) => {
                     const ItemIcon = RISK_ICONS[item.risk_level] || Shield;
                     const isExpanded = expandedItems[item.id] || false;
+                    const histKey = `hist-${item.id}`;
+                    const histOpen = expandedItems[histKey] || false;
+                    const score = item.risk_level === "cao" ? 85 : item.risk_level === "trung_binh" ? 60 : 25;
+                    const title = item.summary?.slice(0, 80) || "Hợp đồng đã phân tích";
 
                     return (
-                      <div key={item.id} className="border rounded-lg p-4 space-y-4 bg-card">
-                        <div className="flex items-center justify-between gap-3 border-b pb-3">
-                          <div className="flex items-center gap-2">
-                            <History className="h-4 w-4 text-muted-foreground" />
-                            <div className="text-sm font-medium">
-                              {new Date(item.created_at).toLocaleString("vi-VN", {
-                                dateStyle: "medium", timeStyle: "short"
-                              })}
+                      <div key={item.id} className="border rounded-lg bg-card overflow-hidden">
+                        <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
+                          <button
+                            type="button"
+                            onClick={() => toggleExpand(histKey)}
+                            className="flex-1 flex items-center gap-3 text-left min-w-0"
+                          >
+                            <History className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate">{title}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(item.created_at).toLocaleString("vi-VN", { dateStyle: "medium", timeStyle: "short" })}
+                              </p>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge className={RISK_COLORS[item.risk_level] || ""}>
+                            <Badge className={`shrink-0 ${RISK_COLORS[item.risk_level] || ""}`}>
                               <ItemIcon className="h-3 w-3 mr-1" />
                               {RISK_LABELS[item.risk_level] || item.risk_level}
                             </Badge>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                              onClick={() => deleteHistoryItem(item.id)}
-                              title="Xóa bản ghi này"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                            <span className="shrink-0 text-xs font-semibold text-muted-foreground tabular-nums">{score}/100</span>
+                            {histOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+                          </button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
+                            onClick={() => deleteHistoryItem(item.id)}
+                            title="Xóa bản ghi này"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
 
-                        <div className="space-y-4">
+                        {histOpen && (
+                          <div className="px-4 pb-4 pt-3 space-y-4 border-t">
                           <div>
                             <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-foreground">
                               <Brain className="h-4 w-4 text-accent" /> Kết luận chung
@@ -690,11 +700,14 @@ const AIReview = () => {
                               <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-info">
                                 <FileText className="h-4 w-4" /> Điều khoản thiếu ({item.missing_clauses.length})
                               </p>
-                              <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+                              <div className="flex flex-wrap gap-2">
                                 {item.missing_clauses.map((clause, idx) => (
-                                  <li key={idx}>{clause}</li>
+                                  <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-info/10 text-info text-xs font-medium border border-info/20">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    {clause}
+                                  </span>
                                 ))}
-                              </ul>
+                              </div>
                             </div>
                           )}
 
@@ -703,11 +716,14 @@ const AIReview = () => {
                               <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-success">
                                 <Lightbulb className="h-4 w-4" /> Khuyến nghị chung
                               </p>
-                              <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+                              <ol className="space-y-1.5">
                                 {item.recommendations.map((rec, idx) => (
-                                  <li key={idx}>{rec}</li>
+                                  <li key={idx} className="flex items-start gap-2 text-sm">
+                                    <CheckCircle className="h-4 w-4 text-success shrink-0 mt-0.5" />
+                                    <span><span className="text-muted-foreground mr-1">{idx + 1}.</span>{rec}</span>
+                                  </li>
                                 ))}
-                              </ul>
+                              </ol>
                             </div>
                           )}
 
@@ -733,7 +749,8 @@ const AIReview = () => {
                               {item.contract_text}
                             </div>
                           </div>
-                        </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
