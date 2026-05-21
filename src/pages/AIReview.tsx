@@ -24,7 +24,7 @@ interface AIReviewHistoryItem {
   contract_text: string;
   summary: string;
   risk_level: string;
-  issues: { clause: string; riskLevel: string; reason: string; suggestion: string }[];
+  issues: { clause: string; riskLevel: string; reason: string; suggestion: string; revisedClause?: string }[];
   missing_clauses: string[];
   recommendations: string[];
   created_at: string;
