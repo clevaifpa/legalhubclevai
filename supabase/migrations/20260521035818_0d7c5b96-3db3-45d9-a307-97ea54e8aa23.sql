@@ -1,0 +1,1 @@
+ALTER TABLE public.ai_review_history ADD COLUMN IF NOT EXISTS revised_clauses jsonb DEFAULT '[]'::jsonb;

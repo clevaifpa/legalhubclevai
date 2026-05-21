@@ -29,6 +29,7 @@ interface AIReviewHistoryItem {
   issues: { clause: string; riskLevel: string; reason: string; suggestion: string; revisedClause?: string }[];
   missing_clauses: string[];
   recommendations: string[];
+  revised_clauses?: { clause: string; revisedClause: string }[];
   created_at: string;
 }
 
@@ -223,7 +224,7 @@ const AIReview = () => {
 
       const { data, error } = await supabase
         .from("ai_review_history")
-        .select("id, contract_text, summary, risk_level, issues, missing_clauses, recommendations, created_at")
+        .select("id, contract_text, contract_name, summary, risk_level, issues, missing_clauses, recommendations, revised_clauses, created_at")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .range(from, to);
@@ -272,6 +273,7 @@ const AIReview = () => {
       issues: payload.issues,
       missing_clauses: payload.missingClauses,
       recommendations: payload.recommendations,
+      revised_clauses: payload.issues.map(i => ({ clause: i.clause, revisedClause: i.revisedClause })),
     });
 
     if (error) throw error;
@@ -811,18 +813,32 @@ const AIReview = () => {
                                 <AlertTriangle className="h-4 w-4" /> Điều khoản có rủi ro ({item.issues.length})
                               </p>
                               <div className="space-y-2">
-                                {item.issues.map((issue, idx) => (
-                                  <div key={idx} className="text-sm p-3 rounded-md border border-warning/20 bg-warning/5 space-y-1.5">
-                                    <div className="font-medium flex justify-between">
-                                      <span>{issue.clause}</span>
-                                      <Badge variant="outline" className={`shrink-0 ${RISK_COLORS[issue.riskLevel] || ""}`}>
-                                        {RISK_LABELS[issue.riskLevel] || issue.riskLevel}
-                                      </Badge>
+                                {item.issues.map((issue, idx) => {
+                                  const revised = item.revised_clauses?.find(r => r.clause === issue.clause);
+                                  return (
+                                    <div key={idx} className="text-sm p-3 rounded-md border border-warning/20 bg-warning/5 space-y-1.5">
+                                      <div className="font-medium flex justify-between">
+                                        <span>{issue.clause}</span>
+                                        <Badge variant="outline" className={`shrink-0 ${RISK_COLORS[issue.riskLevel] || ""}`}>
+                                          {RISK_LABELS[issue.riskLevel] || issue.riskLevel}
+                                        </Badge>
+                                      </div>
+                                      <div className="text-muted-foreground"><span className="font-medium text-destructive">Lý do:</span> {issue.reason}</div>
+                                      <div className="text-muted-foreground"><span className="font-medium text-success">Gợi ý:</span> {issue.suggestion}</div>
+                                      {revised?.revisedClause && (
+                                        <div className="text-muted-foreground">
+                                          <span className="font-medium text-info flex items-center gap-1">
+                                            <ClipboardEdit className="h-3 w-3" />
+                                            Nội dung đề xuất thay thế:
+                                          </span>
+                                          <p className="mt-1 text-foreground font-mono whitespace-pre-wrap leading-relaxed bg-info/5 border border-info/20 rounded p-2 text-xs">
+                                            {revised.revisedClause}
+                                          </p>
+                                        </div>
+                                      )}
                                     </div>
-                                    <div className="text-muted-foreground"><span className="font-medium text-destructive">Lý do:</span> {issue.reason}</div>
-                                    <div className="text-muted-foreground"><span className="font-medium text-success">Gợi ý:</span> {issue.suggestion}</div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
                           )}

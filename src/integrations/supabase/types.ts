@@ -23,6 +23,7 @@ export type Database = {
           issues: Json | null
           missing_clauses: string[] | null
           recommendations: string[] | null
+          revised_clauses: Json | null
           risk_level: string
           summary: string
           user_id: string
@@ -35,6 +36,7 @@ export type Database = {
           issues?: Json | null
           missing_clauses?: string[] | null
           recommendations?: string[] | null
+          revised_clauses?: Json | null
           risk_level: string
           summary: string
           user_id: string
@@ -47,6 +49,7 @@ export type Database = {
           issues?: Json | null
           missing_clauses?: string[] | null
           recommendations?: string[] | null
+          revised_clauses?: Json | null
           risk_level?: string
           summary?: string
           user_id?: string
