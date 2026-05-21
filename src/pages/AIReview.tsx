@@ -14,7 +14,7 @@ import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
 interface AnalysisResult {
   summary: string;
   riskLevel: string;
-  issues: { clause: string; riskLevel: string; reason: string; suggestion: string }[];
+  issues: { clause: string; riskLevel: string; reason: string; suggestion: string; revisedClause: string }[];
   missingClauses: string[];
   recommendations: string[];
 }
