@@ -54,6 +54,8 @@ const AIReview = () => {
   const [loadingGdoc, setLoadingGdoc] = useState(false);
   const [loadingFile, setLoadingFile] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [contractType, setContractType] = useState("auto");
+  const [companyRole, setCompanyRole] = useState("auto");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLoadGdoc = async () => {
