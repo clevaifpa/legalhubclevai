@@ -90,7 +90,7 @@ const AIReview = () => {
         toast.error(data.error);
         return;
       }
-      setChatMessages((prev) => [...prev, { role: "assistant", content: data?.reply || "" }].slice(-20));
+      setChatMessages((prev) => [...prev, { role: "assistant" as const, content: data?.reply || "" }].slice(-20));
     } catch (e: any) {
       toast.error("Lỗi chat", { description: e.message });
     } finally {
