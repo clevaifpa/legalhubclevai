@@ -193,6 +193,12 @@ serve(async (req) => {
       });
     }
 
+    if (rawMode === true) {
+      return new Response(JSON.stringify({ contractText: docText }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const readableAttachments = await Promise.all(
       (Array.isArray(attachments) ? attachments : [])
         .filter((item: AttachmentInput) => item && (item.content || item.url))
