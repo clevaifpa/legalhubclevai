@@ -248,7 +248,7 @@ const AIReview = () => {
       const { data: clauses } = await supabase.from("clauses").select("name, content, risk_level");
 
       const { data, error } = await supabase.functions.invoke("analyze-contract", {
-        body: { contractText: contractText.trim(), clauses: clauses || [] },
+        body: { contractText: contractText.trim(), clauses: clauses || [], contractType, companyRole },
       });
 
       if (error) throw error;
