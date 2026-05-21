@@ -21,38 +21,53 @@ import {
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { CONTRACT_TYPE_LABELS, RISK_LEVEL_LABELS } from "@/types";
-import type { Clause, ContractType, RiskLevel } from "@/types";
+import type { ContractType, RiskLevel } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AddClauseDialogProps {
-    onAdd: (clause: Clause) => void;
+    onSuccess: () => void;
 }
 
-export function AddClauseDialog({ onAdd }: AddClauseDialogProps) {
+export function AddClauseDialog({ onSuccess }: AddClauseDialogProps) {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState("");
     const [content, setContent] = useState("");
     const [contractType, setContractType] = useState<ContractType>("dich_vu");
     const [riskLevel, setRiskLevel] = useState<RiskLevel>("thap");
     const [notes, setNotes] = useState("");
+    const [saving, setSaving] = useState(false);
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!name.trim() || !content.trim()) {
             toast.error("Vui lòng điền đầy đủ tên và nội dung điều khoản");
             return;
         }
 
-        const newClause: Clause = {
-            id: "cl-new-" + Date.now(),
-            name,
-            content,
-            contractType,
-            riskLevel,
-            notes: notes.trim() || undefined,
-            createdAt: new Date().toISOString().split('T')[0],
-            updatedAt: new Date().toISOString().split('T')[0],
-        };
+        setSaving(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            toast.error("Vui lòng đăng nhập");
+            setSaving(false);
+            return;
+        }
 
-        onAdd(newClause);
+        const { error } = await supabase.from("clauses").insert({
+            name: name.trim(),
+            content: content.trim(),
+            contract_type: contractType,
+            risk_level: riskLevel,
+            notes: notes.trim() || null,
+            created_by: user.id,
+        });
+
+        setSaving(false);
+
+        if (error) {
+            toast.error("Không thể thêm điều khoản");
+            return;
+        }
+
+        onSuccess();
         toast.success("Thêm điều khoản thành công");
 
         // Reset form
