@@ -302,13 +302,75 @@ const AIReview = () => {
                   <p className="text-sm text-muted-foreground">Dán nội dung hợp đồng cần kiểm tra vào ô bên dưới</p>
                 </div>
               </div>
-              <Textarea
-                value={contractText}
-                onChange={(e) => setContractText(e.target.value)}
-                placeholder="Dán toàn bộ nội dung hợp đồng tại đây...&#10;&#10;VD: ĐIỀU 1: ĐỐI TƯỢNG HỢP ĐỒNG&#10;Bên A đồng ý cung cấp cho Bên B..."
-                rows={10}
-                className="resize-y"
-              />
+              <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as any)} className="space-y-3">
+                <TabsList className="grid grid-cols-3 w-full sm:w-auto">
+                  <TabsTrigger value="text"><FileText className="h-4 w-4 mr-1.5" />Dán text</TabsTrigger>
+                  <TabsTrigger value="gdoc"><Link2 className="h-4 w-4 mr-1.5" />Link Google Doc</TabsTrigger>
+                  <TabsTrigger value="file"><FileUp className="h-4 w-4 mr-1.5" />Tải file lên</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="text" className="mt-3">
+                  <Textarea
+                    value={contractText}
+                    onChange={(e) => setContractText(e.target.value)}
+                    placeholder="Dán toàn bộ nội dung hợp đồng tại đây...&#10;&#10;VD: ĐIỀU 1: ĐỐI TƯỢNG HỢP ĐỒNG&#10;Bên A đồng ý cung cấp cho Bên B..."
+                    rows={10}
+                    className="resize-y"
+                  />
+                </TabsContent>
+
+                <TabsContent value="gdoc" className="mt-3 space-y-3">
+                  <Input
+                    value={gdocUrl}
+                    onChange={(e) => setGdocUrl(e.target.value)}
+                    placeholder="Dán link Google Doc tại đây... (vd: https://docs.google.com/document/d/...)"
+                    disabled={loadingGdoc}
+                  />
+                  <Button onClick={handleLoadGdoc} disabled={loadingGdoc || !gdocUrl.trim()} variant="secondary">
+                    {loadingGdoc ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Link2 className="h-4 w-4 mr-2" />}
+                    {loadingGdoc ? "Đang đọc tài liệu..." : "Đọc tài liệu"}
+                  </Button>
+                </TabsContent>
+
+                <TabsContent value="file" className="mt-3">
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); if (!loadingFile) setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      if (loadingFile) return;
+                      handleFileSelected(e.dataTransfer.files?.[0]);
+                    }}
+                    onClick={() => !loadingFile && fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                      isDragging ? "border-accent bg-accent/10" : "border-border bg-muted/30 hover:bg-muted/50"
+                    } ${loadingFile ? "opacity-60 cursor-not-allowed" : ""}`}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.docx"
+                      className="hidden"
+                      onChange={(e) => handleFileSelected(e.target.files?.[0])}
+                      disabled={loadingFile}
+                    />
+                    {loadingFile ? (
+                      <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-6 w-6 animate-spin text-accent" />
+                        Đang đọc file...
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <FileUp className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-sm font-medium">Kéo thả file hoặc bấm để chọn</p>
+                        <p className="text-xs text-muted-foreground">Hỗ trợ .pdf, .docx (tối đa 10MB)</p>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+
               <Button
                 className="bg-accent hover:bg-accent/90 text-accent-foreground w-full sm:w-auto"
                 onClick={handleAnalyze}
