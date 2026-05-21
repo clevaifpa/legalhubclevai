@@ -516,14 +516,12 @@ const AIReview = () => {
               {result.issues.length > 0 && (
                 <Card className="border-none shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-warning" />
+                    <CardTitle className="text-lg font-semibold">
                       Điều khoản có rủi ro ({result.issues.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {result.issues.map((issue, i) => {
-                      const IssueIcon = RISK_ICONS[issue.riskLevel] || Shield;
                       const key = `issue-${i}`;
                       const open = expandedItems[key];
                       return (
@@ -535,7 +533,6 @@ const AIReview = () => {
                           >
                             <p className="font-medium text-sm flex-1 truncate">{issue.clause}</p>
                             <Badge variant="outline" className={`shrink-0 ${RISK_COLORS[issue.riskLevel] || ""}`}>
-                              <IssueIcon className="h-3 w-3 mr-1" />
                               {RISK_LABELS[issue.riskLevel]}
                             </Badge>
                             {open ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
@@ -543,19 +540,18 @@ const AIReview = () => {
                           {open && (
                             <div className="px-4 pb-4 space-y-2 border-t">
                               <div className="p-3 rounded bg-destructive/5 border border-destructive/10 mt-3">
-                                <p className="text-xs font-medium text-destructive mb-1">⚠️ Lý do rủi ro</p>
+                                <p className="text-xs font-medium text-destructive mb-1">Lý do rủi ro</p>
                                 <p className="text-sm text-muted-foreground">{issue.reason}</p>
                               </div>
                               <div className="p-3 rounded bg-success/5 border border-success/10">
-                                <p className="text-xs font-medium text-success mb-1">✏️ Gợi ý chỉnh sửa</p>
+                                <p className="text-xs font-medium text-success mb-1">Gợi ý chỉnh sửa</p>
                                 <p className="text-sm text-muted-foreground">{issue.suggestion}</p>
                               </div>
                               {issue.revisedClause && (
                                 <div className="p-3 rounded bg-info/5 border border-info/20 relative">
                                   <div className="flex items-start justify-between gap-2 mb-1">
-                                    <p className="text-xs font-medium text-info flex items-center gap-1">
-                                      <ClipboardEdit className="h-3 w-3" />
-                                      📝 Nội dung đề xuất thay thế
+                                    <p className="text-xs font-medium text-info">
+                                      Nội dung đề xuất thay thế
                                     </p>
                                     <Button
                                       type="button"
@@ -583,6 +579,7 @@ const AIReview = () => {
                   </CardContent>
                 </Card>
               )}
+
 
               {result.missingClauses.length > 0 && (
                 <Card className="border-none shadow-sm">
