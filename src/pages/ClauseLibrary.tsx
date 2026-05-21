@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
-import { Search, Copy, Filter, Plus, BookOpen } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Search, Copy, Filter, Plus, BookOpen, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -10,13 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { mockClauses } from "@/data/mockData";
 import { AddClauseDialog } from "@/components/AddClauseDialog";
 import { CONTRACT_TYPE_LABELS, RISK_LEVEL_LABELS } from "@/types";
 import type { ContractType, RiskLevel, Clause } from "@/types";
 import { RiskBadge } from "@/components/common/RiskBadge";
 import { ContractTypeBadge } from "@/components/common/ContractTypeBadge";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const ClauseLibrary = () => {
   const [clauses, setClauses] = useState<Clause[]>(mockClauses);
