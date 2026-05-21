@@ -59,6 +59,44 @@ const AIReview = () => {
   const [contractType, setContractType] = useState("auto");
   const [companyRole, setCompanyRole] = useState("ben_a");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [chatMessages, chatLoading]);
+
+  const handleChatSend = async () => {
+    const text = chatInput.trim();
+    if (!text || !result || chatLoading) return;
+    const newMessages = [...chatMessages, { role: "user" as const, content: text }].slice(-20);
+    setChatMessages(newMessages);
+    setChatInput("");
+    setChatLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("chat-contract", {
+        body: {
+          messages: newMessages,
+          contractSummary: result.summary,
+          issues: result.issues,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+      setChatMessages((prev) => [...prev, { role: "assistant", content: data?.reply || "" }].slice(-20));
+    } catch (e: any) {
+      toast.error("Lỗi chat", { description: e.message });
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   const handleLoadGdoc = async () => {
     const url = gdocUrl.trim();
