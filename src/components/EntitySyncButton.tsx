@@ -94,10 +94,12 @@ export function EntitySyncButton({ entityName, isAdmin, onSyncComplete }: Entity
       if (!res.ok) {
         toast.error("Lỗi đồng bộ", { description: result.error || "Lỗi không xác định" });
       } else {
-        toast.success(`Đồng bộ ${entityName} hoàn tất`, {
+        toast.success("Đã đồng bộ dữ liệu từ Google Sheet", {
           description: `Mới: ${result.imported || 0} | Cập nhật: ${result.updated || 0} | Bỏ qua: ${result.skipped || 0} | Lỗi: ${result.errors || 0}`,
         });
+        try { await onSyncComplete?.(); } catch (e) { console.error("onSyncComplete error", e); }
       }
+
     } catch (err: any) {
       toast.error("Lỗi kết nối", { description: err.message });
     } finally {
