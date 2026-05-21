@@ -29,9 +29,11 @@ interface SyncLog {
 interface EntitySyncButtonProps {
   entityName: string;
   isAdmin: boolean;
+  onSyncComplete?: () => void | Promise<void>;
 }
 
-export function EntitySyncButton({ entityName, isAdmin }: EntitySyncButtonProps) {
+export function EntitySyncButton({ entityName, isAdmin, onSyncComplete }: EntitySyncButtonProps) {
+
   const [syncing, setSyncing] = useState(false);
   const [lastLog, setLastLog] = useState<SyncLog | null>(null);
   const [logsOpen, setLogsOpen] = useState(false);
@@ -92,10 +94,12 @@ export function EntitySyncButton({ entityName, isAdmin }: EntitySyncButtonProps)
       if (!res.ok) {
         toast.error("Lỗi đồng bộ", { description: result.error || "Lỗi không xác định" });
       } else {
-        toast.success(`Đồng bộ ${entityName} hoàn tất`, {
+        toast.success("Đã đồng bộ dữ liệu từ Google Sheet", {
           description: `Mới: ${result.imported || 0} | Cập nhật: ${result.updated || 0} | Bỏ qua: ${result.skipped || 0} | Lỗi: ${result.errors || 0}`,
         });
+        try { await onSyncComplete?.(); } catch (e) { console.error("onSyncComplete error", e); }
       }
+
     } catch (err: any) {
       toast.error("Lỗi kết nối", { description: err.message });
     } finally {
@@ -142,7 +146,7 @@ export function EntitySyncButton({ entityName, isAdmin }: EntitySyncButtonProps)
           ) : (
             <RefreshCw className="h-3 w-3" />
           )}
-          {syncing ? "Đang sync..." : "Tải từ Google Sheet"}
+          {syncing ? "Đang tải..." : "Tải từ Google Sheet"}
         </Button>
       )}
 
