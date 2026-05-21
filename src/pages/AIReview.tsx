@@ -321,7 +321,7 @@ const AIReview = () => {
     }
   };
 
-  const RiskIcon = result ? RISK_ICONS[result.riskLevel] || Shield : Shield;
+  
 
   return (
     <div className="space-y-6 animate-fade-in">
