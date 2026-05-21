@@ -308,6 +308,15 @@ const AIReview = () => {
                   <p className="text-sm text-muted-foreground">Dán nội dung hợp đồng cần kiểm tra vào ô bên dưới</p>
                 </div>
               </div>
+              <div className="space-y-1.5">
+                <label htmlFor="contract-name" className="text-sm font-medium">Tên hợp đồng (tùy chọn)</label>
+                <Input
+                  id="contract-name"
+                  value={contractName}
+                  onChange={(e) => setContractName(e.target.value)}
+                  placeholder="VD: Hợp đồng cung cấp dịch vụ ABC..."
+                />
+              </div>
               <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as any)} className="space-y-3">
                 <TabsList className="grid grid-cols-3 w-full sm:w-auto">
                   <TabsTrigger value="text"><FileText className="h-4 w-4 mr-1.5" />Dán text</TabsTrigger>
