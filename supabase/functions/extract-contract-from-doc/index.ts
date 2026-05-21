@@ -163,7 +163,7 @@ serve(async (req) => {
       });
     }
 
-    const { googleDocUrl, attachments = [], cacheBust = Date.now() } = await req.json();
+    const { googleDocUrl, attachments = [], cacheBust = Date.now(), rawMode = false } = await req.json();
 
     if (!googleDocUrl || typeof googleDocUrl !== "string") {
       return new Response(JSON.stringify({ error: "Thiếu googleDocUrl" }), {
@@ -190,6 +190,12 @@ serve(async (req) => {
     if (!docText || docText.trim().length < 10) {
       return new Response(JSON.stringify({ error: "Nội dung tài liệu quá ngắn hoặc rỗng" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (rawMode === true) {
+      return new Response(JSON.stringify({ contractText: docText }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 

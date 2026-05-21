@@ -108,7 +108,7 @@ const AIReview = () => {
     setLoadingGdoc(true);
     try {
       const { data, error } = await supabase.functions.invoke("extract-contract-from-doc", {
-        body: { googleDocUrl: url, attachments: [], cacheBust: Date.now() },
+        body: { googleDocUrl: url, attachments: [], cacheBust: Date.now(), rawMode: true },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
