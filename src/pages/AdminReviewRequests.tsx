@@ -1449,6 +1449,13 @@ const AdminReviewRequests = () => {
                   <Textarea className={`${formErrors.description ? "border-destructive focus-visible:ring-destructive" : ""} ${aiDescriptionUpdated ? "border-accent ring-2 ring-accent/20" : ""}`} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả thêm về hợp đồng cần review..." rows={3} />
                   {aiDescriptionUpdated && <p className="text-xs text-accent">Nội dung đã được cập nhật từ phiên bản mới của tài liệu</p>}
                   {formErrors.description && <p className="text-xs text-destructive">{formErrors.description}</p>}
+                  <DescriptionImageUploader
+                    requestId={editingReqId}
+                    pendingImages={pendingDescriptionAttachments}
+                    onPendingChange={setPendingDescriptionAttachments}
+                    savedImages={savedDescriptionAttachments}
+                    onSavedChange={setSavedDescriptionAttachments}
+                  />
                 </div>
               </div>
               <DialogFooter>
