@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       ai_review_history: {
         Row: {
+          contract_name: string | null
           contract_text: string
           created_at: string
           id: string
@@ -27,6 +28,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          contract_name?: string | null
           contract_text: string
           created_at?: string
           id?: string
@@ -38,6 +40,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          contract_name?: string | null
           contract_text?: string
           created_at?: string
           id?: string

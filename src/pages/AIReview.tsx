@@ -23,6 +23,7 @@ interface AnalysisResult {
 interface AIReviewHistoryItem {
   id: string;
   contract_text: string;
+  contract_name?: string | null;
   summary: string;
   risk_level: string;
   issues: { clause: string; riskLevel: string; reason: string; suggestion: string; revisedClause?: string }[];
@@ -41,6 +42,7 @@ const RISK_ICONS: Record<string, typeof Shield> = { thap: ShieldCheck, trung_bin
 
 const AIReview = () => {
   const [contractText, setContractText] = useState("");
+  const [contractName, setContractName] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [history, setHistory] = useState<AIReviewHistoryItem[]>([]);
@@ -218,7 +220,7 @@ const AIReview = () => {
     loadHistory(1);
   }, []);
 
-  const saveHistory = async (payload: AnalysisResult, text: string) => {
+  const saveHistory = async (payload: AnalysisResult, text: string, name: string) => {
     const { data: authData } = await supabase.auth.getUser();
     const user = authData?.user;
     if (!user) return;
@@ -226,6 +228,7 @@ const AIReview = () => {
     const { error } = await (supabase.from("ai_review_history") as any).insert({
       user_id: user.id,
       contract_text: text,
+      contract_name: name.trim() || null,
       summary: payload.summary,
       risk_level: payload.riskLevel,
       issues: payload.issues,
@@ -261,7 +264,7 @@ const AIReview = () => {
       setResult(analysisResult);
 
       try {
-        await saveHistory(analysisResult, contractText.trim());
+        await saveHistory(analysisResult, contractText.trim(), contractName);
         setPage(1);
         await loadHistory(1);
       } catch (saveError: any) {
@@ -304,6 +307,15 @@ const AIReview = () => {
                   <h3 className="text-lg font-semibold">Nhập nội dung hợp đồng</h3>
                   <p className="text-sm text-muted-foreground">Dán nội dung hợp đồng cần kiểm tra vào ô bên dưới</p>
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="contract-name" className="text-sm font-medium">Tên hợp đồng (tùy chọn)</label>
+                <Input
+                  id="contract-name"
+                  value={contractName}
+                  onChange={(e) => setContractName(e.target.value)}
+                  placeholder="VD: Hợp đồng cung cấp dịch vụ ABC..."
+                />
               </div>
               <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as any)} className="space-y-3">
                 <TabsList className="grid grid-cols-3 w-full sm:w-auto">
@@ -626,7 +638,8 @@ const AIReview = () => {
                     const histKey = `hist-${item.id}`;
                     const histOpen = expandedItems[histKey] || false;
                     const score = item.risk_level === "cao" ? 85 : item.risk_level === "trung_binh" ? 60 : 25;
-                    const title = item.summary?.slice(0, 80) || "Hợp đồng đã phân tích";
+                    const summarySnippet = item.summary?.slice(0, 80) || "Hợp đồng đã phân tích";
+                    const hasName = !!item.contract_name?.trim();
 
                     return (
                       <div key={item.id} className="border rounded-lg bg-card overflow-hidden">
@@ -638,7 +651,10 @@ const AIReview = () => {
                           >
                             <History className="h-4 w-4 text-muted-foreground shrink-0" />
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium truncate">{title}</p>
+                              <p className={`text-sm font-semibold truncate ${hasName ? "" : "text-muted-foreground italic font-normal"}`}>
+                                {hasName ? item.contract_name : "Không có tên"}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">{summarySnippet}</p>
                               <p className="text-xs text-muted-foreground">
                                 {new Date(item.created_at).toLocaleString("vi-VN", { dateStyle: "medium", timeStyle: "short" })}
                               </p>

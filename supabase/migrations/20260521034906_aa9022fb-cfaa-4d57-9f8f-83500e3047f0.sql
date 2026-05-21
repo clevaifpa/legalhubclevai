@@ -1,0 +1,1 @@
+ALTER TABLE public.ai_review_history ADD COLUMN contract_name TEXT DEFAULT NULL;
