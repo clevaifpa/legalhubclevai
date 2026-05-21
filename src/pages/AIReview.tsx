@@ -399,11 +399,8 @@ const AIReview = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="auto">Tự động nhận diện</SelectItem>
                       <SelectItem value="ben_a">Bên A</SelectItem>
                       <SelectItem value="ben_b">Bên B</SelectItem>
-                      <SelectItem value="ben_mua">Bên mua</SelectItem>
-                      <SelectItem value="ben_cung_cap">Bên cung cấp</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
