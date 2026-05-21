@@ -430,6 +430,30 @@ const AIReview = () => {
                             <p className="text-xs font-medium text-success mb-1">✏️ Gợi ý chỉnh sửa</p>
                             <p className="text-sm text-muted-foreground">{issue.suggestion}</p>
                           </div>
+                          {issue.revisedClause && (
+                            <div className="p-3 rounded bg-info/5 border border-info/20 relative">
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <p className="text-xs font-medium text-info flex items-center gap-1">
+                                  <ClipboardEdit className="h-3 w-3" />
+                                  📝 Nội dung đề xuất thay thế
+                                </p>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 -mt-1 -mr-1"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(issue.revisedClause);
+                                    toast.success("Đã sao chép");
+                                  }}
+                                >
+                                  <Copy className="h-3 w-3 mr-1" />
+                                  Sao chép
+                                </Button>
+                              </div>
+                              <p className="text-sm text-foreground font-mono whitespace-pre-wrap leading-relaxed">{issue.revisedClause}</p>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
