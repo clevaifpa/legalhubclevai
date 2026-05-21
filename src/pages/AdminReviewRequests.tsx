@@ -692,6 +692,11 @@ const AdminReviewRequests = () => {
           validDocs.map(d => ({ review_request_id: finalReqId!, doc_name: d.doc_name.trim(), doc_url: d.doc_url.trim() })) as any
         );
       }
+
+      // Flush pending description attachments (only when creating new)
+      if (!editingReqId && pendingDescriptionAttachments.length > 0 && user) {
+        await flushPendingImages(pendingDescriptionAttachments, finalReqId, user.id);
+      }
     }
 
     // Notification already sent in the create/update block above
