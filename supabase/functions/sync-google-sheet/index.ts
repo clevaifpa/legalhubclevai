@@ -213,26 +213,41 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Auth check
+    // Auth check - require Bearer token (admin) or cron secret
     const authHeader = req.headers.get("Authorization");
+    const cronSecret = req.headers.get("x-cron-secret");
+    const expectedCronSecret = Deno.env.get("CRON_SECRET");
     let triggeredBy = "cron";
-    if (authHeader?.startsWith("Bearer ")) {
+
+    const isValidCron = !!expectedCronSecret && cronSecret === expectedCronSecret;
+    if (!isValidCron) {
+      if (!authHeader?.startsWith("Bearer ")) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const token = authHeader.replace("Bearer ", "");
       const { data: userData, error: authError } = await supabase.auth.getUser(token);
-      if (!authError && userData?.user) {
-        triggeredBy = "manual";
-        const { data: isAdmin } = await supabase.rpc("has_role", {
-          _user_id: userData.user.id,
-          _role: "admin",
+      if (authError || !userData?.user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
-        if (!isAdmin) {
-          return new Response(JSON.stringify({ error: "Chỉ admin mới có thể đồng bộ" }), {
-            status: 403,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
+      }
+      triggeredBy = "manual";
+      const { data: isAdmin } = await supabase.rpc("has_role", {
+        _user_id: userData.user.id,
+        _role: "admin",
+      });
+      if (!isAdmin) {
+        return new Response(JSON.stringify({ error: "Chỉ admin mới có thể đồng bộ" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
     }
+
 
     const body = await req.json().catch(() => ({}));
     const { entity_name, tab_name } = body as { entity_name?: string; tab_name?: string };
