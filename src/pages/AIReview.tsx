@@ -752,12 +752,9 @@ const AIReview = () => {
               ) : (
                 <div className="space-y-2">
                   {history.map((item) => {
-                    const ItemIcon = RISK_ICONS[item.risk_level] || Shield;
                     const isExpanded = expandedItems[item.id] || false;
                     const histKey = `hist-${item.id}`;
                     const histOpen = expandedItems[histKey] || false;
-                    const score = item.risk_level === "cao" ? 85 : item.risk_level === "trung_binh" ? 60 : 25;
-                    const summarySnippet = item.summary?.slice(0, 80) || "Hợp đồng đã phân tích";
                     const hasName = !!item.contract_name?.trim();
 
                     return (
@@ -768,23 +765,21 @@ const AIReview = () => {
                             onClick={() => toggleExpand(histKey)}
                             className="flex-1 flex items-center gap-3 text-left min-w-0"
                           >
-                            <History className="h-4 w-4 text-muted-foreground shrink-0" />
                             <div className="min-w-0 flex-1">
                               <p className={`text-sm font-semibold truncate ${hasName ? "" : "text-muted-foreground italic font-normal"}`}>
                                 {hasName ? item.contract_name : "Không có tên"}
                               </p>
-                              <p className="text-xs text-muted-foreground truncate">{summarySnippet}</p>
                               <p className="text-xs text-muted-foreground">
                                 {new Date(item.created_at).toLocaleString("vi-VN", { dateStyle: "medium", timeStyle: "short" })}
                               </p>
                             </div>
-                            <Badge className={`shrink-0 ${RISK_COLORS[item.risk_level] || ""}`}>
-                              <ItemIcon className="h-3 w-3 mr-1" />
-                              {RISK_LABELS[item.risk_level] || item.risk_level}
+                            <Badge variant="outline" className={`shrink-0 ${RISK_COLORS[item.risk_level] || ""}`}>
+                              Rủi ro: {RISK_LABELS[item.risk_level] || item.risk_level}
                             </Badge>
-                            <span className="shrink-0 text-xs font-semibold text-muted-foreground tabular-nums">{score}/100</span>
+                            <span className="shrink-0 text-xs text-muted-foreground">{item.issues?.length || 0} vấn đề</span>
                             {histOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
                           </button>
+
                           <Button
                             variant="ghost"
                             size="icon"
