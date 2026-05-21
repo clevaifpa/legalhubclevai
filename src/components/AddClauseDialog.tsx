@@ -152,10 +152,10 @@ export function AddClauseDialog({ onSuccess }: AddClauseDialogProps) {
                 </div>
                 <DialogFooter>
                     <DialogClose asChild>
-                        <Button variant="outline">Hủy</Button>
+                        <Button variant="outline" disabled={saving}>Hủy</Button>
                     </DialogClose>
-                    <Button onClick={handleSubmit} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                        Lưu điều khoản
+                    <Button onClick={handleSubmit} disabled={saving} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                        {saving ? "Đang lưu..." : "Lưu điều khoản"}
                     </Button>
                 </DialogFooter>
             </DialogContent>
