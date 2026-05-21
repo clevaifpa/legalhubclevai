@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Brain, Upload, FileText, Sparkles, ShieldCheck, ShieldAlert, Shield, AlertTriangle, CheckCircle, Loader2, Lightbulb, History, Link2, FileUp } from "lucide-react";
+import { Brain, Upload, FileText, Sparkles, ShieldCheck, ShieldAlert, Shield, AlertTriangle, CheckCircle, Loader2, Lightbulb, History, Link2, FileUp, ClipboardEdit, Copy } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +14,7 @@ import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
 interface AnalysisResult {
   summary: string;
   riskLevel: string;
-  issues: { clause: string; riskLevel: string; reason: string; suggestion: string }[];
+  issues: { clause: string; riskLevel: string; reason: string; suggestion: string; revisedClause: string }[];
   missingClauses: string[];
   recommendations: string[];
 }
@@ -24,7 +24,7 @@ interface AIReviewHistoryItem {
   contract_text: string;
   summary: string;
   risk_level: string;
-  issues: { clause: string; riskLevel: string; reason: string; suggestion: string }[];
+  issues: { clause: string; riskLevel: string; reason: string; suggestion: string; revisedClause?: string }[];
   missing_clauses: string[];
   recommendations: string[];
   created_at: string;
@@ -430,6 +430,30 @@ const AIReview = () => {
                             <p className="text-xs font-medium text-success mb-1">✏️ Gợi ý chỉnh sửa</p>
                             <p className="text-sm text-muted-foreground">{issue.suggestion}</p>
                           </div>
+                          {issue.revisedClause && (
+                            <div className="p-3 rounded bg-info/5 border border-info/20 relative">
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <p className="text-xs font-medium text-info flex items-center gap-1">
+                                  <ClipboardEdit className="h-3 w-3" />
+                                  📝 Nội dung đề xuất thay thế
+                                </p>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 -mt-1 -mr-1"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(issue.revisedClause);
+                                    toast.success("Đã sao chép");
+                                  }}
+                                >
+                                  <Copy className="h-3 w-3 mr-1" />
+                                  Sao chép
+                                </Button>
+                              </div>
+                              <p className="text-sm text-foreground font-mono whitespace-pre-wrap leading-relaxed">{issue.revisedClause}</p>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
