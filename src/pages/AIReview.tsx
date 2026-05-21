@@ -794,16 +794,14 @@ const AIReview = () => {
                         {histOpen && (
                           <div className="px-4 pb-4 pt-3 space-y-4 border-t">
                           <div>
-                            <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-foreground">
-                              <Brain className="h-4 w-4 text-accent" /> Kết luận chung
-                            </p>
+                            <p className="text-sm font-semibold mb-2 text-foreground">Kết luận chung</p>
                             <p className="text-sm bg-muted/50 p-3 rounded-md">{item.summary}</p>
                           </div>
 
                           {item.issues && item.issues.length > 0 && (
                             <div>
-                              <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-warning">
-                                <AlertTriangle className="h-4 w-4" /> Điều khoản có rủi ro ({item.issues.length})
+                              <p className="text-sm font-semibold mb-2 text-warning">
+                                Điều khoản có rủi ro ({item.issues.length})
                               </p>
                               <div className="space-y-2">
                                 {item.issues.map((issue, idx) => {
@@ -820,10 +818,7 @@ const AIReview = () => {
                                       <div className="text-muted-foreground"><span className="font-medium text-success">Gợi ý:</span> {issue.suggestion}</div>
                                       {revised?.revisedClause && (
                                         <div className="text-muted-foreground">
-                                          <span className="font-medium text-info flex items-center gap-1">
-                                            <ClipboardEdit className="h-3 w-3" />
-                                            Nội dung đề xuất thay thế:
-                                          </span>
+                                          <span className="font-medium text-info">Nội dung đề xuất thay thế:</span>
                                           <p className="mt-1 text-foreground font-mono whitespace-pre-wrap leading-relaxed bg-info/5 border border-info/20 rounded p-2 text-xs">
                                             {revised.revisedClause}
                                           </p>
@@ -838,13 +833,12 @@ const AIReview = () => {
 
                           {item.missing_clauses && item.missing_clauses.length > 0 && (
                             <div>
-                              <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-info">
-                                <FileText className="h-4 w-4" /> Điều khoản thiếu ({item.missing_clauses.length})
+                              <p className="text-sm font-semibold mb-2 text-info">
+                                Điều khoản thiếu ({item.missing_clauses.length})
                               </p>
                               <div className="flex flex-wrap gap-2">
                                 {item.missing_clauses.map((clause, idx) => (
-                                  <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-info/10 text-info text-xs font-medium border border-info/20">
-                                    <AlertTriangle className="h-3 w-3" />
+                                  <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-full bg-info/10 text-info text-xs font-medium border border-info/20">
                                     {clause}
                                   </span>
                                 ))}
@@ -854,19 +848,15 @@ const AIReview = () => {
 
                           {item.recommendations && item.recommendations.length > 0 && (
                             <div>
-                              <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-success">
-                                <Lightbulb className="h-4 w-4" /> Khuyến nghị chung
-                              </p>
-                              <ol className="space-y-1.5">
+                              <p className="text-sm font-semibold mb-2 text-success">Khuyến nghị chung</p>
+                              <ol className="space-y-1.5 list-decimal list-inside">
                                 {item.recommendations.map((rec, idx) => (
-                                  <li key={idx} className="flex items-start gap-2 text-sm">
-                                    <CheckCircle className="h-4 w-4 text-success shrink-0 mt-0.5" />
-                                    <span><span className="text-muted-foreground mr-1">{idx + 1}.</span>{rec}</span>
-                                  </li>
+                                  <li key={idx} className="text-sm leading-relaxed">{rec}</li>
                                 ))}
                               </ol>
                             </div>
                           )}
+
 
                           <Separator className="my-2" />
 
