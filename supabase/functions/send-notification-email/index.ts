@@ -33,7 +33,13 @@ serve(async (req) => {
       });
     }
 
-    const { requestId, contractTitle, newStatus, updatedBy, requesterId } = await req.json();
+    const { requestId, newStatus, updatedBy } = await req.json();
+
+    if (!requestId || typeof requestId !== "string") {
+      return new Response(JSON.stringify({ error: "Invalid requestId" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
@@ -44,14 +50,41 @@ serve(async (req) => {
       );
     }
 
-    // Look up requester email from auth
+    // Use service role to look up request data from DB (not trust client input)
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(requesterId);
+    // Verify caller has access to this review request
+    const { data: canView } = await supabaseAdmin.rpc("can_view_review_request", {
+      _req_id: requestId,
+      _user_id: user.id,
+    });
+    if (!canView) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Fetch authoritative request data
+    const { data: reviewReq } = await supabaseAdmin
+      .from("review_requests")
+      .select("contract_title, requester_id")
+      .eq("id", requestId)
+      .single();
+
+    if (!reviewReq?.requester_id) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Review request not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const contractTitle = reviewReq.contract_title;
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(reviewReq.requester_id);
     const requesterEmail = userData?.user?.email;
+
 
     if (!requesterEmail) {
       return new Response(
