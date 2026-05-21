@@ -220,7 +220,7 @@ const AIReview = () => {
     loadHistory(1);
   }, []);
 
-  const saveHistory = async (payload: AnalysisResult, text: string) => {
+  const saveHistory = async (payload: AnalysisResult, text: string, name: string) => {
     const { data: authData } = await supabase.auth.getUser();
     const user = authData?.user;
     if (!user) return;
@@ -228,6 +228,7 @@ const AIReview = () => {
     const { error } = await (supabase.from("ai_review_history") as any).insert({
       user_id: user.id,
       contract_text: text,
+      contract_name: name.trim() || null,
       summary: payload.summary,
       risk_level: payload.riskLevel,
       issues: payload.issues,
