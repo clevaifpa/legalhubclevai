@@ -48,6 +48,89 @@ const AIReview = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+  const [inputMode, setInputMode] = useState<"text" | "gdoc" | "file">("text");
+  const [gdocUrl, setGdocUrl] = useState("");
+  const [loadingGdoc, setLoadingGdoc] = useState(false);
+  const [loadingFile, setLoadingFile] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLoadGdoc = async () => {
+    const url = gdocUrl.trim();
+    if (!url) {
+      toast.error("Vui lòng nhập link Google Doc");
+      return;
+    }
+    setLoadingGdoc(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-contract-from-doc", {
+        body: { googleDocUrl: url, attachments: [], cacheBust: Date.now() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const text: string =
+        data?.contractText ||
+        data?.mo_ta ||
+        "";
+      if (!text.trim()) throw new Error("Không có nội dung trả về");
+      setContractText(text);
+      setInputMode("text");
+      toast.success("Đã đọc tài liệu");
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Không đọc được tài liệu. Kiểm tra link đúng định dạng Google Doc và đã bật quyền xem chưa.");
+    } finally {
+      setLoadingGdoc(false);
+    }
+  };
+
+  const handleFileSelected = async (file: File | null | undefined) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File vượt quá 10MB");
+      return;
+    }
+    const name = file.name.toLowerCase();
+    const isDocx = name.endsWith(".docx");
+    const isPdf = name.endsWith(".pdf");
+    if (!isDocx && !isPdf) {
+      toast.error("Chỉ hỗ trợ file .pdf hoặc .docx");
+      return;
+    }
+    setLoadingFile(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      let text = "";
+      if (isDocx) {
+        const mammoth = await import("mammoth");
+        const res = await mammoth.extractRawText({ arrayBuffer: buffer });
+        text = res.value || "";
+      } else {
+        const pdfjs: any = await import("pdfjs-dist");
+        const workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+        pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+        const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+        const parts: string[] = [];
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          parts.push(content.items.map((it: any) => it.str).join(" "));
+        }
+        text = parts.join("\n\n");
+      }
+      if (!text.trim()) throw new Error("File rỗng");
+      setContractText(text);
+      setInputMode("text");
+      toast.success("Đã đọc file");
+    } catch (e) {
+      console.error(e);
+      toast.error("Không đọc được file. Thử dán text trực tiếp.");
+    } finally {
+      setLoadingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
 
   const toggleExpand = (id: string) => {
     setExpandedItems(prev => ({
