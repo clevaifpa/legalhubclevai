@@ -192,6 +192,9 @@ const AdminReviewRequests = () => {
   const [supplementaryDocs, setSupplementaryDocs] = useState<SupplementaryDoc[]>([]);
   const [supplementaryDocsData, setSupplementaryDocsData] = useState<Record<string, any[]>>({});
 
+  const [pendingDescriptionAttachments, setPendingDescriptionAttachments] = useState<PendingImage[]>([]);
+  const [savedDescriptionAttachments, setSavedDescriptionAttachments] = useState<Attachment[]>([]);
+
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [aiExtracting, setAiExtracting] = useState(false);
   const [aiDescriptionUpdated, setAiDescriptionUpdated] = useState(false);
