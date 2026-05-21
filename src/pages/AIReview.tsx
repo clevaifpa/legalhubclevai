@@ -621,6 +621,85 @@ const AIReview = () => {
             );
           })()}
 
+          {result && (
+            <Card className="border-none shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-accent" />
+                  Hỏi AI về hợp đồng này
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div
+                  ref={chatScrollRef}
+                  className="max-h-80 overflow-y-auto space-y-3 rounded-md border bg-muted/30 p-3"
+                >
+                  {chatMessages.length === 0 && !chatLoading && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Đặt câu hỏi để hiểu rõ hơn về kết quả phân tích.
+                    </p>
+                  )}
+                  {chatMessages.slice(-20).map((m, idx) => (
+                    <div key={idx} className={`flex gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                      {m.role === "assistant" && (
+                        <div className="shrink-0 p-1.5 rounded-full bg-accent/10 h-7 w-7 flex items-center justify-center">
+                          <Brain className="h-4 w-4 text-accent" />
+                        </div>
+                      )}
+                      <div
+                        className={`max-w-[80%] text-sm rounded-lg px-3 py-2 whitespace-pre-wrap ${
+                          m.role === "user"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-card border"
+                        }`}
+                      >
+                        {m.content}
+                      </div>
+                      {m.role === "user" && (
+                        <div className="shrink-0 p-1.5 rounded-full bg-muted h-7 w-7 flex items-center justify-center">
+                          <UserIcon className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {chatLoading && (
+                    <div className="flex gap-2 justify-start">
+                      <div className="shrink-0 p-1.5 rounded-full bg-accent/10 h-7 w-7 flex items-center justify-center">
+                        <Brain className="h-4 w-4 text-accent" />
+                      </div>
+                      <div className="bg-card border rounded-lg px-3 py-2 text-sm text-muted-foreground">
+                        <span className="inline-flex gap-1">
+                          <span className="animate-bounce">.</span>
+                          <span className="animate-bounce [animation-delay:0.15s]">.</span>
+                          <span className="animate-bounce [animation-delay:0.3s]">.</span>
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleChatSend();
+                      }
+                    }}
+                    placeholder="Đặt câu hỏi về kết quả phân tích..."
+                    disabled={chatLoading}
+                  />
+                  <Button onClick={handleChatSend} disabled={chatLoading || !chatInput.trim()}>
+                    <Send className="h-4 w-4 mr-1.5" />
+                    Gửi
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+
           {!result && !analyzing && (
             <div>
               <h2 className="text-lg font-semibold mb-4">Cách hoạt động</h2>
