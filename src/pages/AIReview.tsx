@@ -39,7 +39,7 @@ const RISK_COLORS: Record<string, string> = {
   trung_binh: "bg-warning/10 text-warning border-warning/20",
   cao: "bg-destructive/10 text-destructive border-destructive/20",
 };
-const RISK_ICONS: Record<string, typeof Shield> = { thap: ShieldCheck, trung_binh: Shield, cao: ShieldAlert };
+
 
 const AIReview = () => {
   const [contractText, setContractText] = useState("");
