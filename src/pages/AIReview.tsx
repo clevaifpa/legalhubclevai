@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Brain, Upload, FileText, Sparkles, ShieldCheck, ShieldAlert, Shield, AlertTriangle, CheckCircle, Loader2, Lightbulb, History, Link2, FileUp, ClipboardEdit, Copy, Send, User as UserIcon } from "lucide-react";
+import { Brain, Upload, FileText, Sparkles, ShieldCheck, Loader2, History, Link2, FileUp, Copy, Send, User as UserIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,7 +39,7 @@ const RISK_COLORS: Record<string, string> = {
   trung_binh: "bg-warning/10 text-warning border-warning/20",
   cao: "bg-destructive/10 text-destructive border-destructive/20",
 };
-const RISK_ICONS: Record<string, typeof Shield> = { thap: ShieldCheck, trung_binh: Shield, cao: ShieldAlert };
+
 
 const AIReview = () => {
   const [contractText, setContractText] = useState("");
@@ -321,7 +321,7 @@ const AIReview = () => {
     }
   };
 
-  const RiskIcon = result ? RISK_ICONS[result.riskLevel] || Shield : Shield;
+  
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -477,18 +477,23 @@ const AIReview = () => {
             <div className="space-y-4 animate-fade-in">
               <Card className="border-none shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <Brain className="h-5 w-5 text-accent" />
+                  <CardTitle className="text-lg font-semibold">
                     Kết quả phân tích
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm leading-relaxed">{result.summary}</p>
+                  <div>
+                    <Badge variant="outline" className={`${RISK_COLORS[result.riskLevel] || ""}`}>
+                      Rủi ro: {RISK_LABELS[result.riskLevel] || result.riskLevel}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {result.issues.length} vấn đề · {result.missingClauses.length} điều khoản thiếu
+                    </p>
+                  </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className={`rounded-lg border p-3 ${RISK_COLORS[result.riskLevel] || ""}`}>
-                      <div className="text-[11px] font-medium opacity-80 flex items-center gap-1">
-                        <RiskIcon className="h-3 w-3" /> Mức rủi ro
-                      </div>
+                      <div className="text-[11px] font-medium opacity-80">Mức rủi ro</div>
                       <div className="text-base font-semibold mt-1">{RISK_LABELS[result.riskLevel] || result.riskLevel}</div>
                     </div>
                     <div className="rounded-lg border p-3 bg-muted/30">
@@ -507,17 +512,16 @@ const AIReview = () => {
                 </CardContent>
               </Card>
 
+
               {result.issues.length > 0 && (
                 <Card className="border-none shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-warning" />
+                    <CardTitle className="text-lg font-semibold">
                       Điều khoản có rủi ro ({result.issues.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {result.issues.map((issue, i) => {
-                      const IssueIcon = RISK_ICONS[issue.riskLevel] || Shield;
                       const key = `issue-${i}`;
                       const open = expandedItems[key];
                       return (
@@ -529,7 +533,6 @@ const AIReview = () => {
                           >
                             <p className="font-medium text-sm flex-1 truncate">{issue.clause}</p>
                             <Badge variant="outline" className={`shrink-0 ${RISK_COLORS[issue.riskLevel] || ""}`}>
-                              <IssueIcon className="h-3 w-3 mr-1" />
                               {RISK_LABELS[issue.riskLevel]}
                             </Badge>
                             {open ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
@@ -537,19 +540,18 @@ const AIReview = () => {
                           {open && (
                             <div className="px-4 pb-4 space-y-2 border-t">
                               <div className="p-3 rounded bg-destructive/5 border border-destructive/10 mt-3">
-                                <p className="text-xs font-medium text-destructive mb-1">⚠️ Lý do rủi ro</p>
+                                <p className="text-xs font-medium text-destructive mb-1">Lý do rủi ro</p>
                                 <p className="text-sm text-muted-foreground">{issue.reason}</p>
                               </div>
                               <div className="p-3 rounded bg-success/5 border border-success/10">
-                                <p className="text-xs font-medium text-success mb-1">✏️ Gợi ý chỉnh sửa</p>
+                                <p className="text-xs font-medium text-success mb-1">Gợi ý chỉnh sửa</p>
                                 <p className="text-sm text-muted-foreground">{issue.suggestion}</p>
                               </div>
                               {issue.revisedClause && (
                                 <div className="p-3 rounded bg-info/5 border border-info/20 relative">
                                   <div className="flex items-start justify-between gap-2 mb-1">
-                                    <p className="text-xs font-medium text-info flex items-center gap-1">
-                                      <ClipboardEdit className="h-3 w-3" />
-                                      📝 Nội dung đề xuất thay thế
+                                    <p className="text-xs font-medium text-info">
+                                      Nội dung đề xuất thay thế
                                     </p>
                                     <Button
                                       type="button"
@@ -578,19 +580,18 @@ const AIReview = () => {
                 </Card>
               )}
 
+
               {result.missingClauses.length > 0 && (
                 <Card className="border-none shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-info" />
+                    <CardTitle className="text-lg font-semibold">
                       Điều khoản bắt buộc bị thiếu ({result.missingClauses.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
                       {result.missingClauses.map((clause, i) => (
-                        <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-info/10 text-info text-xs font-medium border border-info/20">
-                          <AlertTriangle className="h-3 w-3" />
+                        <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-full bg-info/10 text-info text-xs font-medium border border-info/20">
                           {clause}
                         </span>
                       ))}
@@ -602,23 +603,20 @@ const AIReview = () => {
               {result.recommendations.length > 0 && (
                 <Card className="border-none shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <Lightbulb className="h-5 w-5 text-accent" />
+                    <CardTitle className="text-lg font-semibold">
                       Khuyến nghị
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ol className="space-y-2">
+                    <ol className="space-y-2 list-decimal list-inside">
                       {result.recommendations.map((rec, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm">
-                          <CheckCircle className="h-4 w-4 text-accent shrink-0 mt-0.5" />
-                          <span><span className="text-muted-foreground mr-1">{i + 1}.</span>{rec}</span>
-                        </li>
+                        <li key={i} className="text-sm leading-relaxed">{rec}</li>
                       ))}
                     </ol>
                   </CardContent>
                 </Card>
               )}
+
             </div>
             );
           })()}
@@ -754,12 +752,9 @@ const AIReview = () => {
               ) : (
                 <div className="space-y-2">
                   {history.map((item) => {
-                    const ItemIcon = RISK_ICONS[item.risk_level] || Shield;
                     const isExpanded = expandedItems[item.id] || false;
                     const histKey = `hist-${item.id}`;
                     const histOpen = expandedItems[histKey] || false;
-                    const score = item.risk_level === "cao" ? 85 : item.risk_level === "trung_binh" ? 60 : 25;
-                    const summarySnippet = item.summary?.slice(0, 80) || "Hợp đồng đã phân tích";
                     const hasName = !!item.contract_name?.trim();
 
                     return (
@@ -770,23 +765,21 @@ const AIReview = () => {
                             onClick={() => toggleExpand(histKey)}
                             className="flex-1 flex items-center gap-3 text-left min-w-0"
                           >
-                            <History className="h-4 w-4 text-muted-foreground shrink-0" />
                             <div className="min-w-0 flex-1">
                               <p className={`text-sm font-semibold truncate ${hasName ? "" : "text-muted-foreground italic font-normal"}`}>
                                 {hasName ? item.contract_name : "Không có tên"}
                               </p>
-                              <p className="text-xs text-muted-foreground truncate">{summarySnippet}</p>
                               <p className="text-xs text-muted-foreground">
                                 {new Date(item.created_at).toLocaleString("vi-VN", { dateStyle: "medium", timeStyle: "short" })}
                               </p>
                             </div>
-                            <Badge className={`shrink-0 ${RISK_COLORS[item.risk_level] || ""}`}>
-                              <ItemIcon className="h-3 w-3 mr-1" />
-                              {RISK_LABELS[item.risk_level] || item.risk_level}
+                            <Badge variant="outline" className={`shrink-0 ${RISK_COLORS[item.risk_level] || ""}`}>
+                              Rủi ro: {RISK_LABELS[item.risk_level] || item.risk_level}
                             </Badge>
-                            <span className="shrink-0 text-xs font-semibold text-muted-foreground tabular-nums">{score}/100</span>
+                            <span className="shrink-0 text-xs text-muted-foreground">{item.issues?.length || 0} vấn đề</span>
                             {histOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
                           </button>
+
                           <Button
                             variant="ghost"
                             size="icon"
@@ -801,16 +794,14 @@ const AIReview = () => {
                         {histOpen && (
                           <div className="px-4 pb-4 pt-3 space-y-4 border-t">
                           <div>
-                            <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-foreground">
-                              <Brain className="h-4 w-4 text-accent" /> Kết luận chung
-                            </p>
+                            <p className="text-sm font-semibold mb-2 text-foreground">Kết luận chung</p>
                             <p className="text-sm bg-muted/50 p-3 rounded-md">{item.summary}</p>
                           </div>
 
                           {item.issues && item.issues.length > 0 && (
                             <div>
-                              <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-warning">
-                                <AlertTriangle className="h-4 w-4" /> Điều khoản có rủi ro ({item.issues.length})
+                              <p className="text-sm font-semibold mb-2 text-warning">
+                                Điều khoản có rủi ro ({item.issues.length})
                               </p>
                               <div className="space-y-2">
                                 {item.issues.map((issue, idx) => {
@@ -827,10 +818,7 @@ const AIReview = () => {
                                       <div className="text-muted-foreground"><span className="font-medium text-success">Gợi ý:</span> {issue.suggestion}</div>
                                       {revised?.revisedClause && (
                                         <div className="text-muted-foreground">
-                                          <span className="font-medium text-info flex items-center gap-1">
-                                            <ClipboardEdit className="h-3 w-3" />
-                                            Nội dung đề xuất thay thế:
-                                          </span>
+                                          <span className="font-medium text-info">Nội dung đề xuất thay thế:</span>
                                           <p className="mt-1 text-foreground font-mono whitespace-pre-wrap leading-relaxed bg-info/5 border border-info/20 rounded p-2 text-xs">
                                             {revised.revisedClause}
                                           </p>
@@ -845,13 +833,12 @@ const AIReview = () => {
 
                           {item.missing_clauses && item.missing_clauses.length > 0 && (
                             <div>
-                              <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-info">
-                                <FileText className="h-4 w-4" /> Điều khoản thiếu ({item.missing_clauses.length})
+                              <p className="text-sm font-semibold mb-2 text-info">
+                                Điều khoản thiếu ({item.missing_clauses.length})
                               </p>
                               <div className="flex flex-wrap gap-2">
                                 {item.missing_clauses.map((clause, idx) => (
-                                  <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-info/10 text-info text-xs font-medium border border-info/20">
-                                    <AlertTriangle className="h-3 w-3" />
+                                  <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-full bg-info/10 text-info text-xs font-medium border border-info/20">
                                     {clause}
                                   </span>
                                 ))}
@@ -861,19 +848,15 @@ const AIReview = () => {
 
                           {item.recommendations && item.recommendations.length > 0 && (
                             <div>
-                              <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-success">
-                                <Lightbulb className="h-4 w-4" /> Khuyến nghị chung
-                              </p>
-                              <ol className="space-y-1.5">
+                              <p className="text-sm font-semibold mb-2 text-success">Khuyến nghị chung</p>
+                              <ol className="space-y-1.5 list-decimal list-inside">
                                 {item.recommendations.map((rec, idx) => (
-                                  <li key={idx} className="flex items-start gap-2 text-sm">
-                                    <CheckCircle className="h-4 w-4 text-success shrink-0 mt-0.5" />
-                                    <span><span className="text-muted-foreground mr-1">{idx + 1}.</span>{rec}</span>
-                                  </li>
+                                  <li key={idx} className="text-sm leading-relaxed">{rec}</li>
                                 ))}
                               </ol>
                             </div>
                           )}
+
 
                           <Separator className="my-2" />
 
