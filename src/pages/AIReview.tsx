@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Brain, Upload, FileText, Sparkles, ShieldCheck, ShieldAlert, Shield, AlertTriangle, CheckCircle, Loader2, Lightbulb, History } from "lucide-react";
+import { Brain, Upload, FileText, Sparkles, ShieldCheck, ShieldAlert, Shield, AlertTriangle, CheckCircle, Loader2, Lightbulb, History, Link2, FileUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -47,6 +48,89 @@ const AIReview = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+  const [inputMode, setInputMode] = useState<"text" | "gdoc" | "file">("text");
+  const [gdocUrl, setGdocUrl] = useState("");
+  const [loadingGdoc, setLoadingGdoc] = useState(false);
+  const [loadingFile, setLoadingFile] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLoadGdoc = async () => {
+    const url = gdocUrl.trim();
+    if (!url) {
+      toast.error("Vui lòng nhập link Google Doc");
+      return;
+    }
+    setLoadingGdoc(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-contract-from-doc", {
+        body: { googleDocUrl: url, attachments: [], cacheBust: Date.now() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const text: string =
+        data?.contractText ||
+        data?.mo_ta ||
+        "";
+      if (!text.trim()) throw new Error("Không có nội dung trả về");
+      setContractText(text);
+      setInputMode("text");
+      toast.success("Đã đọc tài liệu");
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Không đọc được tài liệu. Kiểm tra link đúng định dạng Google Doc và đã bật quyền xem chưa.");
+    } finally {
+      setLoadingGdoc(false);
+    }
+  };
+
+  const handleFileSelected = async (file: File | null | undefined) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File vượt quá 10MB");
+      return;
+    }
+    const name = file.name.toLowerCase();
+    const isDocx = name.endsWith(".docx");
+    const isPdf = name.endsWith(".pdf");
+    if (!isDocx && !isPdf) {
+      toast.error("Chỉ hỗ trợ file .pdf hoặc .docx");
+      return;
+    }
+    setLoadingFile(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      let text = "";
+      if (isDocx) {
+        const mammoth = await import("mammoth");
+        const res = await mammoth.extractRawText({ arrayBuffer: buffer });
+        text = res.value || "";
+      } else {
+        const pdfjs: any = await import("pdfjs-dist");
+        const workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+        pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+        const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+        const parts: string[] = [];
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          parts.push(content.items.map((it: any) => it.str).join(" "));
+        }
+        text = parts.join("\n\n");
+      }
+      if (!text.trim()) throw new Error("File rỗng");
+      setContractText(text);
+      setInputMode("text");
+      toast.success("Đã đọc file");
+    } catch (e) {
+      console.error(e);
+      toast.error("Không đọc được file. Thử dán text trực tiếp.");
+    } finally {
+      setLoadingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
 
   const toggleExpand = (id: string) => {
     setExpandedItems(prev => ({
@@ -218,13 +302,75 @@ const AIReview = () => {
                   <p className="text-sm text-muted-foreground">Dán nội dung hợp đồng cần kiểm tra vào ô bên dưới</p>
                 </div>
               </div>
-              <Textarea
-                value={contractText}
-                onChange={(e) => setContractText(e.target.value)}
-                placeholder="Dán toàn bộ nội dung hợp đồng tại đây...&#10;&#10;VD: ĐIỀU 1: ĐỐI TƯỢNG HỢP ĐỒNG&#10;Bên A đồng ý cung cấp cho Bên B..."
-                rows={10}
-                className="resize-y"
-              />
+              <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as any)} className="space-y-3">
+                <TabsList className="grid grid-cols-3 w-full sm:w-auto">
+                  <TabsTrigger value="text"><FileText className="h-4 w-4 mr-1.5" />Dán text</TabsTrigger>
+                  <TabsTrigger value="gdoc"><Link2 className="h-4 w-4 mr-1.5" />Link Google Doc</TabsTrigger>
+                  <TabsTrigger value="file"><FileUp className="h-4 w-4 mr-1.5" />Tải file lên</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="text" className="mt-3">
+                  <Textarea
+                    value={contractText}
+                    onChange={(e) => setContractText(e.target.value)}
+                    placeholder="Dán toàn bộ nội dung hợp đồng tại đây...&#10;&#10;VD: ĐIỀU 1: ĐỐI TƯỢNG HỢP ĐỒNG&#10;Bên A đồng ý cung cấp cho Bên B..."
+                    rows={10}
+                    className="resize-y"
+                  />
+                </TabsContent>
+
+                <TabsContent value="gdoc" className="mt-3 space-y-3">
+                  <Input
+                    value={gdocUrl}
+                    onChange={(e) => setGdocUrl(e.target.value)}
+                    placeholder="Dán link Google Doc tại đây... (vd: https://docs.google.com/document/d/...)"
+                    disabled={loadingGdoc}
+                  />
+                  <Button onClick={handleLoadGdoc} disabled={loadingGdoc || !gdocUrl.trim()} variant="secondary">
+                    {loadingGdoc ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Link2 className="h-4 w-4 mr-2" />}
+                    {loadingGdoc ? "Đang đọc tài liệu..." : "Đọc tài liệu"}
+                  </Button>
+                </TabsContent>
+
+                <TabsContent value="file" className="mt-3">
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); if (!loadingFile) setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      if (loadingFile) return;
+                      handleFileSelected(e.dataTransfer.files?.[0]);
+                    }}
+                    onClick={() => !loadingFile && fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                      isDragging ? "border-accent bg-accent/10" : "border-border bg-muted/30 hover:bg-muted/50"
+                    } ${loadingFile ? "opacity-60 cursor-not-allowed" : ""}`}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.docx"
+                      className="hidden"
+                      onChange={(e) => handleFileSelected(e.target.files?.[0])}
+                      disabled={loadingFile}
+                    />
+                    {loadingFile ? (
+                      <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-6 w-6 animate-spin text-accent" />
+                        Đang đọc file...
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <FileUp className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-sm font-medium">Kéo thả file hoặc bấm để chọn</p>
+                        <p className="text-xs text-muted-foreground">Hỗ trợ .pdf, .docx (tối đa 10MB)</p>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+
               <Button
                 className="bg-accent hover:bg-accent/90 text-accent-foreground w-full sm:w-auto"
                 onClick={handleAnalyze}
