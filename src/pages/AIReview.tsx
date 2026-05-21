@@ -23,6 +23,7 @@ interface AnalysisResult {
 interface AIReviewHistoryItem {
   id: string;
   contract_text: string;
+  contract_name?: string | null;
   summary: string;
   risk_level: string;
   issues: { clause: string; riskLevel: string; reason: string; suggestion: string; revisedClause?: string }[];
