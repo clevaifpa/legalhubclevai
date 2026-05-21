@@ -29,9 +29,11 @@ interface SyncLog {
 interface EntitySyncButtonProps {
   entityName: string;
   isAdmin: boolean;
+  onSyncComplete?: () => void | Promise<void>;
 }
 
-export function EntitySyncButton({ entityName, isAdmin }: EntitySyncButtonProps) {
+export function EntitySyncButton({ entityName, isAdmin, onSyncComplete }: EntitySyncButtonProps) {
+
   const [syncing, setSyncing] = useState(false);
   const [lastLog, setLastLog] = useState<SyncLog | null>(null);
   const [logsOpen, setLogsOpen] = useState(false);
