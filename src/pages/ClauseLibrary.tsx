@@ -21,10 +21,51 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 const ClauseLibrary = () => {
-  const [clauses, setClauses] = useState<Clause[]>(mockClauses);
+  const { role } = useAuth();
+  const [clauses, setClauses] = useState<Clause[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [riskFilter, setRiskFilter] = useState<string>("all");
+
+  const fetchClauses = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("clauses")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast.error("Không thể tải điều khoản");
+    } else if (data) {
+      const mapped: Clause[] = data.map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        content: row.content,
+        contractType: row.contract_type as ContractType,
+        riskLevel: row.risk_level as RiskLevel,
+        notes: row.notes || "",
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+      setClauses(mapped);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchClauses();
+  }, []);
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from("clauses").delete().eq("id", id);
+    if (error) {
+      toast.error("Không thể xóa điều khoản");
+    } else {
+      toast.success("Đã xóa điều khoản");
+      fetchClauses();
+    }
+  };
 
   const filteredClauses = useMemo(() => {
     return clauses.filter((clause) => {
@@ -36,7 +77,7 @@ const ClauseLibrary = () => {
       const matchesRisk = riskFilter === "all" || clause.riskLevel === riskFilter;
       return matchesSearch && matchesType && matchesRisk;
     });
-  }, [search, typeFilter, riskFilter]);
+  }, [search, typeFilter, riskFilter, clauses]);
 
   const handleCopy = (content: string, name: string) => {
     navigator.clipboard.writeText(content);
@@ -54,7 +95,7 @@ const ClauseLibrary = () => {
             Quản lý và sử dụng các điều khoản hợp đồng mẫu
           </p>
         </div>
-        <AddClauseDialog onAdd={(newClause) => setClauses([newClause, ...clauses])} />
+        <AddClauseDialog onSuccess={fetchClauses} />
       </div>
 
       {/* Filters */}
@@ -106,80 +147,113 @@ const ClauseLibrary = () => {
         Hiển thị {filteredClauses.length} / {clauses.length} điều khoản
       </p>
 
-      {/* Clauses Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {filteredClauses.map((clause, i) => (
-          <Card
-            key={clause.id}
-            className="border shadow-sm hover:shadow-md transition-all animate-slide-up group"
-            style={{ animationDelay: `${i * 60}ms`, animationFillMode: 'backwards' }}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <div className="p-2 rounded-lg bg-accent/10 shrink-0 mt-0.5">
-                    <BookOpen className="h-4 w-4 text-accent" />
-                  </div>
-                  <div className="min-w-0">
-                    <CardTitle className="text-base font-semibold leading-tight">
-                      {clause.name}
-                    </CardTitle>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      <ContractTypeBadge type={clause.contractType} />
-                      <RiskBadge level={clause.riskLevel} />
+      {/* Loading */}
+      {loading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="border shadow-sm p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <Skeleton className="h-8 w-8 rounded-lg" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/3" />
+                </div>
+              </div>
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-8 w-1/4 ml-auto" />
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* Clauses Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {filteredClauses.map((clause, i) => (
+              <Card
+                key={clause.id}
+                className="border shadow-sm hover:shadow-md transition-all animate-slide-up group"
+                style={{ animationDelay: `${i * 60}ms`, animationFillMode: 'backwards' }}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="p-2 rounded-lg bg-accent/10 shrink-0 mt-0.5">
+                        <BookOpen className="h-4 w-4 text-accent" />
+                      </div>
+                      <div className="min-w-0">
+                        <CardTitle className="text-base font-semibold leading-tight">
+                          {clause.name}
+                        </CardTitle>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <ContractTypeBadge type={clause.contractType} />
+                          <RiskBadge level={clause.riskLevel} />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {role === "admin" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => handleDelete(clause.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleCopy(clause.content, clause.name)}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => handleCopy(clause.content, clause.name)}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-3">
-              <p className="text-sm text-foreground/80 leading-relaxed line-clamp-3">
-                {clause.content}
-              </p>
-              {clause.notes && (
-                <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">
-                    📝 Ghi chú khi sử dụng
+                </CardHeader>
+                <CardContent className="pt-0 space-y-3">
+                  <p className="text-sm text-foreground/80 leading-relaxed line-clamp-3">
+                    {clause.content}
                   </p>
-                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                    {clause.notes}
-                  </p>
-                </div>
-              )}
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleCopy(clause.content, clause.name)}
-                  className="text-xs"
-                >
-                  <Copy className="h-3 w-3 mr-1.5" />
-                  Sao chép điều khoản
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  {clause.notes && (
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
+                      <p className="text-xs font-medium text-muted-foreground mb-1">
+                        📝 Ghi chú khi sử dụng
+                      </p>
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                        {clause.notes}
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCopy(clause.content, clause.name)}
+                      className="text-xs"
+                    >
+                      <Copy className="h-3 w-3 mr-1.5" />
+                      Sao chép điều khoản
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-      {filteredClauses.length === 0 && (
-        <div className="text-center py-12">
-          <BookOpen className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-          <p className="text-muted-foreground font-medium">
-            Không tìm thấy điều khoản phù hợp
-          </p>
-          <p className="text-sm text-muted-foreground/70 mt-1">
-            Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
-          </p>
-        </div>
+          {filteredClauses.length === 0 && (
+            <div className="text-center py-12">
+              <BookOpen className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="text-muted-foreground font-medium">
+                Không tìm thấy điều khoản phù hợp
+              </p>
+              <p className="text-sm text-muted-foreground/70 mt-1">
+                Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
+              </p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
