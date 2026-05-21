@@ -264,7 +264,7 @@ const AIReview = () => {
       setResult(analysisResult);
 
       try {
-        await saveHistory(analysisResult, contractText.trim());
+        await saveHistory(analysisResult, contractText.trim(), contractName);
         setPage(1);
         await loadHistory(1);
       } catch (saveError: any) {
