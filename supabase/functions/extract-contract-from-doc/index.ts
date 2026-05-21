@@ -163,7 +163,7 @@ serve(async (req) => {
       });
     }
 
-    const { googleDocUrl, attachments = [], cacheBust = Date.now() } = await req.json();
+    const { googleDocUrl, attachments = [], cacheBust = Date.now(), rawMode = false } = await req.json();
 
     if (!googleDocUrl || typeof googleDocUrl !== "string") {
       return new Response(JSON.stringify({ error: "Thiếu googleDocUrl" }), {
