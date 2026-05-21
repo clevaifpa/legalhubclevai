@@ -284,6 +284,8 @@ const AIReview = () => {
     }
     setAnalyzing(true);
     setResult(null);
+    setChatMessages([]);
+    setChatInput("");
 
     try {
       const { data: clauses } = await supabase.from("clauses").select("name, content, risk_level");
