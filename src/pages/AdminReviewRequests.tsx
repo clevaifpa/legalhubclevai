@@ -27,6 +27,8 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import { DepartmentReviewTracker } from "@/components/common/DepartmentReviewTracker";
 import { InternalChat } from "@/components/review/InternalChat";
+import { DescriptionImageUploader, flushPendingImages, type PendingImage } from "@/components/review/DescriptionImageUploader";
+import type { Attachment } from "@/lib/attachments";
 import {
   type ReviewDepartment,
   type DepartmentReviewStatus,
@@ -189,6 +191,9 @@ const AdminReviewRequests = () => {
 
   const [supplementaryDocs, setSupplementaryDocs] = useState<SupplementaryDoc[]>([]);
   const [supplementaryDocsData, setSupplementaryDocsData] = useState<Record<string, any[]>>({});
+
+  const [pendingDescriptionAttachments, setPendingDescriptionAttachments] = useState<PendingImage[]>([]);
+  const [savedDescriptionAttachments, setSavedDescriptionAttachments] = useState<Attachment[]>([]);
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [aiExtracting, setAiExtracting] = useState(false);
@@ -687,6 +692,11 @@ const AdminReviewRequests = () => {
           validDocs.map(d => ({ review_request_id: finalReqId!, doc_name: d.doc_name.trim(), doc_url: d.doc_url.trim() })) as any
         );
       }
+
+      // Flush pending description attachments (only when creating new)
+      if (!editingReqId && pendingDescriptionAttachments.length > 0 && user) {
+        await flushPendingImages(pendingDescriptionAttachments, finalReqId, user.id);
+      }
     }
 
     // Notification already sent in the create/update block above
@@ -718,6 +728,8 @@ const AdminReviewRequests = () => {
     setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "", global_manager_id: "", legal_reviewer_id: "", accountant_reviewer_id: "", finance_reviewer_id: "", legal_review_doc_link: "" });
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
     setSupplementaryDocs([]);
+    setPendingDescriptionAttachments([]);
+    setSavedDescriptionAttachments([]);
   };
 
   const handleResetForm = () => {
@@ -1437,6 +1449,13 @@ const AdminReviewRequests = () => {
                   <Textarea className={`${formErrors.description ? "border-destructive focus-visible:ring-destructive" : ""} ${aiDescriptionUpdated ? "border-accent ring-2 ring-accent/20" : ""}`} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả thêm về hợp đồng cần review..." rows={3} />
                   {aiDescriptionUpdated && <p className="text-xs text-accent">Nội dung đã được cập nhật từ phiên bản mới của tài liệu</p>}
                   {formErrors.description && <p className="text-xs text-destructive">{formErrors.description}</p>}
+                  <DescriptionImageUploader
+                    requestId={editingReqId}
+                    pendingImages={pendingDescriptionAttachments}
+                    onPendingChange={setPendingDescriptionAttachments}
+                    savedImages={savedDescriptionAttachments}
+                    onSavedChange={setSavedDescriptionAttachments}
+                  />
                 </div>
               </div>
               <DialogFooter>
