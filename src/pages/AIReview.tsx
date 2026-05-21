@@ -477,18 +477,23 @@ const AIReview = () => {
             <div className="space-y-4 animate-fade-in">
               <Card className="border-none shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <Brain className="h-5 w-5 text-accent" />
+                  <CardTitle className="text-lg font-semibold">
                     Kết quả phân tích
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm leading-relaxed">{result.summary}</p>
+                  <div>
+                    <Badge variant="outline" className={`${RISK_COLORS[result.riskLevel] || ""}`}>
+                      Rủi ro: {RISK_LABELS[result.riskLevel] || result.riskLevel}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {result.issues.length} vấn đề · {result.missingClauses.length} điều khoản thiếu
+                    </p>
+                  </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className={`rounded-lg border p-3 ${RISK_COLORS[result.riskLevel] || ""}`}>
-                      <div className="text-[11px] font-medium opacity-80 flex items-center gap-1">
-                        <RiskIcon className="h-3 w-3" /> Mức rủi ro
-                      </div>
+                      <div className="text-[11px] font-medium opacity-80">Mức rủi ro</div>
                       <div className="text-base font-semibold mt-1">{RISK_LABELS[result.riskLevel] || result.riskLevel}</div>
                     </div>
                     <div className="rounded-lg border p-3 bg-muted/30">
@@ -506,6 +511,7 @@ const AIReview = () => {
                   </div>
                 </CardContent>
               </Card>
+
 
               {result.issues.length > 0 && (
                 <Card className="border-none shadow-sm">
