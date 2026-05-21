@@ -638,7 +638,8 @@ const AIReview = () => {
                     const histKey = `hist-${item.id}`;
                     const histOpen = expandedItems[histKey] || false;
                     const score = item.risk_level === "cao" ? 85 : item.risk_level === "trung_binh" ? 60 : 25;
-                    const title = item.summary?.slice(0, 80) || "Hợp đồng đã phân tích";
+                    const summarySnippet = item.summary?.slice(0, 80) || "Hợp đồng đã phân tích";
+                    const hasName = !!item.contract_name?.trim();
 
                     return (
                       <div key={item.id} className="border rounded-lg bg-card overflow-hidden">
@@ -650,7 +651,10 @@ const AIReview = () => {
                           >
                             <History className="h-4 w-4 text-muted-foreground shrink-0" />
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium truncate">{title}</p>
+                              <p className={`text-sm font-semibold truncate ${hasName ? "" : "text-muted-foreground italic font-normal"}`}>
+                                {hasName ? item.contract_name : "Không có tên"}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">{summarySnippet}</p>
                               <p className="text-xs text-muted-foreground">
                                 {new Date(item.created_at).toLocaleString("vi-VN", { dateStyle: "medium", timeStyle: "short" })}
                               </p>
