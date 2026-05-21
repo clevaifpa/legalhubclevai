@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Brain, Upload, FileText, Sparkles, ShieldCheck, ShieldAlert, Shield, AlertTriangle, CheckCircle, Loader2, Lightbulb, History } from "lucide-react";
+import { Brain, Upload, FileText, Sparkles, ShieldCheck, ShieldAlert, Shield, AlertTriangle, CheckCircle, Loader2, Lightbulb, History, Link2, FileUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
