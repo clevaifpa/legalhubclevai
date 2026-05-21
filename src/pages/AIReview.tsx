@@ -584,16 +584,14 @@ const AIReview = () => {
               {result.missingClauses.length > 0 && (
                 <Card className="border-none shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-info" />
+                    <CardTitle className="text-lg font-semibold">
                       Điều khoản bắt buộc bị thiếu ({result.missingClauses.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
                       {result.missingClauses.map((clause, i) => (
-                        <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-info/10 text-info text-xs font-medium border border-info/20">
-                          <AlertTriangle className="h-3 w-3" />
+                        <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-full bg-info/10 text-info text-xs font-medium border border-info/20">
                           {clause}
                         </span>
                       ))}
@@ -605,23 +603,20 @@ const AIReview = () => {
               {result.recommendations.length > 0 && (
                 <Card className="border-none shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <Lightbulb className="h-5 w-5 text-accent" />
+                    <CardTitle className="text-lg font-semibold">
                       Khuyến nghị
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ol className="space-y-2">
+                    <ol className="space-y-2 list-decimal list-inside">
                       {result.recommendations.map((rec, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm">
-                          <CheckCircle className="h-4 w-4 text-accent shrink-0 mt-0.5" />
-                          <span><span className="text-muted-foreground mr-1">{i + 1}.</span>{rec}</span>
-                        </li>
+                        <li key={i} className="text-sm leading-relaxed">{rec}</li>
                       ))}
                     </ol>
                   </CardContent>
                 </Card>
               )}
+
             </div>
             );
           })()}
