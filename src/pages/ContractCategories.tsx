@@ -1659,7 +1659,14 @@ const ContractCategories = () => {
                   </div>
                   {entity !== "Khác" && (
                     <div className="ml-auto mr-4">
-                      <EntitySyncButton entityName={entity} isAdmin={isAdmin} />
+                      <EntitySyncButton
+                        entityName={entity}
+                        isAdmin={isAdmin}
+                        onSyncComplete={async () => {
+                          await Promise.all([fetchCategories(), fetchEntityOrder()]);
+                          if (selectedCategory) await fetchContracts(selectedCategory.id);
+                        }}
+                      />
                     </div>
                   )}
                 </div>
