@@ -42,6 +42,7 @@ const RISK_ICONS: Record<string, typeof Shield> = { thap: ShieldCheck, trung_bin
 
 const AIReview = () => {
   const [contractText, setContractText] = useState("");
+  const [contractName, setContractName] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [history, setHistory] = useState<AIReviewHistoryItem[]>([]);
