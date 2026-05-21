@@ -146,7 +146,7 @@ export function EntitySyncButton({ entityName, isAdmin, onSyncComplete }: Entity
           ) : (
             <RefreshCw className="h-3 w-3" />
           )}
-          {syncing ? "Đang sync..." : "Tải từ Google Sheet"}
+          {syncing ? "Đang tải..." : "Tải từ Google Sheet"}
         </Button>
       )}
 
