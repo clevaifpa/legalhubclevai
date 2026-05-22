@@ -403,7 +403,15 @@ export async function notifyReviewRequestEdited(params: {
     else if (status === "cho_quan_ly_chung" && request.global_manager_id) recipientIds.add(request.global_manager_id);
     else if (status === "cho_phap_che" && request.legal_reviewer_id) recipientIds.add(request.legal_reviewer_id);
     else if (status === "cho_ke_toan" && request.accountant_reviewer_id) recipientIds.add(request.accountant_reviewer_id);
-    else if (status === "cho_tai_chinh" && request.finance_reviewer_id) recipientIds.add(request.finance_reviewer_id);
+  }
+
+  // Tài chính: gửi cho toàn bộ user có role finance
+  if (status === "cho_tai_chinh") {
+    const { data: financeUsers } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "finance");
+    (financeUsers || []).forEach((u: any) => recipientIds.add(u.user_id));
   }
 
   // Admin/pháp chế theo dõi toàn bộ
