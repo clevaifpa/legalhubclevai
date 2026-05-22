@@ -759,7 +759,6 @@ const AdminReviewRequests = () => {
       global_manager_id: req.global_manager_id || (globalManagers.length === 1 ? globalManagers[0].user_id : ""),
       legal_reviewer_id: req.legal_reviewer_id || (legalReviewers?.length === 1 ? legalReviewers[0].user_id : ""),
       accountant_reviewer_id: req.accountant_reviewer_id || (accountantReviewers?.length === 1 ? accountantReviewers[0].user_id : ""),
-      finance_reviewer_id: req.finance_reviewer_id || (financeReviewers?.length === 1 ? financeReviewers[0].user_id : ""),
       legal_review_doc_link: req.legal_review_doc_link || "",
     });
 
