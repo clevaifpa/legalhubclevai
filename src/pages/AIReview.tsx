@@ -56,8 +56,6 @@ const AIReview = () => {
   const [loadingGdoc, setLoadingGdoc] = useState(false);
   const [loadingFile, setLoadingFile] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [contractType, setContractType] = useState("auto");
-  const [companyRole, setCompanyRole] = useState("ben_a");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -292,7 +290,7 @@ const AIReview = () => {
       const { data: clauses } = await supabase.from("clauses").select("name, content, risk_level");
 
       const { data, error } = await supabase.functions.invoke("analyze-contract", {
-        body: { contractText: contractText.trim(), clauses: clauses || [], contractType, companyRole },
+        body: { contractText: contractText.trim(), clauses: clauses || [] },
       });
 
       if (error) throw error;
@@ -426,38 +424,6 @@ const AIReview = () => {
                   </div>
                 </TabsContent>
               </Tabs>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1 space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Loại hợp đồng</label>
-                  <Select value={contractType} onValueChange={setContractType}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="auto">Tự động nhận diện</SelectItem>
-                      <SelectItem value="mua_ban">Mua bán hàng hóa</SelectItem>
-                      <SelectItem value="dich_vu">Dịch vụ & Phần mềm</SelectItem>
-                      <SelectItem value="nda">NDA & Bảo mật</SelectItem>
-                      <SelectItem value="lao_dong">Lao động</SelectItem>
-                      <SelectItem value="thue_tai_san">Thuê tài sản</SelectItem>
-                      <SelectItem value="hop_tac">Hợp tác kinh doanh</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex-1 space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Công ty mình là</label>
-                  <Select value={companyRole} onValueChange={setCompanyRole}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ben_a">Bên A</SelectItem>
-                      <SelectItem value="ben_b">Bên B</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
 
               <Button
                 className="bg-accent hover:bg-accent/90 text-accent-foreground w-full sm:w-auto"
