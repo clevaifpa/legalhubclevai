@@ -1006,9 +1006,9 @@ const AdminReviewRequests = () => {
     if (isAccountant && req.status === 'cho_ke_toan') {
       return !!req.accountant_reviewer_id && req.accountant_reviewer_id === user?.id;
     }
-    // Tài chính: chỉ đúng người được phân công mới duyệt được
+    // Tài chính: tất cả user có role finance đều có quyền duyệt
     if (isFinance && req.status === 'cho_tai_chinh') {
-      return !!req.finance_reviewer_id && req.finance_reviewer_id === user?.id;
+      return true;
     }
     return false;
   };
