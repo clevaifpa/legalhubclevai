@@ -613,7 +613,7 @@ const UserDashboard = () => {
       global_manager_id: req.global_manager_id || (globalManagers.length === 1 ? globalManagers[0].user_id : ""),
       legal_reviewer_id: req.legal_reviewer_id || "",
       accountant_reviewer_id: req.accountant_reviewer_id || "",
-      finance_reviewer_id: req.finance_reviewer_id || "",
+      
       legal_review_doc_link: req.legal_review_doc_link || "",
     });
 
