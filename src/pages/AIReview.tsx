@@ -759,7 +759,7 @@ const AIReview = () => {
                           >
                             <div className="min-w-0 flex-1">
                               <p className={`text-sm font-semibold truncate ${hasName ? "" : "text-muted-foreground italic font-normal"}`}>
-                                {hasName ? item.contract_name : "Không có tên"}
+                                {hasName ? item.contract_name : (result?.contractName || "Không có tên")}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 {new Date(item.created_at).toLocaleString("vi-VN", { dateStyle: "medium", timeStyle: "short" })}
