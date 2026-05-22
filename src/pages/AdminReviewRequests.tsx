@@ -1173,25 +1173,8 @@ const AdminReviewRequests = () => {
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Tài chính (Bước 5)</Label>
-                    {financeReviewers.length === 1 ? (
-                      <p className="text-sm font-medium text-muted-foreground bg-muted p-2 rounded">{financeReviewers[0].full_name || financeReviewers[0].email}</p>
-                    ) : isAdmin ? (
-                      <Select value={form.finance_reviewer_id || "none"} onValueChange={(v) => setForm({ ...form, finance_reviewer_id: v === "none" ? "" : v })}>
-                        <SelectTrigger><SelectValue placeholder="Chọn tài chính duyệt" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">-- Sẽ phân công sau --</SelectItem>
-                          {financeReviewers.map((m) => (
-                            <SelectItem key={m.user_id} value={m.user_id}>{m.full_name || m.email || "Chưa đặt tên"}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="text-sm italic text-muted-foreground bg-muted p-2 rounded border border-dashed">Sẽ được phân công bởi Admin</p>
-                    )}
-                  </div>
                 </div>
+
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2" id="field-contract_type_category">
