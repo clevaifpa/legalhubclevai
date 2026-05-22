@@ -185,7 +185,7 @@ serve(async (req) => {
 
     let docText = "";
     try {
-      docText = await fetchDocumentText(googleDocUrl, cacheBust);
+      docText = await fetchDocumentText(googleDocUrl, cacheBust, rawMode);
     } catch (error) {
       console.error("Google export error:", error);
       return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Không thể đọc nội dung Google Doc" }), {
