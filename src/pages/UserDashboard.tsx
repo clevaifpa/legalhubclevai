@@ -672,7 +672,9 @@ const UserDashboard = () => {
       quan_ly_chung: { id: req.global_manager_id || "", name: findName(req.global_manager_id) || "Quản lý chung" },
       phap_ly: { id: req.legal_reviewer_id || "", name: findName(req.legal_reviewer_id) },
       ke_toan: { id: req.accountant_reviewer_id || "", name: findName(req.accountant_reviewer_id) },
-      tai_chinh: { id: req.finance_reviewer_id || "", name: findName(req.finance_reviewer_id) },
+      tai_chinh: req.finance_approved_by
+        ? { id: req.finance_approved_by, name: findName(req.finance_approved_by) || "Bộ phận Tài chính" }
+        : { id: "", name: "Bộ phận Tài chính" },
     };
   };
 
