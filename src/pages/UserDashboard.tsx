@@ -679,7 +679,7 @@ const UserDashboard = () => {
   };
 
 
-  const hasAllReviewerRoles = globalManagers.length > 0 && legalReviewers.length > 0 && accountantReviewers.length > 0 && financeReviewers.length > 0;
+  const hasAllReviewerRoles = globalManagers.length > 0 && legalReviewers.length > 0 && accountantReviewers.length > 0;
 
   const calculatedContractValue = form.contract_value_na ? 0 : paymentPhases.reduce((sum, p) => sum + (p.is_na ? 0 : (parseInt(p.payment_amount) || 0)), 0);
 
