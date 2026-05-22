@@ -445,6 +445,11 @@ const AIReview = () => {
           </Card>
 
           {result && (() => {
+            const issuesOpen = expandedItems["section-issues"] !== false;
+            const missingOpen = expandedItems["section-missing"] === true;
+            const recsOpen = expandedItems["section-recs"] === true;
+            return (
+            <div className="space-y-4 animate-fade-in">
               {/* Overview card */}
               <Card className="border-none shadow-sm">
                 <CardHeader>
