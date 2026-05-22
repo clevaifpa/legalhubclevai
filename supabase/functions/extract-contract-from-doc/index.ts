@@ -90,11 +90,14 @@ const isInsideSharedFolder = async (fileId: string, accessToken: string) => {
   return false;
 };
 
-const fetchGoogleDocText = async (fileId: string, cacheBust: number) => {
+const fetchGoogleDocText = async (fileId: string, cacheBust: number, rawMode = false) => {
   const accessToken = await getServiceAccountAccessToken();
-  const isInSharedFolder = await isInsideSharedFolder(fileId, accessToken);
-  if (!isInSharedFolder) {
-    throw new Error("Link không thuộc folder quy định. Vui lòng tạo file trong folder chung.");
+
+  if (!rawMode) {
+    const isInSharedFolder = await isInsideSharedFolder(fileId, accessToken);
+    if (!isInSharedFolder) {
+      throw new Error("Link không thuộc folder quy định. Vui lòng tạo file trong folder chung.");
+    }
   }
 
   const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=text/plain&supportsAllDrives=true&_=${cacheBust}`, {
@@ -107,6 +110,9 @@ const fetchGoogleDocText = async (fileId: string, cacheBust: number) => {
 
   if (!response.ok) {
     console.error("Google Doc service-account export failed:", response.status, response.statusText, await response.text());
+    if (rawMode) {
+      throw new Error("Không đọc được tài liệu. Vui lòng chia sẻ file Google Doc với quyền 'Bất kỳ ai có link' (Anyone with the link - Viewer) rồi thử lại.");
+    }
     throw new Error("Không đọc được nội dung Google Doc. Vui lòng đảm bảo file nằm trong folder chung hoặc liên hệ admin.");
   }
 
