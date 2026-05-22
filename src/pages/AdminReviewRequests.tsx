@@ -839,6 +839,11 @@ const AdminReviewRequests = () => {
     // Build update
     const updateData: any = { status: nextStatus as any };
 
+    // Ghi nhận người Tài chính thực tế đã bấm duyệt
+    if (currentStatus === "cho_tai_chinh") {
+      updateData.finance_approved_by = user?.id;
+    }
+
     // General Manager (Bước 2) can set legal_review_doc_link
     if (legalReviewDocLink && currentStatus === "cho_quan_ly_chung") {
       updateData.legal_review_doc_link = legalReviewDocLink;
