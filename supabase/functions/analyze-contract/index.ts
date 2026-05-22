@@ -134,6 +134,7 @@ NGUYÊN TẮC PHÂN TÍCH BẮT BUỘC:
               parameters: {
                 type: "object",
                 properties: {
+                  contractName: { type: "string", description: "Tên ngắn gọn hợp đồng, tối đa 80 ký tự, format '[Loại văn bản] - [Tên đối tác] - [Ngày/Năm nếu có]'" },
                   summary: { type: "string", description: "Tóm tắt tổng quan" },
                   riskLevel: { type: "string", enum: ["thap", "trung_binh", "cao"] },
                   issues: {
