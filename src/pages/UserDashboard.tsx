@@ -513,7 +513,6 @@ const UserDashboard = () => {
         global_manager_id: isDirectSubmit ? (form.global_manager_id || autoAssign.global_manager_id || null) : (autoAssign.global_manager_id || null),
         legal_reviewer_id: autoAssign.legal_reviewer_id || null,
         accountant_reviewer_id: autoAssign.accountant_reviewer_id || null,
-        finance_reviewer_id: autoAssign.finance_reviewer_id || null,
         status: initialStatus as any,
         admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Tài chính — chuyển thẳng cho Quản lý chung duyệt." : null,
       }).select().single();
