@@ -1219,7 +1219,7 @@ const ContractCategories = () => {
                     <Textarea
                       value={descriptionDraft}
                       onChange={(e) => setDescriptionDraft(e.target.value)}
-                      placeholder="Nhập mô tả hợp đồng hoặc bấm '🤖 AI đọc lại' để hệ thống tự sinh từ file đính kèm..."
+                      placeholder="Nhập mô tả hợp đồng..."
                       className="min-h-[280px] text-sm leading-relaxed font-mono"
                       readOnly={!canEditDesc}
                     />
@@ -1235,43 +1235,6 @@ const ContractCategories = () => {
             <DialogFooter className="gap-2">
               {(isAdmin || role === "manager_chung") && (
                 <>
-                  <Button
-                    variant="outline"
-                    disabled={descriptionAiLoading || descriptionSaving || !descriptionPopupContract?.file_url}
-                    onClick={async () => {
-                      if (!descriptionPopupContract) return;
-                      setDescriptionAiLoading(true);
-                      try {
-                        const { data, error } = await supabase.functions.invoke("regenerate-contract-description", {
-                          body: { contractId: descriptionPopupContract.id },
-                        });
-                        // Try to extract real server message even on non-2xx
-                        let serverMsg: string | undefined;
-                        if (error && (error as any).context?.json) {
-                          try { serverMsg = (await (error as any).context.json())?.error; } catch {}
-                        }
-                        if (!serverMsg && error && (error as any).context?.text) {
-                          try { serverMsg = await (error as any).context.text(); } catch {}
-                        }
-                        if (error) throw new Error(serverMsg || error.message);
-                        if (data?.error) throw new Error(data.error);
-                        if (data?.description) {
-                          setDescriptionDraft(data.description);
-                          toast.success("AI đã sinh mô tả mới");
-                        } else {
-                          toast.error("AI không trả về mô tả");
-                        }
-                      } catch (err: any) {
-                        console.error("AI regenerate error:", err);
-                        toast.error("Lỗi AI", { description: err?.message || "Không thể đọc file" });
-                      } finally {
-                        setDescriptionAiLoading(false);
-                      }
-                    }}
-                    title={!descriptionPopupContract?.file_url ? "Hợp đồng chưa có link file" : "AI đọc file hợp đồng và viết lại mô tả"}
-                  >
-                    {descriptionAiLoading ? "🤖 Đang đọc..." : "🤖 AI đọc lại"}
-                  </Button>
                   <Button
                     variant="outline"
                     disabled={descriptionSaving || descriptionAiLoading}
