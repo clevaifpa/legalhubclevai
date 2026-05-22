@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Brain, Upload, FileText, Sparkles, ShieldCheck, Loader2, History, Link2, FileUp, Copy, Send, User as UserIcon } from "lucide-react";
+import { Brain, Upload, FileText, Sparkles, ShieldCheck, Loader2, Link2, FileUp, Copy, Send, User as UserIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,10 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
 
 interface AnalysisResult {
+  contractName: string;
   summary: string;
   riskLevel: string;
   issues: { clause: string; riskLevel: string; reason: string; suggestion: string; revisedClause: string }[];
@@ -50,7 +52,8 @@ const AIReview = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({ "section-issues": true });
+  const [openIssueKey, setOpenIssueKey] = useState<string | null>(null);
   const [inputMode, setInputMode] = useState<"text" | "gdoc" | "file">("text");
   const [gdocUrl, setGdocUrl] = useState("");
   const [loadingGdoc, setLoadingGdoc] = useState(false);
@@ -302,8 +305,13 @@ const AIReview = () => {
       const analysisResult = data as AnalysisResult;
       setResult(analysisResult);
 
+      const nameToSave = contractName.trim() || (analysisResult.contractName || "").trim();
+      if (!contractName.trim() && analysisResult.contractName) {
+        setContractName(analysisResult.contractName);
+      }
+
       try {
-        await saveHistory(analysisResult, contractText.trim(), contractName);
+        await saveHistory(analysisResult, contractText.trim(), nameToSave);
         setPage(1);
         await loadHistory(1);
       } catch (saveError: any) {
@@ -437,151 +445,171 @@ const AIReview = () => {
           </Card>
 
           {result && (() => {
-            const riskScore = result.riskLevel === "cao" ? 85 : result.riskLevel === "trung_binh" ? 60 : 25;
+            const issuesOpen = expandedItems["section-issues"] !== false;
+            const missingOpen = expandedItems["section-missing"] === true;
+            const recsOpen = expandedItems["section-recs"] === true;
             return (
             <div className="space-y-4 animate-fade-in">
+              {/* Overview card */}
               <Card className="border-none shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold">
-                    Kết quả phân tích
-                  </CardTitle>
+                  <CardTitle className="text-lg font-semibold">Kết luận chung</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3">
                   <p className="text-sm leading-relaxed">{result.summary}</p>
-                  <div>
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="outline" className={`${RISK_COLORS[result.riskLevel] || ""}`}>
                       Rủi ro: {RISK_LABELS[result.riskLevel] || result.riskLevel}
                     </Badge>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {result.issues.length} vấn đề · {result.missingClauses.length} điều khoản thiếu
-                    </p>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className={`rounded-lg border p-3 ${RISK_COLORS[result.riskLevel] || ""}`}>
-                      <div className="text-[11px] font-medium opacity-80">Mức rủi ro</div>
-                      <div className="text-base font-semibold mt-1">{RISK_LABELS[result.riskLevel] || result.riskLevel}</div>
-                    </div>
-                    <div className="rounded-lg border p-3 bg-muted/30">
-                      <div className="text-[11px] font-medium text-muted-foreground">Điểm</div>
-                      <div className="text-base font-semibold mt-1">{riskScore}/100</div>
-                    </div>
-                    <div className="rounded-lg border p-3 bg-warning/5 border-warning/20">
-                      <div className="text-[11px] font-medium text-warning">Số vấn đề</div>
-                      <div className="text-base font-semibold mt-1">{result.issues.length}</div>
-                    </div>
-                    <div className="rounded-lg border p-3 bg-info/5 border-info/20">
-                      <div className="text-[11px] font-medium text-info">Điều khoản thiếu</div>
-                      <div className="text-base font-semibold mt-1">{result.missingClauses.length}</div>
-                    </div>
+                  <div className="text-xs text-muted-foreground">
+                    {result.issues.length} vấn đề rủi ro
+                    <span className="mx-2">·</span>
+                    {result.missingClauses.length} điều khoản thiếu
+                    <span className="mx-2">·</span>
+                    {result.recommendations.length} khuyến nghị
                   </div>
                 </CardContent>
               </Card>
 
-
+              {/* Issues section accordion */}
               {result.issues.length > 0 && (
                 <Card className="border-none shadow-sm">
-                  <CardHeader>
+                  <button
+                    type="button"
+                    onClick={() => toggleExpand("section-issues")}
+                    className="w-full flex items-center justify-between gap-3 px-6 py-4 text-left hover:bg-muted/30 transition-colors rounded-t-lg"
+                  >
                     <CardTitle className="text-lg font-semibold">
                       Điều khoản có rủi ro ({result.issues.length})
                     </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {result.issues.map((issue, i) => {
-                      const key = `issue-${i}`;
-                      const open = expandedItems[key];
-                      return (
-                        <div key={i} className="rounded-lg border bg-card overflow-hidden">
-                          <button
-                            type="button"
-                            onClick={() => toggleExpand(key)}
-                            className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/40 transition-colors text-left"
-                          >
-                            <p className="font-medium text-sm flex-1 truncate">{issue.clause}</p>
-                            <Badge variant="outline" className={`shrink-0 ${RISK_COLORS[issue.riskLevel] || ""}`}>
-                              {RISK_LABELS[issue.riskLevel]}
-                            </Badge>
-                            {open ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
-                          </button>
-                          {open && (
-                            <div className="px-4 pb-4 space-y-2 border-t">
-                              <div className="p-3 rounded bg-destructive/5 border border-destructive/10 mt-3">
-                                <p className="text-xs font-medium text-destructive mb-1">Lý do rủi ro</p>
-                                <p className="text-sm text-muted-foreground">{issue.reason}</p>
-                              </div>
-                              <div className="p-3 rounded bg-success/5 border border-success/10">
-                                <p className="text-xs font-medium text-success mb-1">Gợi ý chỉnh sửa</p>
-                                <p className="text-sm text-muted-foreground">{issue.suggestion}</p>
-                              </div>
-                              {issue.revisedClause && (
-                                <div className="p-3 rounded bg-info/5 border border-info/20 relative">
-                                  <div className="flex items-start justify-between gap-2 mb-1">
-                                    <p className="text-xs font-medium text-info">
-                                      Nội dung đề xuất thay thế
-                                    </p>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 px-2 -mt-1 -mr-1"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigator.clipboard.writeText(issue.revisedClause);
-                                        toast.success("Đã sao chép");
-                                      }}
-                                    >
-                                      <Copy className="h-3 w-3 mr-1" />
-                                      Sao chép
-                                    </Button>
-                                  </div>
-                                  <p className="text-sm text-foreground font-mono whitespace-pre-wrap leading-relaxed">{issue.revisedClause}</p>
+                    {issuesOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                  </button>
+                  {issuesOpen && (
+                    <CardContent className="space-y-2 pt-0">
+                      {result.issues.map((issue, i) => {
+                        const key = `issue-${i}`;
+                        const open = openIssueKey === key;
+                        return (
+                          <div key={i} className="rounded-lg border bg-card overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={() => setOpenIssueKey(open ? null : key)}
+                              className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/40 transition-colors text-left"
+                            >
+                              <p className="text-[13px] text-foreground flex-1 truncate">{issue.clause}</p>
+                              <Badge variant="outline" className={`shrink-0 ${RISK_COLORS[issue.riskLevel] || ""}`}>
+                                {RISK_LABELS[issue.riskLevel]}
+                              </Badge>
+                              {open ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+                            </button>
+                            {open && (
+                              <div className="px-4 pb-4 pt-3 space-y-3 border-t">
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Lý do rủi ro</p>
+                                  <p className="text-sm text-foreground leading-relaxed">{issue.reason}</p>
                                 </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </CardContent>
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Gợi ý chỉnh sửa</p>
+                                  <p className="text-sm text-foreground leading-relaxed">{issue.suggestion}</p>
+                                </div>
+                                {issue.revisedClause && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Nội dung đề xuất thay thế</p>
+                                    <div className="relative">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="absolute top-1 right-1 h-6 px-2"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigator.clipboard.writeText(issue.revisedClause);
+                                          toast.success("Đã sao chép");
+                                        }}
+                                      >
+                                        <Copy className="h-3 w-3 mr-1" />
+                                        Sao chép
+                                      </Button>
+                                      <pre className="font-mono text-[12px] text-foreground bg-muted/40 rounded-md whitespace-pre-wrap leading-relaxed" style={{ padding: "10px 12px" }}>
+{issue.revisedClause}
+                                      </pre>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  )}
                 </Card>
               )}
 
-
+              {/* Missing clauses section accordion */}
               {result.missingClauses.length > 0 && (
                 <Card className="border-none shadow-sm">
-                  <CardHeader>
+                  <button
+                    type="button"
+                    onClick={() => toggleExpand("section-missing")}
+                    className="w-full flex items-center justify-between gap-3 px-6 py-4 text-left hover:bg-muted/30 transition-colors rounded-t-lg"
+                  >
                     <CardTitle className="text-lg font-semibold">
-                      Điều khoản bắt buộc bị thiếu ({result.missingClauses.length})
+                      Điều khoản thiếu ({result.missingClauses.length})
                     </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {result.missingClauses.map((clause, i) => (
-                        <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-full bg-info/10 text-info text-xs font-medium border border-info/20">
-                          {clause}
-                        </span>
-                      ))}
-                    </div>
-                  </CardContent>
+                    {missingOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                  </button>
+                  {missingOpen && (
+                    <CardContent className="pt-0">
+                      <TooltipProvider delayDuration={200}>
+                        <div className="flex flex-wrap gap-2">
+                          {result.missingClauses.map((clause, i) => (
+                            <Tooltip key={i}>
+                              <TooltipTrigger asChild>
+                                <span
+                                  className="inline-block truncate text-[12px] text-foreground bg-muted/30 border border-border rounded-full"
+                                  style={{ padding: "4px 12px", maxWidth: "200px" }}
+                                >
+                                  {clause}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-md">
+                                <p className="text-xs">{clause}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                        </div>
+                      </TooltipProvider>
+                    </CardContent>
+                  )}
                 </Card>
               )}
 
+              {/* Recommendations section accordion */}
               {result.recommendations.length > 0 && (
                 <Card className="border-none shadow-sm">
-                  <CardHeader>
+                  <button
+                    type="button"
+                    onClick={() => toggleExpand("section-recs")}
+                    className="w-full flex items-center justify-between gap-3 px-6 py-4 text-left hover:bg-muted/30 transition-colors rounded-t-lg"
+                  >
                     <CardTitle className="text-lg font-semibold">
-                      Khuyến nghị
+                      Khuyến nghị chung ({result.recommendations.length})
                     </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ol className="space-y-2 list-decimal list-inside">
-                      {result.recommendations.map((rec, i) => (
-                        <li key={i} className="text-sm leading-relaxed">{rec}</li>
-                      ))}
-                    </ol>
-                  </CardContent>
+                    {recsOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                  </button>
+                  {recsOpen && (
+                    <CardContent className="pt-0">
+                      <ol className="list-decimal list-inside space-y-1.5">
+                        {result.recommendations.map((rec, i) => (
+                          <li key={i} className="text-[13px] text-foreground" style={{ lineHeight: 1.6 }}>{rec}</li>
+                        ))}
+                      </ol>
+                    </CardContent>
+                  )}
                 </Card>
               )}
-
             </div>
             );
           })()}
@@ -704,8 +732,7 @@ const AIReview = () => {
         <TabsContent value="history">
           <Card className="border-none shadow-sm">
             <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <History className="h-5 w-5 text-accent" />
+              <CardTitle className="text-lg font-semibold">
                 Lịch sử AI kiểm tra
               </CardTitle>
             </CardHeader>
@@ -732,7 +759,7 @@ const AIReview = () => {
                           >
                             <div className="min-w-0 flex-1">
                               <p className={`text-sm font-semibold truncate ${hasName ? "" : "text-muted-foreground italic font-normal"}`}>
-                                {hasName ? item.contract_name : "Không có tên"}
+                                {hasName ? item.contract_name : (result?.contractName || "Không có tên")}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 {new Date(item.created_at).toLocaleString("vi-VN", { dateStyle: "medium", timeStyle: "short" })}

@@ -98,7 +98,11 @@ NGUYÊN TẮC PHÂN TÍCH BẮT BUỘC:
    - Hợp đồng này về việc gì, giữa ai với ai?
    - Bên công ty đang ở vị thế có lợi hay bất lợi tổng thể?
    - 2-3 rủi ro quan trọng nhất cần xử lý ngay là gì?
-   - Có nên ký hợp đồng này không, hay cần đàm phán lại trước?`;
+   - Có nên ký hợp đồng này không, hay cần đàm phán lại trước?
+
+6. ĐẶT TÊN HỢP ĐỒNG (contractName)
+   Tên ngắn gọn của hợp đồng, tối đa 80 ký tự, đặt theo format "[Loại văn bản] - [Tên đối tác] - [Ngày/Năm nếu có]".
+   Ví dụ: "HĐ dịch vụ tuyển dụng - TopCV - 23/4/2026", "NDA - Samsung Vietnam", "Biên bản bàn giao TSTT - LKO & Clevai".`;
 
     let userContent = `Phân tích hợp đồng sau và đối chiếu từng điều khoản với quy định pháp luật Việt Nam hiện hành:\n\n${contractText}`;
 
@@ -130,6 +134,7 @@ NGUYÊN TẮC PHÂN TÍCH BẮT BUỘC:
               parameters: {
                 type: "object",
                 properties: {
+                  contractName: { type: "string", description: "Tên ngắn gọn hợp đồng, tối đa 80 ký tự, format '[Loại văn bản] - [Tên đối tác] - [Ngày/Năm nếu có]'" },
                   summary: { type: "string", description: "Tóm tắt tổng quan" },
                   riskLevel: { type: "string", enum: ["thap", "trung_binh", "cao"] },
                   issues: {
@@ -150,7 +155,7 @@ NGUYÊN TẮC PHÂN TÍCH BẮT BUỘC:
                   missingClauses: { type: "array", items: { type: "string" } },
                   recommendations: { type: "array", items: { type: "string" } },
                 },
-                required: ["summary", "riskLevel", "issues", "missingClauses", "recommendations"],
+                required: ["contractName", "summary", "riskLevel", "issues", "missingClauses", "recommendations"],
                 additionalProperties: false,
               },
             },
