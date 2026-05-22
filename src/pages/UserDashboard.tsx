@@ -480,7 +480,6 @@ const UserDashboard = () => {
       const roleStepMap: Record<string, string> = {
         admin: "legal_reviewer_id",
         accountant: "accountant_reviewer_id",
-        finance: "finance_reviewer_id",
       };
       for (const [roleKey, col] of Object.entries(roleStepMap)) {
         const candidates = reviewers.filter(r => r.role === roleKey);
