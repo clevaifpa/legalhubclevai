@@ -181,7 +181,7 @@ const AdminReviewRequests = () => {
     global_manager_id: "",
     legal_reviewer_id: "",
     accountant_reviewer_id: "",
-    finance_reviewer_id: "",
+    
     legal_review_doc_link: "",
   });
 
@@ -609,7 +609,6 @@ const AdminReviewRequests = () => {
       const roleStepMap: Record<string, string> = {
         admin: "legal_reviewer_id",
         accountant: "accountant_reviewer_id",
-        finance: "finance_reviewer_id",
       };
       for (const [roleKey, col] of Object.entries(roleStepMap)) {
         const candidates = reviewers.filter(r => r.role === roleKey);
@@ -644,7 +643,6 @@ const AdminReviewRequests = () => {
         global_manager_id: isDirectSubmit ? (form.global_manager_id || autoAssign.global_manager_id || null) : (autoAssign.global_manager_id || null),
         legal_reviewer_id: autoAssign.legal_reviewer_id || null,
         accountant_reviewer_id: autoAssign.accountant_reviewer_id || null,
-        finance_reviewer_id: autoAssign.finance_reviewer_id || null,
         status: initialStatus as any,
         admin_notes: isDirectSubmit ? "Yêu cầu tạo bởi Pháp chế/Kế toán/Quản lý — chuyển thẳng cho Quản lý chung duyệt." : null,
       } as any).select().single();
@@ -725,7 +723,7 @@ const AdminReviewRequests = () => {
 
   const resetFormData = () => {
     setEditingReqId(null);
-    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "", global_manager_id: "", legal_reviewer_id: "", accountant_reviewer_id: "", finance_reviewer_id: "", legal_review_doc_link: "" });
+    setForm({ priority: "trung_binh", contract_title: "", partner_name: "", contract_value: "", contract_value_na: false, request_deadline: "", contract_start_date: "", contract_end_date: "", review_deadline: "", description: "", google_doc_url: "", approved_pe_number: "", department: "", contract_type_category: "", tax_code: "", manager_id: "", global_manager_id: "", legal_reviewer_id: "", accountant_reviewer_id: "", legal_review_doc_link: "" });
     setPaymentPhases([{ phase_name: "Đợt 01", payment_amount: "", payment_due_date: "", is_na: false }]);
     setSupplementaryDocs([]);
     setPendingDescriptionAttachments([]);
@@ -761,7 +759,6 @@ const AdminReviewRequests = () => {
       global_manager_id: req.global_manager_id || (globalManagers.length === 1 ? globalManagers[0].user_id : ""),
       legal_reviewer_id: req.legal_reviewer_id || (legalReviewers?.length === 1 ? legalReviewers[0].user_id : ""),
       accountant_reviewer_id: req.accountant_reviewer_id || (accountantReviewers?.length === 1 ? accountantReviewers[0].user_id : ""),
-      finance_reviewer_id: req.finance_reviewer_id || (financeReviewers?.length === 1 ? financeReviewers[0].user_id : ""),
       legal_review_doc_link: req.legal_review_doc_link || "",
     });
 
@@ -838,6 +835,11 @@ const AdminReviewRequests = () => {
 
     // Build update
     const updateData: any = { status: nextStatus as any };
+
+    // Ghi nhận người Tài chính thực tế đã bấm duyệt
+    if (currentStatus === "cho_tai_chinh") {
+      updateData.finance_approved_by = user?.id;
+    }
 
     // General Manager (Bước 2) can set legal_review_doc_link
     if (legalReviewDocLink && currentStatus === "cho_quan_ly_chung") {
@@ -1006,9 +1008,9 @@ const AdminReviewRequests = () => {
     if (isAccountant && req.status === 'cho_ke_toan') {
       return !!req.accountant_reviewer_id && req.accountant_reviewer_id === user?.id;
     }
-    // Tài chính: chỉ đúng người được phân công mới duyệt được
+    // Tài chính: tất cả user có role finance đều có quyền duyệt
     if (isFinance && req.status === 'cho_tai_chinh') {
-      return !!req.finance_reviewer_id && req.finance_reviewer_id === user?.id;
+      return true;
     }
     return false;
   };
@@ -1029,7 +1031,7 @@ const AdminReviewRequests = () => {
   }
 
 
-  const hasAllReviewerRoles = globalManagers.length > 0 && legalReviewers.length > 0 && accountantReviewers.length > 0 && financeReviewers.length > 0;
+  const hasAllReviewerRoles = globalManagers.length > 0 && legalReviewers.length > 0 && accountantReviewers.length > 0;
 
   const roleLabel = isAdmin ? "Pháp chế" : isManager ? "Quản lý" : isAccountant ? "Kế toán" : isFinance ? "Tài chính" : "";
   const calculatedContractValue = form.contract_value_na ? 0 : paymentPhases.reduce((sum, p) => sum + (p.is_na ? 0 : (parseInt(p.payment_amount) || 0)), 0);
@@ -1046,7 +1048,9 @@ const AdminReviewRequests = () => {
       quan_ly_chung: { id: req.global_manager_id || "", name: findName(req.global_manager_id) || "Quản lý chung" },
       phap_ly: { id: req.legal_reviewer_id || "", name: findName(req.legal_reviewer_id) },
       ke_toan: { id: req.accountant_reviewer_id || "", name: findName(req.accountant_reviewer_id) },
-      tai_chinh: { id: req.finance_reviewer_id || "", name: findName(req.finance_reviewer_id) },
+      tai_chinh: req.finance_approved_by
+        ? { id: req.finance_approved_by, name: findName(req.finance_approved_by) || "Bộ phận Tài chính" }
+        : { id: "", name: "Bộ phận Tài chính" },
     };
   };
 
@@ -1166,25 +1170,8 @@ const AdminReviewRequests = () => {
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Tài chính (Bước 5)</Label>
-                    {financeReviewers.length === 1 ? (
-                      <p className="text-sm font-medium text-muted-foreground bg-muted p-2 rounded">{financeReviewers[0].full_name || financeReviewers[0].email}</p>
-                    ) : isAdmin ? (
-                      <Select value={form.finance_reviewer_id || "none"} onValueChange={(v) => setForm({ ...form, finance_reviewer_id: v === "none" ? "" : v })}>
-                        <SelectTrigger><SelectValue placeholder="Chọn tài chính duyệt" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">-- Sẽ phân công sau --</SelectItem>
-                          {financeReviewers.map((m) => (
-                            <SelectItem key={m.user_id} value={m.user_id}>{m.full_name || m.email || "Chưa đặt tên"}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="text-sm italic text-muted-foreground bg-muted p-2 rounded border border-dashed">Sẽ được phân công bởi Admin</p>
-                    )}
-                  </div>
                 </div>
+
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2" id="field-contract_type_category">
