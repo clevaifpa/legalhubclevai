@@ -732,8 +732,7 @@ const AIReview = () => {
         <TabsContent value="history">
           <Card className="border-none shadow-sm">
             <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <History className="h-5 w-5 text-accent" />
+              <CardTitle className="text-lg font-semibold">
                 Lịch sử AI kiểm tra
               </CardTitle>
             </CardHeader>
