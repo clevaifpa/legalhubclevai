@@ -52,7 +52,8 @@ const AIReview = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({ "section-issues": true });
+  const [openIssueKey, setOpenIssueKey] = useState<string | null>(null);
   const [inputMode, setInputMode] = useState<"text" | "gdoc" | "file">("text");
   const [gdocUrl, setGdocUrl] = useState("");
   const [loadingGdoc, setLoadingGdoc] = useState(false);
