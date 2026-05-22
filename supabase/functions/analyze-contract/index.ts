@@ -155,7 +155,7 @@ NGUYÊN TẮC PHÂN TÍCH BẮT BUỘC:
                   missingClauses: { type: "array", items: { type: "string" } },
                   recommendations: { type: "array", items: { type: "string" } },
                 },
-                required: ["summary", "riskLevel", "issues", "missingClauses", "recommendations"],
+                required: ["contractName", "summary", "riskLevel", "issues", "missingClauses", "recommendations"],
                 additionalProperties: false,
               },
             },
