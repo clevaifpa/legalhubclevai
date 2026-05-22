@@ -1172,6 +1172,54 @@ const AdminReviewRequests = () => {
 
                 </div>
 
+                {/* Link Google Doc */}
+                <div className="space-y-2" id="field-google_doc_url">
+                  <Label className={formErrors.google_doc_url ? "text-destructive" : ""}>Link Google Doc *</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="url"
+                      value={form.google_doc_url}
+                      onChange={(e) => setForm({ ...form, google_doc_url: e.target.value })}
+                      placeholder="Dán link Google Doc (đã cấp quyền chỉnh sửa)"
+                      className={`flex-1 ${formErrors.google_doc_url ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                      title="Link phải cho phép người được phân công có quyền edit"
+                    />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 gap-1.5"
+                        onClick={openSharedGoogleDriveFolder}
+                        title="Mở folder chung để tạo hợp đồng"
+                      >
+                        <FolderOpen className="h-4 w-4" />
+                        Tạo Google Doc
+                      </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 gap-1.5"
+                      disabled={aiExtracting || !form.google_doc_url}
+                      onClick={handleAiExtract}
+                    >
+                      {aiExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                      {aiExtracting ? "Đang cập nhật..." : "AI đọc HĐ"}
+                    </Button>
+                  </div>
+                  {formErrors.google_doc_url && <p className="text-xs text-destructive">{formErrors.google_doc_url}</p>}
+                  <p className="text-xs text-muted-foreground">
+                    ⚠️ Vui lòng tạo Google Doc trong folder chung để đảm bảo quản lý tập trung.
+                  </p>
+                  {aiExtracting && (
+                    <div className="flex items-center gap-2 p-2 rounded bg-accent/10 border border-accent/20">
+                      <Loader2 className="h-3 w-3 animate-spin text-accent" />
+                      <span className="text-xs text-accent">
+                        {validSupplementaryDocs.length > 0 ? "Đang cập nhật nội dung mới từ hợp đồng + văn bản bổ sung..." : "Đang cập nhật nội dung mới từ hợp đồng..."}
+                      </span>
+                    </div>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2" id="field-contract_type_category">
@@ -1258,53 +1306,6 @@ const AdminReviewRequests = () => {
                     <Input className={formErrors.contract_end_date ? "border-destructive focus-visible:ring-destructive" : ""} type="date" value={form.contract_end_date} onChange={(e) => setForm({ ...form, contract_end_date: e.target.value })} />
                     {formErrors.contract_end_date && <p className="text-xs text-destructive">{formErrors.contract_end_date}</p>}
                   </div>
-                </div>
-                <div className="space-y-2" id="field-google_doc_url">
-                  <Label className={formErrors.google_doc_url ? "text-destructive" : ""}>Link Google Doc *</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="url"
-                      value={form.google_doc_url}
-                      onChange={(e) => setForm({ ...form, google_doc_url: e.target.value })}
-                      placeholder="Dán link Google Doc (đã cấp quyền chỉnh sửa)"
-                      className={`flex-1 ${formErrors.google_doc_url ? "border-destructive focus-visible:ring-destructive" : ""}`}
-                      title="Link phải cho phép người được phân công có quyền edit"
-                    />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="shrink-0 gap-1.5"
-                        onClick={openSharedGoogleDriveFolder}
-                        title="Mở folder chung để tạo hợp đồng"
-                      >
-                        <FolderOpen className="h-4 w-4" />
-                        Tạo Google Doc
-                      </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5"
-                      disabled={aiExtracting || !form.google_doc_url}
-                      onClick={handleAiExtract}
-                    >
-                      {aiExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                      {aiExtracting ? "Đang cập nhật..." : "AI đọc HĐ"}
-                    </Button>
-                  </div>
-                  {formErrors.google_doc_url && <p className="text-xs text-destructive">{formErrors.google_doc_url}</p>}
-                  <p className="text-xs text-muted-foreground">
-                    ⚠️ Vui lòng tạo Google Doc trong folder chung để đảm bảo quản lý tập trung.
-                  </p>
-                  {aiExtracting && (
-                    <div className="flex items-center gap-2 p-2 rounded bg-accent/10 border border-accent/20">
-                      <Loader2 className="h-3 w-3 animate-spin text-accent" />
-                      <span className="text-xs text-accent">
-                        {validSupplementaryDocs.length > 0 ? "Đang cập nhật nội dung mới từ hợp đồng + văn bản bổ sung..." : "Đang cập nhật nội dung mới từ hợp đồng..."}
-                      </span>
-                    </div>
-                  )}
                 </div>
 
                 {editingReqId && (
