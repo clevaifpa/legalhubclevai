@@ -445,15 +445,6 @@ const AIReview = () => {
           </Card>
 
           {result && (() => {
-            const riskScore = result.riskLevel === "cao" ? 85 : result.riskLevel === "trung_binh" ? 60 : 25;
-            return (
-            <div className="space-y-4 animate-fade-in">
-          {result && (() => {
-            const issuesOpen = expandedItems["section-issues"] !== false;
-            const missingOpen = expandedItems["section-missing"] === true;
-            const recsOpen = expandedItems["section-recs"] === true;
-            return (
-            <div className="space-y-4 animate-fade-in">
               {/* Overview card */}
               <Card className="border-none shadow-sm">
                 <CardHeader>
