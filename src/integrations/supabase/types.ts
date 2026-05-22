@@ -648,6 +648,7 @@ export type Database = {
           department: string
           description: string | null
           file_url: string | null
+          finance_approved_by: string | null
           finance_reviewer_id: string | null
           global_manager_id: string | null
           id: string
@@ -677,6 +678,7 @@ export type Database = {
           department: string
           description?: string | null
           file_url?: string | null
+          finance_approved_by?: string | null
           finance_reviewer_id?: string | null
           global_manager_id?: string | null
           id?: string
@@ -706,6 +708,7 @@ export type Database = {
           department?: string
           description?: string | null
           file_url?: string | null
+          finance_approved_by?: string | null
           finance_reviewer_id?: string | null
           global_manager_id?: string | null
           id?: string

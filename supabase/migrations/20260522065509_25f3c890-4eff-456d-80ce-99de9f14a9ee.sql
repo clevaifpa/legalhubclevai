@@ -1,0 +1,1 @@
+ALTER TABLE public.review_requests ADD COLUMN IF NOT EXISTS finance_approved_by UUID REFERENCES auth.users(id) DEFAULT NULL;
