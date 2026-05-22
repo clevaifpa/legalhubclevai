@@ -123,10 +123,10 @@ const fetchGoogleDocText = async (fileId: string, cacheBust: number, rawMode = f
   return text;
 };
 
-const fetchDocumentText = async (url: string, cacheBust = Date.now()) => {
+const fetchDocumentText = async (url: string, cacheBust = Date.now(), rawMode = false) => {
   const fileId = extractGoogleDocId(url);
   if (fileId) {
-    return await fetchGoogleDocText(fileId, cacheBust);
+    return await fetchGoogleDocText(fileId, cacheBust, rawMode);
   }
 
   if (!url.trim().toLowerCase().startsWith("http")) {
