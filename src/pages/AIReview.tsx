@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Brain, Upload, FileText, Sparkles, ShieldCheck, Loader2, History, Link2, FileUp, Copy, Send, User as UserIcon } from "lucide-react";
+import { Brain, Upload, FileText, Sparkles, ShieldCheck, Loader2, Link2, FileUp, Copy, Send, User as UserIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,10 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
 
 interface AnalysisResult {
+  contractName: string;
   summary: string;
   riskLevel: string;
   issues: { clause: string; riskLevel: string; reason: string; suggestion: string; revisedClause: string }[];
