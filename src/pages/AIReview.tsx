@@ -785,93 +785,136 @@ const AIReview = () => {
 
                         {histOpen && (
                           <div className="px-4 pb-4 pt-3 space-y-4 border-t">
-                          <div>
-                            <p className="text-sm font-semibold mb-2 text-foreground">Kết luận chung</p>
-                            <p className="text-sm bg-muted/50 p-3 rounded-md">{item.summary}</p>
-                          </div>
-
-                          {item.issues && item.issues.length > 0 && (
                             <div>
-                              <p className="text-sm font-semibold mb-2 text-warning">
-                                Điều khoản có rủi ro ({item.issues.length})
-                              </p>
+                              <p className="text-xs text-muted-foreground mb-1">Kết luận chung</p>
+                              <p className="text-sm text-foreground leading-relaxed">{item.summary}</p>
+                            </div>
+
+                            {item.issues && item.issues.length > 0 && (
                               <div className="space-y-2">
+                                <p className="text-sm font-semibold text-foreground">
+                                  Điều khoản có rủi ro ({item.issues.length})
+                                </p>
                                 {item.issues.map((issue, idx) => {
                                   const revised = item.revised_clauses?.find(r => r.clause === issue.clause);
+                                  const revisedText = (issue as any).revisedClause || revised?.revisedClause;
+                                  const issueKey = `hist-${item.id}-issue-${idx}`;
+                                  const issueOpen = openIssueKey === issueKey;
                                   return (
-                                    <div key={idx} className="text-sm p-3 rounded-md border border-warning/20 bg-warning/5 space-y-1.5">
-                                      <div className="font-medium flex justify-between">
-                                        <span>{issue.clause}</span>
+                                    <div key={idx} className="rounded-lg border bg-card overflow-hidden">
+                                      <button
+                                        type="button"
+                                        onClick={() => setOpenIssueKey(issueOpen ? null : issueKey)}
+                                        className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/40 transition-colors text-left"
+                                      >
+                                        <p className="text-[13px] text-foreground flex-1 truncate">{issue.clause}</p>
                                         <Badge variant="outline" className={`shrink-0 ${RISK_COLORS[issue.riskLevel] || ""}`}>
                                           {RISK_LABELS[issue.riskLevel] || issue.riskLevel}
                                         </Badge>
-                                      </div>
-                                      <div className="text-muted-foreground"><span className="font-medium text-destructive">Lý do:</span> {issue.reason}</div>
-                                      <div className="text-muted-foreground"><span className="font-medium text-success">Gợi ý:</span> {issue.suggestion}</div>
-                                      {revised?.revisedClause && (
-                                        <div className="text-muted-foreground">
-                                          <span className="font-medium text-info">Nội dung đề xuất thay thế:</span>
-                                          <p className="mt-1 text-foreground font-mono whitespace-pre-wrap leading-relaxed bg-info/5 border border-info/20 rounded p-2 text-xs">
-                                            {revised.revisedClause}
-                                          </p>
+                                        {issueOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+                                      </button>
+                                      {issueOpen && (
+                                        <div className="px-4 pb-4 pt-3 space-y-3 border-t">
+                                          <div>
+                                            <p className="text-xs text-muted-foreground mb-1">Lý do rủi ro</p>
+                                            <p className="text-sm text-foreground leading-relaxed">{issue.reason}</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-xs text-muted-foreground mb-1">Gợi ý chỉnh sửa</p>
+                                            <p className="text-sm text-foreground leading-relaxed">{issue.suggestion}</p>
+                                          </div>
+                                          {revisedText && (
+                                            <div>
+                                              <p className="text-xs text-muted-foreground mb-1">Nội dung đề xuất thay thế</p>
+                                              <div className="relative">
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="absolute top-1 right-1 h-6 px-2"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigator.clipboard.writeText(revisedText);
+                                                    toast.success("Đã sao chép");
+                                                  }}
+                                                >
+                                                  <Copy className="h-3 w-3 mr-1" />
+                                                  Sao chép
+                                                </Button>
+                                                <pre className="font-mono text-[12px] text-foreground bg-muted/40 rounded-md whitespace-pre-wrap leading-relaxed" style={{ padding: "10px 12px" }}>
+{revisedText}
+                                                </pre>
+                                              </div>
+                                            </div>
+                                          )}
                                         </div>
                                       )}
                                     </div>
                                   );
                                 })}
                               </div>
-                            </div>
-                          )}
+                            )}
 
-                          {item.missing_clauses && item.missing_clauses.length > 0 && (
+                            {item.missing_clauses && item.missing_clauses.length > 0 && (
+                              <div>
+                                <p className="text-sm font-semibold text-foreground mb-2">
+                                  Điều khoản thiếu ({item.missing_clauses.length})
+                                </p>
+                                <TooltipProvider delayDuration={200}>
+                                  <div className="flex flex-wrap gap-2">
+                                    {item.missing_clauses.map((clause, idx) => (
+                                      <Tooltip key={idx}>
+                                        <TooltipTrigger asChild>
+                                          <span
+                                            className="inline-block truncate text-[12px] text-foreground bg-muted/30 border border-border rounded-full"
+                                            style={{ padding: "4px 12px", maxWidth: "200px" }}
+                                          >
+                                            {clause}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-md">
+                                          <p className="text-xs">{clause}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    ))}
+                                  </div>
+                                </TooltipProvider>
+                              </div>
+                            )}
+
+                            {item.recommendations && item.recommendations.length > 0 && (
+                              <div>
+                                <p className="text-sm font-semibold text-foreground mb-2">Khuyến nghị chung</p>
+                                <ol className="list-decimal list-inside space-y-1.5">
+                                  {item.recommendations.map((rec, idx) => (
+                                    <li key={idx} className="text-[13px] text-foreground" style={{ lineHeight: 1.6 }}>{rec}</li>
+                                  ))}
+                                </ol>
+                              </div>
+                            )}
+
+                            <Separator className="my-2" />
+
                             <div>
-                              <p className="text-sm font-semibold mb-2 text-info">
-                                Điều khoản thiếu ({item.missing_clauses.length})
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                {item.missing_clauses.map((clause, idx) => (
-                                  <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-full bg-info/10 text-info text-xs font-medium border border-info/20">
-                                    {clause}
-                                  </span>
-                                ))}
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-xs text-muted-foreground">Nội dung hợp đồng đã phân tích</p>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleExpand(item.id)}
+                                  className="h-7 text-xs px-2"
+                                >
+                                  {isExpanded ? (
+                                    <><ChevronUp className="h-3 w-3 mr-1" /> Thu gọn</>
+                                  ) : (
+                                    <><ChevronDown className="h-3 w-3 mr-1" /> Xem toàn bộ</>
+                                  )}
+                                </Button>
+                              </div>
+                              <div className={`text-sm whitespace-pre-wrap bg-muted/30 p-3 rounded-md border ${isExpanded ? '' : 'line-clamp-4'}`}>
+                                {item.contract_text}
                               </div>
                             </div>
-                          )}
-
-                          {item.recommendations && item.recommendations.length > 0 && (
-                            <div>
-                              <p className="text-sm font-semibold mb-2 text-success">Khuyến nghị chung</p>
-                              <ol className="space-y-1.5 list-decimal list-inside">
-                                {item.recommendations.map((rec, idx) => (
-                                  <li key={idx} className="text-sm leading-relaxed">{rec}</li>
-                                ))}
-                              </ol>
-                            </div>
-                          )}
-
-
-                          <Separator className="my-2" />
-
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <p className="text-sm font-semibold text-foreground">Nội dung hợp đồng đã phân tích</p>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleExpand(item.id)}
-                                className="h-7 text-xs px-2"
-                              >
-                                {isExpanded ? (
-                                  <><ChevronUp className="h-3 w-3 mr-1" /> Thu gọn</>
-                                ) : (
-                                  <><ChevronDown className="h-3 w-3 mr-1" /> Xem toàn bộ</>
-                                )}
-                              </Button>
-                            </div>
-                            <div className={`text-sm whitespace-pre-wrap bg-muted/30 p-3 rounded-md border ${isExpanded ? '' : 'line-clamp-4'}`}>
-                              {item.contract_text}
-                            </div>
-                          </div>
                           </div>
                         )}
                       </div>
