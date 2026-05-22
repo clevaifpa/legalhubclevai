@@ -834,6 +834,10 @@ export type Database = {
     }
     Functions: {
       admin_delete_user: { Args: { _user_id: string }; Returns: undefined }
+      admin_update_user_department: {
+        Args: { _department: string; _user_id: string }
+        Returns: undefined
+      }
       auto_expire_contracts: { Args: never; Returns: undefined }
       can_access_review_request_chat: {
         Args: { _req_id: string; _user_id: string }
