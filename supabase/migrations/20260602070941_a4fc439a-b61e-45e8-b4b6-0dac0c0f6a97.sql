@@ -1,0 +1,1 @@
+ALTER TABLE public.review_request_messages DROP CONSTRAINT IF EXISTS review_request_messages_message_not_empty;
