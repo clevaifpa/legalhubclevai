@@ -104,7 +104,24 @@ export async function listAttachmentsForRequest(
   else if (messageIdFilter === "messages") q = q.not("message_id", "is", null);
   const { data, error } = await q;
   if (error) return [];
-  return (data as any[]) as Attachment[];
+  const rows = (data as any[]) as Attachment[];
+  // Refresh signed URLs (stored URLs expire after 24h)
+  const paths = rows.filter((r) => r.storage_path).map((r) => r.storage_path as string);
+  if (paths.length > 0) {
+    const { data: signed } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrls(paths, 60 * 60 * 24);
+    const map = new Map<string, string>();
+    (signed || []).forEach((s: any) => {
+      if (s?.path && s?.signedUrl) map.set(s.path, s.signedUrl);
+    });
+    for (const r of rows) {
+      if (r.storage_path && map.has(r.storage_path)) {
+        r.file_url = map.get(r.storage_path)!;
+      }
+    }
+  }
+  return rows;
 }
 
 export function isImageMime(mime: string): boolean {
