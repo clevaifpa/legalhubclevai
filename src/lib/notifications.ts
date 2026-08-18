@@ -409,22 +409,6 @@ export async function notifyReviewRequestEdited(params: {
 
   if (recipientIds.size === 0) return;
 
-  const notifications = Array.from(recipientIds).map((userId) => ({
-    user_id: userId,
-    title,
-    content,
-    review_request_id: reviewRequestId,
-    is_read: false,
-  }));
-  await sendNotifications(Array.from(recipientIds), title, notifications[0]?.content ?? "", (notifications[0] as any)?.review_request_id ?? null);
-
-  const logs = Array.from(recipientIds).map((userId) => ({
-    notification_type: "in_app",
-    review_request_id: reviewRequestId,
-    recipient_user_id: userId,
-    title,
-    content,
-    status: "sent",
-  }));
-  await supabase.from("notification_logs").insert(logs as any);
+  await sendNotifications(Array.from(recipientIds), title, content, reviewRequestId);
 }
+
