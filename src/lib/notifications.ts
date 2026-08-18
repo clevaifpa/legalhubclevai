@@ -242,17 +242,9 @@ export async function notifyAdminsOnContractUpload(
 
   if (recipientIds.size === 0) return;
 
-  // Insert notifications
-  const notifications = Array.from(recipientIds).map((userId) => ({
-    user_id: userId,
-    title,
-    content: finalContent,
-    is_read: false,
-  }));
-
-  await sendNotifications(Array.from(recipientIds), title, notifications[0]?.content ?? "", (notifications[0] as any)?.review_request_id ?? null);
-
+  await sendNotifications(Array.from(recipientIds) as string[], title, finalContent, null);
 }
+
 
 /**
  * Notifies all admins that a contract has been deleted by a user.
