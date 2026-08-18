@@ -886,6 +886,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      send_notifications: {
+        Args: {
+          _content: string
+          _recipient_ids: string[]
+          _review_request_id?: string
+          _title: string
+        }
+        Returns: number
+      }
     }
     Enums: {
       app_role:

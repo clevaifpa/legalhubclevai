@@ -25,6 +25,29 @@ function formatVNTime(date?: Date | string): string {
   return `${day}/${month}/${year} ${hours}:${minutes}`;
 }
 
+
+/**
+ * Insert notifications through the validated server-side routine.
+ * Recipients are re-checked server side (must be participants of the review
+ * request, or admins for system-wide notices).
+ */
+export async function sendNotifications(
+  recipientIds: string[],
+  title: string,
+  content: string,
+  reviewRequestId?: string | null,
+) {
+  const ids = Array.from(new Set(recipientIds.filter(Boolean)));
+  if (ids.length === 0) return;
+  const { error } = await (supabase.rpc as any)("send_notifications", {
+    _recipient_ids: ids,
+    _title: title,
+    _content: content,
+    _review_request_id: reviewRequestId ?? null,
+  });
+  if (error) console.warn("send_notifications failed:", error);
+}
+
 interface NotifyParams {
   reviewRequestId: string;
   contractTitle: string;
@@ -146,32 +169,10 @@ export async function createWorkflowNotifications(params: NotifyParams) {
   const { data: { user: currentUser } } = await supabase.auth.getUser();
   if (currentUser) recipientIds.delete(currentUser.id);
 
-  // Insert notifications
-  const notifications = Array.from(recipientIds).map((userId) => ({
-    user_id: userId,
-    title,
-    content,
-    review_request_id: reviewRequestId,
-    is_read: false,
-  }));
+  await sendNotifications(Array.from(recipientIds), title, content, reviewRequestId);
 
-  if (notifications.length > 0) {
-    await supabase.from("notifications").insert(notifications as any);
-  }
 
-  // Log notifications for audit
-  const logs = Array.from(recipientIds).map((userId) => ({
-    notification_type: "in_app",
-    review_request_id: reviewRequestId,
-    recipient_user_id: userId,
-    title,
-    content,
-    status: "sent",
-  }));
 
-  if (logs.length > 0) {
-    await supabase.from("notification_logs").insert(logs as any);
-  }
 
   // Send email notification to requester
   try {
@@ -232,27 +233,9 @@ export async function notifyAdminsOnContractUpload(
 
   if (recipientIds.size === 0) return;
 
-  // Insert notifications
-  const notifications = Array.from(recipientIds).map((userId) => ({
-    user_id: userId,
-    title,
-    content: finalContent,
-    is_read: false,
-  }));
-
-  await supabase.from("notifications").insert(notifications as any);
-
-  // Log notifications for audit
-  const logs = Array.from(recipientIds).map((userId) => ({
-    notification_type: "in_app",
-    recipient_user_id: userId,
-    title,
-    content: finalContent,
-    status: "sent",
-  }));
-
-  await supabase.from("notification_logs").insert(logs as any);
+  await sendNotifications(Array.from(recipientIds) as string[], title, finalContent, null);
 }
+
 
 /**
  * Notifies all admins that a contract has been deleted by a user.
@@ -295,25 +278,9 @@ export async function notifyAdminsOnContractDeletion(
 
   if (recipientIds.size === 0) return;
 
-  const notifications = Array.from(recipientIds).map((userId) => ({
-    user_id: userId,
-    title,
-    content: finalContent,
-    is_read: false,
-  }));
-
-  await supabase.from("notifications").insert(notifications as any);
-
-  const logs = Array.from(recipientIds).map((userId) => ({
-    notification_type: "in_app",
-    recipient_user_id: userId,
-    title,
-    content: finalContent,
-    status: "sent",
-  }));
-
-  await supabase.from("notification_logs").insert(logs as any);
+  await sendNotifications(Array.from(recipientIds) as string[], title, finalContent, null);
 }
+
 
 /**
  * Gọi khi Admin gán 1 người cụ thể vào vị trí duyệt đang trống.
@@ -344,22 +311,7 @@ export async function notifyReviewerAssigned(
     `\n<!--REQUEST_ID:${reviewRequestId}-->`
   ].join("\n");
 
-  await supabase.from("notifications").insert([{
-    user_id: reviewerId,
-    title,
-    content,
-    review_request_id: reviewRequestId,
-    is_read: false,
-  }] as any);
-
-  await supabase.from("notification_logs").insert([{
-    notification_type: "in_app",
-    review_request_id: reviewRequestId,
-    recipient_user_id: reviewerId,
-    title,
-    content,
-    status: "sent",
-  }] as any);
+  await sendNotifications([reviewerId], title, content, reviewRequestId);
 }
 
 /**
@@ -424,22 +376,6 @@ export async function notifyReviewRequestEdited(params: {
 
   if (recipientIds.size === 0) return;
 
-  const notifications = Array.from(recipientIds).map((userId) => ({
-    user_id: userId,
-    title,
-    content,
-    review_request_id: reviewRequestId,
-    is_read: false,
-  }));
-  await supabase.from("notifications").insert(notifications as any);
-
-  const logs = Array.from(recipientIds).map((userId) => ({
-    notification_type: "in_app",
-    review_request_id: reviewRequestId,
-    recipient_user_id: userId,
-    title,
-    content,
-    status: "sent",
-  }));
-  await supabase.from("notification_logs").insert(logs as any);
+  await sendNotifications(Array.from(recipientIds), title, content, reviewRequestId);
 }
+
