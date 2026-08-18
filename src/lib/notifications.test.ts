@@ -30,7 +30,20 @@ vi.mock("@/integrations/supabase/client", () => {
   return {
     supabase: {
       from,
-      rpc: async () => ({ data: [], error: null }),
+      rpc: async (fn: string, args: any) => {
+        if (fn === "send_notifications") {
+          const rows = (args._recipient_ids as string[]).map((uid) => ({
+            user_id: uid,
+            title: args._title,
+            content: args._content,
+            review_request_id: args._review_request_id,
+          }));
+          inserted.notifications = inserted.notifications.concat(rows);
+          inserted.notification_logs = inserted.notification_logs.concat(rows);
+          return { data: rows.length, error: null };
+        }
+        return { data: [], error: null };
+      },
       auth: { getUser: async () => ({ data: { user: null } }) },
     },
   };
