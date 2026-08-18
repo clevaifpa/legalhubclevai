@@ -169,18 +169,9 @@ export async function createWorkflowNotifications(params: NotifyParams) {
   const { data: { user: currentUser } } = await supabase.auth.getUser();
   if (currentUser) recipientIds.delete(currentUser.id);
 
-  // Insert notifications
-  const notifications = Array.from(recipientIds).map((userId) => ({
-    user_id: userId,
-    title,
-    content,
-    review_request_id: reviewRequestId,
-    is_read: false,
-  }));
+  await sendNotifications(Array.from(recipientIds), title, content, reviewRequestId);
 
-  if (notifications.length > 0) {
-    await sendNotifications(Array.from(recipientIds), title, content, reviewRequestId);
-  }
+
 
 
   // Send email notification to requester
