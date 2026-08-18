@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { sendNotifications } from "@/lib/notifications";
 import { useAuth, getEmployeeName } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -537,14 +538,11 @@ export function InternalChat({ requestId, contractTitle, shouldScrollOnMount }: 
           const content = isReplyTarget
             ? `[${contractTitle}] ${senderName} đã trả lời bạn: ${ex}\n<!--REQUEST_ID:${requestId}-->\n<!--SCROLL:msg-${insertedId}-->`
             : `[${contractTitle}] ${senderName}: ${ex}\n<!--REQUEST_ID:${requestId}-->\n<!--SCROLL:msg-${insertedId}-->`;
-          return {
-            user_id: uid,
-            title,
-            content,
-            review_request_id: requestId,
-          };
+          return { user_id: uid, title, content };
         });
-        await supabase.from("notifications").insert(notifs as any);
+        for (const n of notifs) {
+          await sendNotifications([n.user_id], n.title, n.content, requestId);
+        }
       }
 
       setText("");
