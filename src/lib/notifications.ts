@@ -295,25 +295,9 @@ export async function notifyAdminsOnContractDeletion(
 
   if (recipientIds.size === 0) return;
 
-  const notifications = Array.from(recipientIds).map((userId) => ({
-    user_id: userId,
-    title,
-    content: finalContent,
-    is_read: false,
-  }));
-
-  await sendNotifications(Array.from(recipientIds), title, notifications[0]?.content ?? "", (notifications[0] as any)?.review_request_id ?? null);
-
-  const logs = Array.from(recipientIds).map((userId) => ({
-    notification_type: "in_app",
-    recipient_user_id: userId,
-    title,
-    content: finalContent,
-    status: "sent",
-  }));
-
-  await supabase.from("notification_logs").insert(logs as any);
+  await sendNotifications(Array.from(recipientIds) as string[], title, finalContent, null);
 }
+
 
 /**
  * Gọi khi Admin gán 1 người cụ thể vào vị trí duyệt đang trống.
