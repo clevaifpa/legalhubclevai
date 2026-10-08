@@ -26,6 +26,7 @@
     "https://deno.land/std@0.177.0/async/retry.ts": "5efa3ba450ac0c07a40a82e2df296287b5013755d232049efd7ea2244f15b20f",
     "https://deno.land/std@0.177.0/async/tee.ts": "47e42d35f622650b02234d43803d0383a89eb4387e1b83b5a40106d18ae36757",
     "https://deno.land/std@0.177.0/http/server.ts": "cbb17b594651215ba95c01a395700684e569c165a567e4e04bba327f41197433",
+    "https://esm.sh/@supabase/supabase-js@2.49.1": "947c71e163ca8bb5b538eccb5ee86fbc8da6bcb916a861586db5fad1af4701bb",
     "https://esm.sh/@supabase/supabase-js@2.98.0": "7c91584aa8d7c3b272be04122a907e00a7028a20d0eaf5e40b2eb1eed10f06b3"
   },
   "workspace": {
@@ -33,6 +34,8 @@
       "dependencies": [
         "npm:@eslint/js@^9.32.0",
         "npm:@hookform/resolvers@^3.10.0",
+        "npm:@lovable.dev/vite-plugin-dev-server-bridge@^1.0.2",
+        "npm:@lovable.dev/vite-plugin-hmr-gate@^1.8.0",
         "npm:@radix-ui/react-accordion@^1.2.11",
         "npm:@radix-ui/react-alert-dialog@^1.1.14",
         "npm:@radix-ui/react-aspect-ratio@^1.1.7",
@@ -65,6 +68,7 @@
         "npm:@tanstack/react-query@^5.83.0",
         "npm:@testing-library/jest-dom@^6.6.0",
         "npm:@testing-library/react@16",
+        "npm:@testing-library/user-event@^14.6.1",
         "npm:@types/node@^22.16.5",
         "npm:@types/react-dom@^18.3.7",
         "npm:@types/react@^18.3.23",
@@ -83,7 +87,9 @@
         "npm:jsdom@^20.0.3",
         "npm:lovable-tagger@^1.1.13",
         "npm:lucide-react@0.462",
+        "npm:mammoth@^1.12.0",
         "npm:next-themes@0.3",
+        "npm:pdfjs-dist@^5.7.284",
         "npm:postcss@^8.5.6",
         "npm:react-day-picker@^8.10.1",
         "npm:react-dom@^18.3.1",
